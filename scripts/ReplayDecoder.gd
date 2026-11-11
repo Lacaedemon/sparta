@@ -39,6 +39,10 @@ static func _decode_order(o: Dictionary) -> Dictionary:
 	# already has, exactly as those replays behaved before this field existed.
 	if o.has("line"):
 		entry["line"] = int(o["line"])
+	# Absent in a replay recorded before the explicatio drill, which then plays its B presses
+	# back as the plain resize they were recorded as.
+	if o.has("explicatio"):
+		entry["explicatio"] = bool(o["explicatio"])
 	return entry
 
 

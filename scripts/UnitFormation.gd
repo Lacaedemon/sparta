@@ -1217,6 +1217,111 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 	return out
 
 
+# --- The explicatio drill ----------------------------------------------------
+# Asclepiodotus (Tactics 10.17) has the doubling of men by length insert "other files of equal
+# strength" between the original files; 2.2-2.3 names the half-file and its leader, the
+# hemilochites; Xenophon (Cyropaedia 2.3.21) has the half-file leaders come up into line, each
+# leading the rear half of his file. So the front stays where it is, each file's front half
+# keeps its ranks, and its rear half marches up the interval beside it, its leader first.
+
+## Default for Unit.explicatio_lane_right: the rear half-files go up the interval on the right
+## of their own files (the slot frame's +x, the files' spear side).
+const EXPLICATIO_LANE_RIGHT := true
+## Default for Unit.explicatio_lane_tolerance_frac: how near, as a fraction of the file pitch,
+## a rear man must stand to his lane laterally before he turns to march up it.
+const EXPLICATIO_LANE_TOLERANCE_FRAC := 0.25
+
+
+## The half-file deal of an explicatio of a file-major block on `old_files` files into twice as
+## many. `file_ids` and `ranks` are the block's held assignment, index-aligned; an empty or
+## wrong-sized `ranks` means each man's rank is his order among the earlier entries of his
+## file, as file_major_block_slots reads it.
+##
+## Old file k of length L keeps its front half, h = ceil(L / 2) men at ranks 0 to h - 1, at the
+## same ranks in new file 2k (2k + 1 when the lane is on the left), and sends its rear half up
+## the interval beside it: the man at rank h + r takes rank r of new file 2k + 1 (2k on the
+## left), so the half-file leader, the hemilochites at rank h, leads the new file. Each file is
+## split by its own length, so a file a casualty has shortened still splits its front half from
+## its rear.
+##
+## Returns {"files", "ranks", "walkers"}: the new file ids and ranks, and a flag set for each man
+## of a rear half, the men who march up a lane. Empty arrays when the inputs do not line up (a
+## file id outside 0..old_files - 1, or no men), for the caller to deal some other way.
+static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		old_files: int, lane_right: bool = EXPLICATIO_LANE_RIGHT) -> Dictionary:
+	var empty := {"files": PackedInt32Array(), "ranks": PackedInt32Array(),
+			"walkers": PackedByteArray()}
+	var n: int = file_ids.size()
+	if n <= 0 or old_files <= 0:
+		return empty
+	var explicit: bool = ranks.size() == n
+	var lengths := PackedInt32Array()
+	lengths.resize(old_files)
+	var held := PackedInt32Array()
+	held.resize(n)
+	for i in range(n):
+		var k: int = file_ids[i]
+		if k < 0 or k >= old_files:
+			return empty
+		held[i] = ranks[i] if explicit else lengths[k]
+		lengths[k] += 1
+	var out_files := PackedInt32Array()
+	var out_ranks := PackedInt32Array()
+	var walkers := PackedByteArray()
+	out_files.resize(n)
+	out_ranks.resize(n)
+	walkers.resize(n)
+	var lane: int = 1 if lane_right else 0
+	for i in range(n):
+		var k: int = file_ids[i]
+		var h: int = (lengths[k] + 1) / 2
+		if held[i] < h:
+			out_files[i] = 2 * k + (1 - lane)
+			out_ranks[i] = held[i]
+			walkers[i] = 0
+		else:
+			out_files[i] = 2 * k + lane
+			out_ranks[i] = held[i] - h
+			walkers[i] = 1
+	return {"files": out_files, "ranks": out_ranks, "walkers": walkers}
+
+
+## How many ranks deep the deepest file of a file-major assignment stands: the largest rank plus
+## one with explicit `ranks` (index-aligned with `file_ids`), or else the most men in one file.
+## That is the depth file_major_block_slots centres the block on. 0 for no men.
+static func max_rank_count(file_ids: PackedInt32Array, ranks: PackedInt32Array) -> int:
+	var n: int = file_ids.size()
+	var deepest: int = 0
+	if ranks.size() == n:
+		for r in ranks:
+			deepest = maxi(deepest, r + 1)
+		return deepest
+	var counts: Dictionary = {}
+	for f in file_ids:
+		counts[f] = int(counts.get(f, 0)) + 1
+		deepest = maxi(deepest, int(counts[f]))
+	return deepest
+
+
+## `slots` with each lane walker's target moved to the point level with him in his lane: the
+## slot's own lateral position at the depth the man stands, while he is more than `tolerance`
+## off the lane laterally. So a rear man of an explicatio first steps sideways into the
+## interval, and only then marches straight up it to his slot, rather than taking a diagonal
+## through his own file. `local_bodies` are the men in the slot frame (Unit.to_slot_frame),
+## index-aligned with `slots` and `walkers`; anything else returns `slots` unchanged.
+static func apply_lane_first_waypoints(slots: PackedVector2Array,
+		local_bodies: PackedVector2Array, walkers: PackedByteArray,
+		tolerance: float) -> PackedVector2Array:
+	var n: int = slots.size()
+	if n == 0 or local_bodies.size() != n or walkers.size() != n:
+		return slots
+	var out: PackedVector2Array = slots
+	for i in range(n):
+		if walkers[i] != 0 and absf(local_bodies[i].x - slots[i].x) > tolerance:
+			out[i] = Vector2(slots[i].x, local_bodies[i].y)
+	return out
+
+
 ## `ranks` with the entry for the soldier at `index` removed and every SAME-FILE survivor
 ## standing behind him stepped one rank forward, so each file's ranks stay contiguous from 0.
 ##

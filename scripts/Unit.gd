@@ -6288,10 +6288,22 @@ func _reset_shield_hold_angles() -> void:
 ## `anchor_offset` is in the unmirrored local frame (unmirrored_anchor_offset is the standing
 ## offset in that frame), so a standing about-face mirror is baked first: written under the
 ## mirror, the shift would land on the opposite flank.
-func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
+##
+## `explicatio` marks the drill (the B key and the turn-and-unfold combo), as against any other
+## change of width that happens to double the files. A file-major block doubled that way is
+## dealt the half-file drill (_deal_explicatio): its front stays where it stands and each rear
+## half-file marches up the interval beside its own file. Any other change, and an explicatio
+## that cannot double the files or whose block holds no assignment to split, re-deals the files
+## from the bodies as before (_ensure_file_assignment).
+func set_frontage(files: int, anchor_offset: float = 0.0, explicatio: bool = false) -> void:
 	_bake_formation_mirror()
 	var old_files: int = UnitFormation.frontage(self)
-	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
+	var held_offset: float = frontage_anchor_offset
+	var target_files: int = clampi(files, 1, maxi(1, max_soldiers))
+	var drill: bool = explicatio and _can_deal_explicatio(old_files, target_files)
+	var slots_before: PackedVector2Array = soldier_world_slots(soldiers) if drill \
+			else PackedVector2Array()
+	frontage_override = target_files
 	frontage_anchor_offset = anchor_offset
 	if frontage_override != old_files:
 		clear_couple_transit()   # a new frontage re-deals every slot (see set_formation)
@@ -6302,7 +6314,116 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 		# arm the watch using the reshape-specific bound (old shape's diagonal plus the
 		# new one's), captured before the frontage actually changes underneath it.
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
+	if drill:
+		# A widen held on one flank shifts the grid away from that flank; its lanes open on the
+		# side away from it, so the held flank's own front half-file keeps its ground.
+		var step_shift: float = anchor_offset - held_offset
+		var lane_right: bool = explicatio_lane_right
+		if step_shift < 0.0:
+			lane_right = false   # the right (+x) flank is held
+		elif step_shift > 0.0:
+			lane_right = true    # the left flank is held
+		_deal_explicatio(old_files, frontage_override, lane_right, slots_before)
 	note_front_depth()   # a narrower frontage deepens the block
+
+
+## Whether a change from `old_files` to `new_files` can be dealt as the explicatio drill: a
+## file-major line (not a square) doubling its files, with bodies to walk and a held assignment
+## on the old files to split. Brings the assignment up to date first, as a slot query would.
+func _can_deal_explicatio(old_files: int, new_files: int) -> bool:
+	if new_files != old_files * 2 or soldiers <= 0 or in_square() \
+			or not _effective_file_major_reform() or _sim_soldier_pos.size() < soldiers:
+		return false
+	_ensure_file_assignment(soldiers, old_files)
+	return _sim_soldier_file.size() == soldiers and _file_assignment_files == old_files
+
+
+## The explicatio drill (UnitFormation.explicatio_assignment): each old file's front half keeps
+## its ranks and steps sideways as the line opens, and its rear half takes the new file beside
+## it on the `lane_right` side, its leader first. Installs that assignment on `new_files`
+## files, flags the rear men as lane walkers (_apply_explicatio_lanes), and keeps the front
+## where it stands:
+##
+## The file-major grid centres its depth on `position`, so a block half as deep would pull its
+## front rank back by half the depth it loses. `position` moves forward by that much instead,
+## and so does whatever the unit is holding or marching to (_translate_held_targets), or a unit
+## widening on the march would walk back to its old centre. The men whose slots the drill moves
+## are kept out of the anchor coupling until each arrives (arm_couple_transit), or their walk
+## from the rear would drag `position` back after them. `slots_before` are the world slots just
+## before the change.
+func _deal_explicatio(old_files: int, new_files: int, lane_right: bool,
+		slots_before: PackedVector2Array) -> void:
+	var dealt: Dictionary = UnitFormation.explicatio_assignment(_sim_soldier_file,
+			_sim_soldier_rank, old_files, lane_right)
+	var files_out: PackedInt32Array = dealt["files"]
+	if files_out.size() != soldiers:
+		return
+	var old_depth: int = UnitFormation.max_rank_count(_sim_soldier_file, _sim_soldier_rank)
+	_sim_soldier_file = files_out
+	_sim_soldier_rank = dealt["ranks"]
+	_file_assignment_files = new_files
+	note_file_assignment_changed()
+	_sim_soldier_lane_walker = dealt["walkers"]
+	_lane_walker_gen = _file_assignment_gen
+	var new_depth: int = UnitFormation.max_rank_count(_sim_soldier_file, _sim_soldier_rank)
+	var front_shift := Vector2(0.0, -0.5 * float(old_depth - new_depth) * rank_pitch_wu())
+	var shift: Vector2 = front_shift.rotated(soldier_block_world_angle())
+	position += shift
+	_translate_held_targets(shift)
+	arm_couple_transit(slots_before, _reshape_timeout(old_files), false, true)
+
+
+## Move what the unit is holding or marching to by `shift`, as its `position` has moved: the
+## destination it is marching on, and the destination of every MOVE order in its queue and in
+## the order it is running.
+func _translate_held_targets(shift: Vector2) -> void:
+	if shift == Vector2.ZERO:
+		return
+	if has_move_target:
+		move_target = _move_target + shift
+	var seen: Dictionary = {}
+	var pending: Array = []
+	if current_order != null:
+		pending.append(current_order)
+	pending.append_array(orders)
+	while not pending.is_empty():
+		var o: Order = pending.pop_back()
+		if o == null or seen.has(o.get_instance_id()):
+			continue
+		seen[o.get_instance_id()] = true
+		if o.type == Order.Type.MOVE:
+			o.target_pos += shift
+		pending.append_array(o.children)
+
+
+## `slots` with each explicatio lane walker's target set to the point level with him in his
+## lane while he is still off it (UnitFormation.apply_lane_first_waypoints), so a rear man steps
+## sideways into the interval first and then marches straight up it. A walker within the
+## tolerance of his lane is struck off for good. Walkers from an earlier deal, or ones that do
+## not line up with `count` men and their bodies, are dropped.
+func _apply_explicatio_lanes(slots: PackedVector2Array, count: int) -> PackedVector2Array:
+	if _sim_soldier_lane_walker.is_empty():
+		return slots
+	if _lane_walker_gen != _file_assignment_gen or _sim_soldier_lane_walker.size() != count \
+			or slots.size() != count:
+		_sim_soldier_lane_walker = PackedByteArray()
+		return slots
+	var local: PackedVector2Array = _slot_frame_positions(count)
+	if local.size() != count:
+		return slots
+	var tolerance: float = file_pitch_wu() * explicatio_lane_tolerance_frac
+	var walking: bool = false
+	for i in range(count):
+		if _sim_soldier_lane_walker[i] != 0:
+			if absf(local[i].x - slots[i].x) <= tolerance:
+				_sim_soldier_lane_walker[i] = 0
+			else:
+				walking = true
+	if not walking:
+		_sim_soldier_lane_walker = PackedByteArray()
+		return slots
+	return UnitFormation.apply_lane_first_waypoints(slots, local, _sim_soldier_lane_walker,
+			tolerance)
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
@@ -6797,6 +6918,20 @@ var _sim_soldier_rank: PackedInt32Array = PackedInt32Array()
 # duplicatio, the automatic ranks-closed narrowing) and the assignment should reflow fresh
 # rather than keep stale file ids from a now-different frontage. -1 = never assigned yet.
 var _file_assignment_files: int = -1
+# The explicatio's lane walkers, index-aligned with _sim_soldier_pos: 1 for each man of a rear
+# half-file still to step sideways into the interval he marches up
+# (UnitFormation.explicatio_assignment, _apply_explicatio_lanes). Honoured only while
+# _lane_walker_gen matches _file_assignment_gen, so any later re-deal of the files retires them;
+# SoldierMelee.reap trims them with the rest of a dead man's arrays and keeps them current.
+var _sim_soldier_lane_walker: PackedByteArray = PackedByteArray()
+var _lane_walker_gen: int = -1
+# Which side of each file its rear half marches up in an explicatio: true for the right, the
+# slot frame's +x and the files' spear side (UnitFormation.EXPLICATIO_LANE_RIGHT). An explicatio
+# held on one flank takes the side away from that flank instead (see set_frontage).
+var explicatio_lane_right: bool = UnitFormation.EXPLICATIO_LANE_RIGHT
+# How near his lane, as a fraction of the file pitch, a rear man of an explicatio must stand
+# laterally before he turns to march up it (UnitFormation.EXPLICATIO_LANE_TOLERANCE_FRAC).
+var explicatio_lane_tolerance_frac: float = UnitFormation.EXPLICATIO_LANE_TOLERANCE_FRAC
 
 # Persistent per-soldier SQUARE slot assignment, index-aligned with _sim_soldier_pos:
 # _sim_soldier_square_slot[i] is the index, within the square grid UnitFormation.block_slots
@@ -7149,6 +7284,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 		var out := UnitFormation.file_major_block_slots(
 				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu(), _sim_soldier_rank)
 		slots = UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
+		if apply_traverse_arcs:
+			slots = _apply_explicatio_lanes(slots, count)
 	else:
 		var row_files: int = formation_files(count)
 		var row_grid: PackedVector2Array = UnitFormation.slots(self, count)
@@ -7963,7 +8100,7 @@ func _apply_file_double_step(step: Order) -> void:
 			_resquare_pending = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
-	set_frontage(files, step.frontage_anchor_offset)
+	set_frontage(files, step.frontage_anchor_offset, step.dir > 0)
 
 
 ## True while the slot grid's turn off the heading (grid_fold: the folded maneuver rotation plus
@@ -8808,12 +8945,14 @@ func position_anchor_held() -> bool:
 ## Arms nothing when the new slots are centred on `position` (within
 ## COUPLE_TRANSIT_CENTRED_EPS): a full grid squaring a drilled half-turn's residue swings
 ## every slot, but symmetrically, so the walk reads no drift and the coupling can keep
-## following any push.
+## following any push. `even_if_centred` arms it anyway: an explicatio moves `position` to the
+## new block's centre, ahead of the men still walking up from the rear, so a centred grid there
+## is no sign that the walk is symmetric (_deal_explicatio).
 ## The flags are sized to the live soldier count, like the slots. During a regiment-path
 ## casualty's window (soldiers already dropped, body arrays not yet trimmed) couple() does
 ## not run, and the flags take effect once step() trims the arrays to match.
 func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float,
-		bodies_on_old_slots: bool = false) -> void:
+		bodies_on_old_slots: bool = false, even_if_centred: bool = false) -> void:
 	clear_couple_transit()
 	var slots: PackedVector2Array = soldier_world_slots(soldiers)
 	var n: int = slots.size()
@@ -8832,7 +8971,8 @@ func arm_couple_transit(slots_before: PackedVector2Array, timeout_sec: float,
 	var centroid := Vector2.ZERO
 	for p in slots:
 		centroid += p
-	if (centroid / float(n)).distance_to(position) <= COUPLE_TRANSIT_CENTRED_EPS:
+	if not even_if_centred \
+			and (centroid / float(n)).distance_to(position) <= COUPLE_TRANSIT_CENTRED_EPS:
 		return
 	var flags := PackedByteArray()
 	flags.resize(n)
@@ -12620,6 +12760,8 @@ func to_snapshot_dict() -> Dictionary:
 		"row_layout_files": _row_layout_files,
 		"row_slot_dealt": _row_slot_dealt,
 		"sim_soldier_reflect_walker": _sim_soldier_reflect_walker.duplicate(),
+		"sim_soldier_lane_walker": (_sim_soldier_lane_walker.duplicate()
+				if _lane_walker_gen == _file_assignment_gen else PackedByteArray()),
 		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
 		"in_enemy_contact": _in_enemy_contact, "router_front_in_melee": _router_front_in_melee,
 		"router_left_contact": _router_left_contact, "router_anchor_contact": _router_anchor_contact,
@@ -12687,6 +12829,8 @@ func to_snapshot_dict() -> Dictionary:
 		"rally_resume_radius_factor": rally_resume_radius_factor,
 		"rally_resume_clear_ticks": rally_resume_clear_ticks,
 		"traverse_arc_clearance": traverse_arc_clearance,
+		"explicatio_lane_right": explicatio_lane_right,
+		"explicatio_lane_tolerance_frac": explicatio_lane_tolerance_frac,
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
@@ -12987,6 +13131,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
 	rally_resume_clear_ticks = int(d.get("rally_resume_clear_ticks", rally_resume_clear_ticks))
 	traverse_arc_clearance = float(d.get("traverse_arc_clearance", traverse_arc_clearance))
+	explicatio_lane_right = bool(d.get("explicatio_lane_right", explicatio_lane_right))
+	explicatio_lane_tolerance_frac = float(d.get("explicatio_lane_tolerance_frac",
+			explicatio_lane_tolerance_frac))
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
@@ -13012,6 +13159,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
 	note_file_assignment_changed()
+	# The explicatio's lane walkers ride the assignment just restored. An older snapshot
+	# carries none: a restore mid explicatio sends the rear men straight to their slots.
+	_sim_soldier_lane_walker = (d.get("sim_soldier_lane_walker",
+			PackedByteArray()) as PackedByteArray).duplicate()
+	_lane_walker_gen = _file_assignment_gen
 	# An older snapshot without the pairing restores none, and the first step re-pairs. So
 	# does a restore into an engine younger than the pairing's age (the frame would be
 	# negative, which SoldierBodies reads as no pairing): a fresh pairing, not a crash.

@@ -39,6 +39,7 @@ const EXCLUDED := {
 	"_adjacent_engaged_cache": CACHE,
 	"_adjacent_engaged_cache_frame": CACHE,
 	"_file_assignment_gen": CACHE,
+	"_lane_walker_gen": "the assignment generation the lane walkers belong to; the snapshot saves the walkers only while they are current, and the restore re-stamps them to the restored assignment's generation",
 	"_live_rank_count_gen": CACHE,
 	"_live_rank_count_soldiers": CACHE,
 	"_live_rank_count_files": CACHE,

@@ -437,7 +437,14 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_rank = UnitFormation.drop_rank_assignment(
 						unit._sim_soldier_rank, unit._sim_soldier_file, i)
 				unit._sim_soldier_file.remove_at(i)
+				# An explicatio's lane walkers belong to this assignment: trim the dead man's flag
+				# and carry them over to the closed-up assignment, rather than retire them all.
+				var lanes_live: bool = unit._lane_walker_gen == unit._file_assignment_gen \
+						and i < unit._sim_soldier_lane_walker.size()
 				unit.note_file_assignment_changed()
+				if lanes_live:
+					unit._sim_soldier_lane_walker.remove_at(i)
+					unit._lane_walker_gen = unit._file_assignment_gen
 			if i < unit._sim_soldier_broken.size():
 				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
 			if i < unit._sim_soldier_reflect_walker.size():

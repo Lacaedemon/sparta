@@ -7,7 +7,7 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		group_attack: int = 0, anchor_offset: float = 0.0,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
-		line_index: int = -1, reinforce: int = 0) -> Dictionary:
+		line_index: int = -1, reinforce: int = 0, explicatio: bool = false) -> Dictionary:
 	var entry := {
 		"tick": tick,
 		"units": uids.duplicate(),
@@ -58,4 +58,9 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# for every other order kind so old replays stay valid and byte-identical on re-save.
 	if reinforce != 0:
 		entry["reinforce"] = reinforce
+	# A -4 resize that is the explicatio drill (the B key), as against an absolute resize that
+	# happens to double the files; omitted for every other order so old replays stay valid and
+	# byte-identical on re-save.
+	if explicatio:
+		entry["explicatio"] = true
 	return entry
