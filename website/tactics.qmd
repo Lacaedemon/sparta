@@ -111,8 +111,32 @@ those ranks trail behind it, still pressed against the pursuers,
 and its formation is laid out from the men ahead of it along its flight instead,
 not from those trailing ranks,
 so the men the pursuers hold no longer set where the router's formation stands.
-A block turned a quarter-turn or less is still laid out from its front ranks,
-even when a turn of nearly a quarter-turn has left them along one of its flanks.
+A block turned a quarter-turn or less is still laid out from its front ranks
+while they stand ahead of its centre along its flight.
+A turn of nearly a quarter-turn leaves them along one of its flanks,
+and once the pursuers hold that flank back behind the block's centre,
+it too is laid out from the men ahead instead.
+
+::: {#fig-router-flank-anchor .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_flank_anchor.jpg">
+  <source src="media/router_flank_anchor.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A brittle infantry block (blue) facing east is attacked by a larger infantry block,
+breaks while still in contact and turns at once to flee north,
+its block turned about 85 degrees off its flight, so its front ranks become its east flank.
+The pursuers hold that flank back behind the block's centre,
+so it is laid out from its leading men instead.
+On this clip's seed (measured 2026-11-11 against main e78d81be)
+it drifts 0.5 m west in the 2.2 seconds after it breaks, against 1.1 m before this fix,
+and stands 0.9 m further north at the end of them.
+:::
 
 ::: {#fig-router-anchor-flight-side .demo}
 

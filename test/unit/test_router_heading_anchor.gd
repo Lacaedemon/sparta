@@ -19,6 +19,15 @@ const SMALL_FOLD := 0.3
 const QUARTER_FOLD := -PI * 0.5
 # Just past the default: the 0.01 rad margin that keeps a quarter-turn out, and as much again.
 const PAST_QUARTER_FOLD := Unit.ROUTER_HEADING_ANCHOR_FOLD + 0.01
+# The fold the last-unit-rally block's flight turn left on its grid on that clip's seed run 3
+# (measured 2026-11-11 on main e78d81be): 1.3152 rad, about 75 degrees, so the snap left the grid
+# under a quarter-turn and its front ranks along a flank, which then fell behind its centre.
+const BAND_FOLD := 1.3152
+# Where the block stands for the lead tests, both ahead of the origin along its heading and
+# behind it: far enough off the origin that a lead compared without scaling the two sums by their
+# counts, or without the whole block's sum, reads the block's own offset (400 wu against a lead of
+# a few wu) rather than how far its front ranks stand ahead of its centre, whichever way it lies.
+const ORIGIN_OFF := 400.0
 # How far a pursuer holds the grid's front ranks back off their slots, and how far the men ahead
 # are pushed sideways: any non-zero distance shows the anchor reading one set and not the other.
 const HOLD_BACK := 30.0
@@ -53,6 +62,24 @@ const EDGE_WATCH_TICKS := 200
 # the trailing check below has ticks to judge.
 const EDGE_MIN_ANCHORED_TICKS := 62
 
+# A block facing east, 6 degrees north of it, attacked head-on (router-flank-anchor-1938's
+# staging): it routs at tick 214 in contact, and its snapped flight turn leaves its grid
+# 1.4696 to 1.4853 rad off its heading on the clip's seed runs 0 to 4, under a quarter-turn, so
+# its front ranks become the flank the pursuers press. On main e78d81be (measured 2026-11-11)
+# it anchored on men behind its centre on 137 to 190 of its 169 to 205 anchored ticks there.
+const BAND_SEED := 19380
+const BAND_ROUTER := {"team": 0, "type": "Infantry", "x": 900, "y": 900, "count": 80,
+		"morale": 6.0, "formation": 1, "facing": [0.9945, -0.1045]}
+const BAND_PURSUER := {"team": 1, "type": "Infantry", "x": 1019.3, "y": 887.5, "count": 120,
+		"formation": 1, "facing": [-0.9945, 0.1045]}
+const BAND_ROUT_BY_TICK := 300
+# The block last anchors as one in contact 150 to 204 ticks after its rout on the clip's seed runs
+# 0 to 4 on main and with the fix (on seed run 2 with the fix it comes back into contact long
+# after), so 250 ticks watches its whole first stretch in contact on both trees.
+const BAND_WATCH_TICKS := 250
+# Half of the fewest anchored ticks on either tree across the seed runs (151, with the fix).
+const BAND_MIN_ANCHORED_TICKS := 75
+
 var _battle: Node = null
 
 
@@ -64,14 +91,15 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-## A 40-man block facing north with its grid folded `fold` off its heading, its men on their
-## slots, routed (or in `state`) and in anchor contact.
-func _folded_unit(fold: float, state: Unit.State = Unit.State.ROUTING) -> Unit:
+## A 40-man block facing north at `origin` with its grid folded `fold` off its heading, its men
+## on their slots, routed (or in `state`) and in anchor contact.
+func _folded_unit(fold: float, state: Unit.State = Unit.State.ROUTING,
+		origin: Vector2 = Vector2.ZERO) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = 40
 	add_child_autofree(u)
 	u.facing = Vector2.UP
-	u.position = Vector2.ZERO
+	u.position = origin
 	u._formation_angle = fold
 	u.seed_sim_soldiers()
 	u.state = state
@@ -173,17 +201,67 @@ func test_a_router_turned_just_past_a_quarter_turn_anchors_on_its_heading() -> v
 	assert_eq(u.position_anchor_indices(n), u.heading_anchor_soldier_indices(n))
 
 
+func test_a_router_under_a_quarter_turn_keeps_its_grid_front_while_it_leads() -> void:
+	for origin in [Vector2.UP * ORIGIN_OFF, Vector2.DOWN * ORIGIN_OFF]:
+		var u := _folded_unit(BAND_FOLD, Unit.State.ROUTING, origin)
+		var n: int = u._sim_soldier_pos.size()
+		assert_gt(_lead(u, u.near_front_soldier_indices(n)), 0.0,
+				"setup: on their slots the grid's front ranks stand ahead of the centroid")
+		assert_false(u.grid_front_trails(), "its front ranks lead it (at %s)" % origin)
+		assert_false(u.position_anchor_on_heading(), "so it keeps them as its anchor")
+		assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
+
+
+func test_a_router_under_a_quarter_turn_whose_front_ranks_trail_anchors_on_its_heading() -> void:
+	for origin in [Vector2.UP * ORIGIN_OFF, Vector2.DOWN * ORIGIN_OFF]:
+		var u := _folded_unit(BAND_FOLD, Unit.State.ROUTING, origin)
+		var n: int = u._sim_soldier_pos.size()
+		# A pursuer holds the grid's front ranks, now a flank, back behind the block's centre.
+		for i in u.near_front_soldier_indices(n):
+			u._sim_soldier_pos[i] -= u.facing * HOLD_BACK
+		assert_lt(_lead(u, u.near_front_soldier_indices(n)), 0.0,
+				"setup: the held flank stands behind the centroid")
+		assert_lte(absf(u.grid_fold()), Unit.ROUTER_HEADING_ANCHOR_FOLD,
+				"setup: the grid is turned no more than the fold threshold")
+		assert_true(u.grid_front_trails(), "its front ranks trail it (at %s)" % origin)
+		assert_true(u.position_anchor_on_heading(), "so it anchors on the men ahead along its heading")
+		var indices: PackedInt32Array = u.position_anchor_indices(n)
+		assert_eq(indices, u.heading_anchor_soldier_indices(n), "the men farthest ahead")
+		assert_gt(_lead(u, indices), 0.0, "who stand ahead of the block's centroid")
+
+
+func test_the_demo_record_reads_the_heading_anchor_rule() -> void:
+	var u := _folded_unit(BAND_FOLD)
+	assert_false(bool(DemoState.unit_record(u, {}, 1.0, false)["anchor_on_heading"]),
+			"a block whose front ranks lead reads false")
+	for i in u.near_front_soldier_indices(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] -= u.facing * HOLD_BACK
+	assert_true(bool(DemoState.unit_record(u, {}, 1.0, false)["anchor_on_heading"]),
+			"and true once they trail")
+
+
+func test_a_router_with_no_bodies_has_no_trailing_front() -> void:
+	var u: Unit = Unit.new()
+	add_child_autofree(u)
+	u.state = Unit.State.ROUTING
+	assert_eq(u._sim_soldier_pos.size(), 0, "setup: no bodies")
+	assert_false(u.grid_front_trails(), "no bodies stand behind anything")
+
+
 func test_a_fold_a_whole_turn_round_reads_as_its_wrapped_angle() -> void:
 	var u := _folded_unit(TAU + SMALL_FOLD)
 	assert_false(u.position_anchor_on_heading(), "the fold is wrapped before it is compared")
 
 
 func test_the_threshold_is_configurable() -> void:
-	var u := _folded_unit(SNAP_FOLD)
-	u.router_heading_anchor_fold = PI
+	# A small fold whose front ranks lead, so only the threshold can move it onto its heading.
+	var u := _folded_unit(SMALL_FOLD)
 	var n: int = u._sim_soldier_pos.size()
-	assert_false(u.position_anchor_on_heading(), "no fold exceeds a half-turn threshold")
-	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
+	assert_false(u.grid_front_trails(), "setup: its front ranks lead it")
+	assert_false(u.position_anchor_on_heading(), "setup: under the default it keeps them")
+	u.router_heading_anchor_fold = SMALL_FOLD * 0.5
+	assert_true(u.position_anchor_on_heading(), "a fold past a lowered threshold anchors on its heading")
+	assert_eq(u.position_anchor_indices(n), u.heading_anchor_soldier_indices(n))
 
 
 func test_a_folded_block_that_is_not_routing_keeps_its_grid_front() -> void:
@@ -243,28 +321,60 @@ func test_a_router_whose_flight_turn_snapped_anchors_ahead_of_its_centre() -> vo
 			"setup: the squadron routs by tick %d" % EDGE_ROUT_BY_TICK)
 	if router.state != Unit.State.ROUTING:
 		return
+	var w: Dictionary = await _watch_anchor(router, EDGE_WATCH_TICKS, safety)
+	assert_gt(w["max_fold"], PI * 0.5, "setup: the flight turn left the grid's front pointing back")
+	assert_gte(w["anchored"], EDGE_MIN_ANCHORED_TICKS,
+			"setup: the router anchors on some of its men after the rout")
+	assert_eq(w["trailing"], 0,
+			"it never anchors on men behind its centre (%d of %d ticks, worst %.1f wu)"
+			% [w["trailing"], w["anchored"], w["worst"]])
+
+
+func test_a_router_whose_snap_left_its_front_on_a_flank_anchors_ahead_of_its_centre() -> void:
+	var units: Dictionary = await _start([BAND_ROUTER, BAND_PURSUER], BAND_SEED)
+	var router: Unit = units.get(0)
+	assert_not_null(router, "setup: the block deployed")
+	if router == null:
+		return
+	var safety: int = (BAND_ROUT_BY_TICK + BAND_WATCH_TICKS) * 4
+	while (router.state != Unit.State.ROUTING and _battle.current_tick() < BAND_ROUT_BY_TICK
+			and safety > 0):
+		safety -= 1
+		await get_tree().physics_frame
+	assert_eq(router.state, Unit.State.ROUTING,
+			"setup: the block routs by tick %d" % BAND_ROUT_BY_TICK)
+	if router.state != Unit.State.ROUTING:
+		return
+	var w: Dictionary = await _watch_anchor(router, BAND_WATCH_TICKS, safety)
+	assert_gt(w["max_fold"], Unit.FACING_SNAP_ABSORB_THRESHOLD,
+			"setup: the flight turn snapped and folded the grid")
+	assert_lte(w["max_fold"], Unit.ROUTER_HEADING_ANCHOR_FOLD,
+			"setup: no further than the fold threshold, so the fold alone does not decide")
+	assert_gte(w["anchored"], BAND_MIN_ANCHORED_TICKS,
+			"setup: the router anchors on some of its men after the rout")
+	assert_eq(w["trailing"], 0,
+			"it never anchors on men behind its centre (%d of %d ticks, worst %.1f wu)"
+			% [w["trailing"], w["anchored"], w["worst"]])
+
+
+## Watch `router` for `watch` ticks of its rout (or until it stops routing), counting the ticks it
+## anchors on any men and those on which they stand behind its centroid along its heading, with
+## the worst such lead and the largest wrapped fold seen.
+func _watch_anchor(router: Unit, watch: int, safety: int) -> Dictionary:
 	var rout_tick: int = _battle.current_tick()
-	var anchored_ticks: int = 0
-	var trailing_ticks: int = 0
-	var folded: bool = false
-	var worst_lead: float = INF
-	while _battle.current_tick() < rout_tick + EDGE_WATCH_TICKS and safety > 0:
+	var out := {"anchored": 0, "trailing": 0, "worst": INF, "max_fold": 0.0}
+	while _battle.current_tick() < rout_tick + watch and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
 		if not is_instance_valid(router) or router.state != Unit.State.ROUTING:
 			break
-		folded = folded or router.grid_front_forward().dot(router.facing) < 0.0
+		out["max_fold"] = maxf(out["max_fold"], absf(wrapf(router.grid_fold(), -PI, PI)))
 		var indices: PackedInt32Array = router.position_anchor_indices(router._sim_soldier_pos.size())
 		if indices.is_empty():
 			continue
-		anchored_ticks += 1
+		out["anchored"] += 1
 		var lead: float = _lead(router, indices)
-		worst_lead = minf(worst_lead, lead)
+		out["worst"] = minf(out["worst"], lead)
 		if lead < 0.0:
-			trailing_ticks += 1
-	assert_true(folded, "setup: the flight turn left the grid's front pointing back")
-	assert_gte(anchored_ticks, EDGE_MIN_ANCHORED_TICKS,
-			"setup: the router anchors on some of its men after the rout")
-	assert_eq(trailing_ticks, 0,
-			"it never anchors on men behind its centre (%d of %d ticks, worst %.1f wu)"
-			% [trailing_ticks, anchored_ticks, worst_lead])
+			out["trailing"] += 1
+	return out

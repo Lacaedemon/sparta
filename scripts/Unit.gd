@@ -1435,7 +1435,8 @@ const QUARTER_TURN_PAST: float = PI * 0.5 + 0.01
 # The turn (rad) of a router's slot grid off its heading (grid_fold) past which couple() anchors
 # it on the men ahead of its centre along the heading rather than on the grid's front ranks
 # (position_anchor_on_heading): QUARTER_TURN_PAST, past which those front ranks trail the
-# router's centre along its flight. At a quarter-turn or less they are a flank or lie ahead: the
+# router's centre along its flight. At a quarter-turn or less they are a flank or lie ahead, so
+# there they stay the anchor until they actually fall behind the centre (grid_front_trails): the
 # router-reentry-settle-1913 squadron routs with its grid turned exactly a quarter-turn, and its
 # grid's front ranks stood 6.9 wu ahead of its centroid (measured 2026-11-06 on main 1d0d7705).
 # A caller-configurable parameter defaulting to ROUTER_HEADING_ANCHOR_FOLD, with rout_time's
@@ -3227,7 +3228,7 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## Either way re-entry is measured twice, and must pass both: from `position`, and from where the
 ## contact anchor it would switch to would settle the router (contact_anchor_offset): its front
 ## ranks, or the men ahead along its heading once its grid is turned past
-## router_heading_anchor_fold (position_anchor_on_heading).
+## router_heading_anchor_fold or its front ranks trail its centre (position_anchor_on_heading).
 ## `position` alone is not enough, because the whole-block anchor the router is on moves it: once
 ## the router's men stand off their slots, the two anchors settle the block far apart, the glide
 ## toward the whole block carries `position` back inside the share (or, for an enemy fighting
@@ -3330,7 +3331,8 @@ func _fighting_me(enemy: Unit) -> bool:
 ## the side the heading points to. The snap keeps the grid's fold, so the grid's own front
 ## ranks stay toward the enemy. Past router_heading_anchor_fold the anchor reads the heading
 ## side too, the men ahead along it (position_anchor_on_heading), its flight-side men; a snap
-## that leaves the grid at or under that fold keeps the grid's front ranks as its anchor.
+## that leaves the grid at or under that fold keeps the grid's front ranks as its anchor until
+## they fall behind its centre along the heading (grid_front_trails).
 func _arm_router_front_in_melee() -> void:
 	_router_front_in_melee = false
 	if not is_inside_tree() or facing == Vector2.ZERO:
@@ -9926,8 +9928,8 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## router in the fight. A router caught from behind still anchors on its front ranks, which
 ## are then its flight-side ranks, the ones farthest from the pursuer. A rout keeps the grid's
 ## fold, so a router whose flight turn snapped has its grid's front ranks toward the enemy it
-## broke from, behind it; a router folded that far anchors on the men ahead along its heading
-## instead (position_anchor_on_heading).
+## broke from, behind it; a router folded that far, or one whose front ranks have fallen behind
+## its centre, anchors on the men ahead along its heading instead (position_anchor_on_heading).
 ## A router reads its anchor contact (_router_anchor_contact) here in place of
 ## _in_enemy_contact, so one at the edge of contact range switches anchors once.
 func position_anchor_indices(count: int) -> PackedInt32Array:
@@ -9955,21 +9957,39 @@ func _contact_anchor_indices(count: int) -> PackedInt32Array:
 ## (heading_anchor_soldier_indices), each measured against his own slot
 ## (SoldierBodies.anchor_drift), rather than on the grid's front ranks measured against the
 ## front slots. True for a router whose slot grid is turned more than router_heading_anchor_fold
-## off its heading, unless Square/Schiltron or an unstable block (_position_anchor_unstable)
+## off its heading, or whose grid's front ranks stand behind its centre along the heading
+## (grid_front_trails), unless Square/Schiltron or an unstable block (_position_anchor_unstable)
 ## takes the wider contact selection instead.
 ## A rout keeps the grid's fold, so after a flight turn that snapped (_turn_flight_toward) the
 ## grid's front ranks are the ones toward the enemy the router broke from, and once the grid is
-## past a quarter-turn anchoring on them anchors it on its trailing men. Every other unit, and
-## a router whose grid stands nearer its heading, keeps the grid's front: anchoring a folded
-## testudo on its rear ranks instead made it flick about every tick
-## (near_front_soldier_indices).
-## TODO(#1938): a flight turn that snaps by 75 degrees up to router_heading_anchor_fold
-## leaves the router anchored on its grid's front ranks, which are then a flank that can still
-## be pressed and can fall behind its centre as the block stretches.
+## past a quarter-turn anchoring on them anchors it on its trailing men. A snap that leaves the
+## grid at a quarter-turn or less makes those ranks a flank, which can lead the block or fall
+## behind its centre as it stretches, so there it is the men's own lead that decides. Every
+## other unit keeps the grid's front: anchoring a folded testudo on its rear ranks instead made
+## it flick about every tick (near_front_soldier_indices).
 func position_anchor_on_heading() -> bool:
 	if state != State.ROUTING or in_square() or _position_anchor_unstable():
 		return false
-	return absf(wrapf(grid_fold(), -PI, PI)) > router_heading_anchor_fold
+	return absf(wrapf(grid_fold(), -PI, PI)) > router_heading_anchor_fold or grid_front_trails()
+
+
+## Whether the ANCHOR_RANKS-worth of live bodies farthest forward along the grid's front
+## (the selection near_front_soldier_indices anchors on) stand, on average, behind the centre
+## of all the bodies along the heading: a flank of a router folded off its heading that the
+## block has stretched past.
+func grid_front_trails() -> bool:
+	var n: int = _sim_soldier_pos.size()
+	var cutoff: int = mini(n, formation_files(n) * ANCHOR_RANKS)
+	var front: PackedInt32Array = UnitFormation.live_front_indices(
+		_sim_soldier_pos, cutoff, position, grid_front_forward())
+	var all_sum := Vector2.ZERO
+	for p in _sim_soldier_pos:
+		all_sum += p
+	var front_sum := Vector2.ZERO
+	for i in front:
+		front_sum += _sim_soldier_pos[i]
+	# The front's mean less the whole block's, scaled by both counts so no body count divides.
+	return (front_sum * float(n) - all_sum * float(front.size())).dot(facing) < 0.0
 
 
 ## The ANCHOR_RANKS-worth of live bodies farthest ahead of `position` along the heading: the
