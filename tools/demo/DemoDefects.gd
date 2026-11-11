@@ -306,9 +306,8 @@ static func speed_quantization_margin(dt_ticks: int, tps: float = 60.0) -> float
 ##
 ## With a positive `margin`, each segment's ends must also lie more than `margin` (a
 ## distance) to either side of the other's line, so a crossing that passes within `margin`
-## of an end reads as a touch, and a segment of no length crosses nothing. That is the rule
-## the sim's deal untangles by (UnitFormation.routes_cross); the default 0 keeps the sign test
-## path_crossing has always used.
+## of an end reads as a touch, and a segment of no length crosses nothing. The default 0 keeps
+## the sign test path_crossing has always used.
 static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2,
 		margin: float = 0.0) -> bool:
 	var d1: float = (a2 - a1).cross(b1 - a1)
@@ -866,12 +865,13 @@ const DERIVED_FIELDS: Array[String] = [
 	"slot_distance_max", "file_line_routes_crossing",
 ]
 ## How close laterally, as a fraction of the file pitch, two men stand to count as one file line
-## for file_line_routes_crossing. Must match UnitFormation.COLUMN_TIE_PITCH_FRAC, the width the
-## sim's own deal uses; it cannot be preloaded here for the same reason DemoState cannot.
+## for file_line_routes_crossing: men of one file stand at one lateral position, give or take
+## the jitter of bodies on their slots, which stays far inside a quarter of a pitch.
 const FILE_LINE_TIE_FRAC := 0.25
 ## How far, as a fraction of the body radius, two routes must pass to either side of each other
-## for file_line_routes_crossing to count a crossing rather than a touch. Must match
-## UnitFormation.ROUTE_TOUCH_BODY_FRAC.
+## for file_line_routes_crossing to count a crossing rather than a touch: a tenth of a body is
+## far below a real crossing's offsets (a file pitch or more) and above the jitter of bodies
+## standing on their slots.
 const ROUTE_TOUCH_BODY_FRAC := 0.1
 
 
@@ -970,13 +970,11 @@ static func derived_field(u: Dictionary, field: String):
 ## file_line_routes_crossing (see derived_field): men whose straight route from `pos` to his own
 ## entry in `slots` properly crosses the route of a man of his own file line: one standing
 ## within FILE_LINE_TIE_FRAC of a file pitch of him along the slot grid's own file axis,
-## motion_ref.slot_grid.axis, the frame the sim's deal untangles in, so a grid folded off its
-## facing is read along its files rather than across them. A crossing is _segments_cross with a
-## margin of ROUTE_TOUCH_BODY_FRAC of the body radius, so routes that only touch, such as one man
-## walking straight up his file onto the spot another is stepping out of, do not count. The
-## sim's deal also trades only crossings whose untangling shortens the pair's walk by more than
-## UnitFormation.UNTANGLE_MIN_GAIN_WU (0.01 wu); this field applies no such gate, so it can count
-## a crossing the deal left for saving less than that. Null with no file pitch or no slot grid.
+## motion_ref.slot_grid.axis, the frame the sim deals in, so a grid folded off its facing is
+## read along its files rather than across them. A crossing is _segments_cross with a margin of
+## ROUTE_TOUCH_BODY_FRAC of the body radius, so routes that only touch, such as one man walking
+## straight up his file onto the spot another is stepping out of, do not count. Null with no
+## file pitch or no slot grid.
 static func _file_line_routes_crossing(pos: Array, slots: Array, ref: Dictionary):
 	var tie: float = float(ref.get("file_pitch", 0.0)) * FILE_LINE_TIE_FRAC
 	var grid = ref.get("slot_grid")

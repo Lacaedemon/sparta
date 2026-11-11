@@ -6797,13 +6797,6 @@ var _sim_soldier_rank: PackedInt32Array = PackedInt32Array()
 # duplicatio, the automatic ranks-closed narrowing) and the assignment should reflow fresh
 # rather than keep stale file ids from a now-different frontage. -1 = never assigned yet.
 var _file_assignment_files: int = -1
-# How close laterally, as a fraction of the file pitch, two men stand to count as one file
-# line when a reshape dealt from the bodies untangles their routes
-# (UnitFormation.untangle_column_routes, called from _ensure_file_assignment).
-var column_tie_pitch_frac: float = UnitFormation.COLUMN_TIE_PITCH_FRAC
-# How far, as a fraction of the body radius, two of those men's routes must pass to either side
-# of each other to count as crossing rather than touching (UnitFormation.ROUTE_TOUCH_BODY_FRAC).
-var route_touch_body_frac: float = UnitFormation.ROUTE_TOUCH_BODY_FRAC
 
 # Persistent per-soldier SQUARE slot assignment, index-aligned with _sim_soldier_pos:
 # _sim_soldier_square_slot[i] is the index, within the square grid UnitFormation.block_slots
@@ -7226,16 +7219,6 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 ## each other to trade places, and that is most of what remains on the route metrics once
 ## the file half is right.
 ##
-## The lateral deal cannot tell apart the men of one file, who stand at the same lateral
-## position, so a widening that splits a file across two new ones sends its rear half to one
-## and its front half to the other by the depth tie-break, and the two halves walk through
-## each other to reach the shallower block. Those men are re-paired so that no two of them are
-## left on crossing routes whose untangling would shorten their walk by more than
-## UnitFormation.UNTANGLE_MIN_GAIN_WU (_untangle_file_line_routes); routes that only touch, and
-## crossings between men of different file lines, are left. On a 140-man explicatio from 9 files
-## to 18 held on its
-## right flank, the closest two men came to 1.7 wu of each other before, and 3.3 wu after.
-##
 ## Falls back to the index-order fill (UnitFormation.file_ids_in_index_order) when there are
 ## no live bodies to deal against -- a fresh spawn or a tier promotion builds the bodies FROM
 ## these slots, so nobody has a prior position to stay near, which makes index order the
@@ -7273,7 +7256,6 @@ func _ensure_file_assignment(count: int, files: int) -> bool:
 	else:
 		_sim_soldier_file = UnitFormation.deal_file_ids_by_lateral_order(live, capacities)
 		_sim_soldier_rank = UnitFormation.deal_ranks_by_depth(live, _sim_soldier_file)
-		_untangle_file_line_routes(live, files)
 		dealt = true
 	note_file_assignment_changed()
 	# _slot_frame_positions returns nothing unless the body layer holds at least `count`
@@ -7289,24 +7271,6 @@ func _ensure_file_assignment(count: int, files: int) -> bool:
 	var placeholder: bool = reshaped and live.is_empty() and not _sim_soldier_pos.is_empty()
 	_file_assignment_files = -1 if placeholder else files
 	return dealt
-
-
-## Trade places between men of one file line whose straight routes to the slots just dealt
-## would properly cross, when the trade shortens their walk (UnitFormation.untangle_column_routes,
-## which states exactly what it leaves). `live` is the bodies in the slot frame,
-## as the deal read them; the slots are the ones the deal laid out, with any standing flank
-## anchor shift, since that shift moves every route's end.
-func _untangle_file_line_routes(live: PackedVector2Array, files: int) -> void:
-	var slots: PackedVector2Array = UnitFormation.apply_frontage_anchor_offset(
-			UnitFormation.file_major_block_slots(_sim_soldier_file, files, file_pitch_wu(),
-					rank_pitch_wu(), _sim_soldier_rank), frontage_anchor_offset)
-	var perm: PackedInt32Array = UnitFormation.untangle_column_routes(live, slots,
-			file_pitch_wu() * column_tie_pitch_frac, soldier_body_radius() * route_touch_body_frac)
-	var dealt_files: PackedInt32Array = _sim_soldier_file.duplicate()
-	var dealt_ranks: PackedInt32Array = _sim_soldier_rank.duplicate()
-	for i in range(perm.size()):
-		_sim_soldier_file[i] = dealt_files[perm[i]]
-		_sim_soldier_rank[i] = dealt_ranks[perm[i]]
 
 
 ## The live soldier bodies expressed in the SLOT GRID's own local frame -- the exact inverse
@@ -12723,8 +12687,6 @@ func to_snapshot_dict() -> Dictionary:
 		"rally_resume_radius_factor": rally_resume_radius_factor,
 		"rally_resume_clear_ticks": rally_resume_clear_ticks,
 		"traverse_arc_clearance": traverse_arc_clearance,
-		"column_tie_pitch_frac": column_tie_pitch_frac,
-		"route_touch_body_frac": route_touch_body_frac,
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
@@ -13025,8 +12987,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
 	rally_resume_clear_ticks = int(d.get("rally_resume_clear_ticks", rally_resume_clear_ticks))
 	traverse_arc_clearance = float(d.get("traverse_arc_clearance", traverse_arc_clearance))
-	column_tie_pitch_frac = float(d.get("column_tie_pitch_frac", column_tie_pitch_frac))
-	route_touch_body_frac = float(d.get("route_touch_body_frac", route_touch_body_frac))
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
