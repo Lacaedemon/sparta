@@ -217,6 +217,11 @@ and gets clear of them 3.5 seconds after it breaks.
   his place's own movement, plus any sidestep off a friendly block he presses against ---
   while that is not slowing
   (at most twice his usual rate on top).
+  The flight itself never changes faster than that extra,
+  so a man running with his place keeps up on it alone:
+  the block eases into its side-step and out of it over about a second
+  rather than swinging in an instant,
+  and starts it early enough to turn off the face in time.
   On the demo clip of such a block
   no rider ends more than about 5 m from his place, against 9.6 m before
   (@fig-deep-router-close-start-hill).
@@ -239,7 +244,7 @@ and gets clear of them 3.5 seconds after it breaks.
 </video>
 ```
 
-A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu short of a hill. The block side-steps along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: near the end of the clip the farthest rider is 4.8 m off his place, against 9.6 m with the side-step alone.
+A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 2 m short of a hill. The block eases into a side-step along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: near the end of the clip the farthest rider is 4.9 m off his place, against 9.6 m with the side-step alone.
 :::
 
 ::: {#fig-morale-recovery .demo}
