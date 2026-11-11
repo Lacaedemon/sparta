@@ -9,8 +9,10 @@ extends GutTest
 ##   (Unit._flight_step) does too, instead of the velocity swinging in one tick.
 ## - Since the flight turns at that rate, the leading rank looks along the flight it carries as
 ##   far as it runs while turning off at that rate, so the side-step starts in time.
-## - A rout starts its flight velocity from rest, even with a pace carried away from the
-##   enemy, and builds it at that same rate.
+## - A rout carries the pace the unit was already making away from the enemy on as its
+##   first flight velocity, so the anchor's speed runs on unbroken through the rout.
+## - The rate never drops below the unit's own acceleration, so a share multiplier of 0
+##   cannot freeze a router, and the stamina bill reads the speed the flight runs.
 ##
 ## The regression this pins: on demos/inputs/deep-router-close-start-hill.json (clip seed,
 ## Windows, main aef5b476, 2026-11-10, by a temporary per-tick log) the flight velocity
@@ -176,29 +178,58 @@ func test_a_flight_beyond_its_turning_look_of_a_face_keeps_its_direction() -> vo
 			"a face beyond the flight's turning look leaves its direction alone")
 
 
-func test_a_rout_builds_its_flight_velocity_from_rest_at_the_share_cap() -> void:
-	var router: Unit = await _spawn_close()
-	assert_not_null(router, "the team-1 cavalry deployed")
-	if router == null:
-		return
-	var squadron: Unit = null
+## The team-0 squadron of the close-start staging (uid 1), spawned after `_spawn_close`.
+func _squadron() -> Unit:
 	for u in get_tree().get_nodes_in_group("units"):
 		if (u as Unit) != null and (u as Unit).uid == 1:
-			squadron = u
+			return u
+	return null
+
+
+func test_a_rout_carries_the_pace_it_was_making_away_on_into_the_flight() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	var squadron: Unit = _squadron()
 	assert_not_null(squadron, "the team-0 squadron deployed")
-	if squadron == null:
+	if router == null or squadron == null:
 		return
-	# Falling back toward its own (northern) edge at half its flee speed when it breaks.
+	# Falling back toward its own (northern) edge at half its flee speed, drifting east too.
 	var pace: float = 0.5 * squadron.flee_speed()
-	squadron._approach_velocity = Vector2.UP * pace
+	squadron._approach_velocity = Vector2.UP * pace + Vector2.RIGHT * pace
 	squadron.morale = 0.0
 	squadron._rout()
 	assert_almost_eq(squadron._flee_pace, pace, 0.0001, "setup: the rout carries that pace")
-	assert_eq(squadron._flee_velocity, Vector2.ZERO, "the flight velocity starts from rest")
-	var step: float = _share_cap(squadron) * TICK
-	assert_gt(pace, step, "setup: the carried pace is more than one tick's change")
+	assert_almost_eq(squadron._flee_velocity.y, -pace, 0.0001,
+			"the flight starts at the pace it was making away (got %s)" % squadron._flee_velocity)
+	assert_almost_eq(squadron._flee_velocity.x, 0.0, 0.0001, "along the flee heading")
 	squadron._process_rout(TICK)
 	var tol: float = 4.0 * squadron.flee_speed() * FLOAT32_EPS
-	assert_almost_eq(squadron._flee_velocity.length(), step, tol,
-			"the first flight tick builds the velocity by the share cap's worth (got %s)"
+	assert_gte(squadron._flee_velocity.length(), pace - tol,
+			"the first flight tick keeps that speed rather than dropping it (got %s)"
 			% squadron._flee_velocity)
+	assert_almost_eq(squadron._moved_while_routing_pace, squadron._flee_velocity.length(), tol,
+			"the stamina bill reads the speed the flight ran")
+
+
+func test_no_share_still_lets_a_router_build_its_flight_at_its_own_accel() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	var squadron: Unit = _squadron()
+	assert_not_null(squadron, "the team-0 squadron deployed")
+	if router == null or squadron == null:
+		return
+	squadron.flight_share_max_accel_mult = 0.0
+	assert_almost_eq(squadron.flight_velocity_accel(), squadron.accel, 0.0001,
+			"no share leaves the flight its own accel")
+	squadron.morale = 0.0
+	squadron._rout()
+	squadron._flee_pace = squadron.flee_speed()
+	assert_eq(squadron._flee_velocity, Vector2.ZERO, "setup: broke from a standstill")
+	var start: Vector2 = squadron.position
+	squadron._process_rout(TICK)
+	var tol: float = 4.0 * squadron.flee_speed() * FLOAT32_EPS
+	assert_almost_eq(squadron._flee_velocity.length(), squadron.accel * TICK, tol,
+			"the flight builds at accel (got %s)" % squadron._flee_velocity)
+	assert_gt(start.distance_to(squadron.position), 0.0, "the router moves")
+	assert_lt(squadron._moved_while_routing_pace, squadron._flee_pace,
+			"the stamina bill reads the speed run, not the pace still ahead of it")

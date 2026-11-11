@@ -149,7 +149,9 @@ var _cached_combat_profile: Dictionary = {}
 @export var march_share_max_accel_mult: float = SoldierBodies.MARCH_SHARE_MAX_ACCEL_MULT
 # The most extra acceleration a routing body takes from the change in its own feed-forward
 # (SoldierBodies.flight_accel_share), as a multiple of its own acceleration, so a flight
-# that swings its direction in one tick cannot hand its men an unbounded kick.
+# that swings its direction in one tick cannot hand its men an unbounded kick. It also
+# bounds how fast the router's flight velocity itself changes (flight_velocity_accel, never
+# below `accel`), so the share alone can keep a man level with his moving slot.
 @export var flight_share_max_accel_mult: float = SoldierBodies.FLIGHT_SHARE_MAX_ACCEL_MULT
 # How far off his own slot (wu) a routing body must stand to take that share
 # (SoldierBodies.march_share_frac): none within flight_share_from_wu, all of it from
@@ -1871,7 +1873,7 @@ var _cycle_recharging: bool = false
 # true when the unit moved at flee speed during _process_rout,
 # so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
 var _moved_while_routing: bool = false
-# The flee pace the unit actually ran on that move (its _flee_pace at the time), kept beside
+# The speed the unit actually ran on that move (|_flee_velocity| at the time), kept beside
 # _moved_while_routing so the same tick's stamina bill reads the speed run even after a
 # rally has cleared _flee_pace.
 var _moved_while_routing_pace: float = 0.0
@@ -1883,7 +1885,9 @@ var _moved_while_routing_pace: float = 0.0
 # Seeded by _rout() from the speed the unit was already carrying away from the enemy.
 var _flee_pace: float = 0.0
 # This tick's flight velocity, set by _process_rout: it moves toward the flee direction times
-# _flee_pace at no more than flight_velocity_accel(), from rest at the rout. The
+# _flee_pace at no more than flight_velocity_accel(), from the pace the unit carried along its
+# flee heading when it routed (_rout() seeds it). So |_flee_velocity| can lag _flee_pace
+# while it turns or builds; readers that want the speed actually run use its length. The
 # routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
 # router's unengaged bodies so they run with the fleeing anchor; without it they only
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
@@ -10223,7 +10227,8 @@ func stamina_band() -> int:
 	if _moved_while_routing:
 		return StaminaFlow.band_for_speed(_moved_while_routing_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 	if state == State.ROUTING:
-		return StaminaFlow.band_for_speed(_flee_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+		return StaminaFlow.band_for_speed(_flee_velocity.length(), walk_speed, jog_speed, move_speed,
+				ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 
 
@@ -11019,9 +11024,13 @@ func _rout() -> void:
 		_flee_pace = 0.0
 	else:
 		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
-	# The flight velocity starts from rest, and _process_rout builds it toward the flight at a
-	# bounded rate (flight_velocity_accel).
-	_flee_velocity = Vector2.ZERO
+	# The flight velocity starts at that same carried pace along the flee heading, so the
+	# speed the unit was already making away from the enemy runs on unbroken, and
+	# _process_rout turns it from there toward the flight at a bounded rate
+	# (flight_velocity_accel). The rest of its travel (any speed toward the enemy or sideways)
+	# is dropped, as the pace above drops it: the flight never carries a router on toward the
+	# enemy, and a rally soon after must not coast it there.
+	_flee_velocity = _flee_heading() * _flee_pace
 	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
 	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
@@ -11141,7 +11150,7 @@ func _process_rout(delta: float) -> void:
 		return
 	position = next
 	_moved_while_routing = true
-	_moved_while_routing_pace = _flee_pace
+	_moved_while_routing_pace = _flee_velocity.length()
 
 	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
 	# above already ran), with no morale recovery and no rally check ever again. The only
@@ -11266,10 +11275,12 @@ func bounded_turn_accel(radius: float = -1.0) -> float:
 ## (SoldierBodies.flight_accel_share) hands a man off his slot. A flight that changes no
 ## faster than that is one the share alone keeps a man level with his moving slot through,
 ## so his own body acceleration stays free to close the gap; a faster change leaves him
-## falling further behind his slot while it lasts. The pace builds at `accel`, never above
-## this, so a straight flight building up runs exactly as before.
+## falling further behind his slot while it lasts. It is never below `accel`, the rate the
+## pace builds at, so a multiplier of 0 (no share) still lets the flight build and turn at the
+## unit's own acceleration rather than freezing it.
 func flight_velocity_accel() -> float:
-	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * maxf(flight_share_max_accel_mult, 0.0)
+	return maxf(accel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR)
+			* maxf(flight_share_max_accel_mult, 0.0))
 
 
 ## Drop the flight state a router carries (_flee_pace, _flee_velocity) on the way out of
@@ -11522,11 +11533,13 @@ func _turn_heading_onto_fold_half() -> void:
 func _begin_rally_halt() -> void:
 	# A flight with no direction (a zero _flee_velocity) has no leg to check: the idle coast
 	# would fall back to running along `facing`, which nothing here vetted.
-	if _flee_pace <= 0.0 or rally_halt_brake_rate() <= 0.0 \
-			or _flee_velocity.length_squared() <= 0.0001:
+	# The coast runs from the speed the flight actually carries (|_flee_velocity|), which can
+	# lag _flee_pace while the flight turns or builds.
+	var speed: float = _flee_velocity.length()
+	if speed <= 0.01 or rally_halt_brake_rate() <= 0.0:
 		return
-	var dir: Vector2 = _flee_velocity.normalized()
-	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
+	var dir: Vector2 = _flee_velocity / speed
+	var stop_dist: float = speed * speed / (2.0 * rally_halt_brake_rate())
 	var stop_at: Vector2 = position + dir * stop_dist
 	if not retreat_bounds.has_point(stop_at):
 		return
@@ -11535,7 +11548,7 @@ func _begin_rally_halt() -> void:
 		return
 	if _enemy_near_leg(position, stop_at, rally_coast_enemy_radius()):
 		return
-	_current_speed = _flee_pace
+	_current_speed = speed
 	_approach_velocity = _flee_velocity
 	_rally_halt = true
 
