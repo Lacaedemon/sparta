@@ -219,9 +219,9 @@ and gets clear of them 3.5 seconds after it breaks.
   (at most twice his usual rate on top).
   The flight itself never changes faster than that extra,
   so a man running with his place keeps up on it alone:
-  the block eases into its side-step and out of it over about a second
-  rather than swinging in an instant,
-  and starts it early enough to turn off the face in time.
+  the block eases onto its side-step over a little under a second
+  and takes about three seconds to turn back off it, rather than swinging in an instant,
+  and its anchor starts the side-step sooner, while its leading rank's line is still short of the face.
   On the demo clip of such a block
   no rider ends more than about 5 m from his place, against 9.6 m before
   (@fig-deep-router-close-start-hill).
