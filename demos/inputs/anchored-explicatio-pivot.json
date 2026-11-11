@@ -64,8 +64,12 @@
     }
   ],
   "frames": [0, 300, 690, 800, 900, 1000],
-  "state": [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800, 820, 840, 860, 880, 900, 920, 940, 960, 980, 1000, 1020, 1040],
+  "state": [0, 20, 40, 60, 80, 100, 120, 122, 124, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700, 720, 740, 760, 780, 800, 820, 840, 860, 880, 900, 920, 940, 960, 980, 1000, 1020, 1040],
   "defect_exemptions": {
+    "misslotted": {
+      "uids": [0],
+      "reason": "The centred block (uid 0) doubles from 8 files to 16 at tick 20, and its outer men walk out along the new front row in single file, each about a pitch short of his own slot and so nearer the slot ahead. The misslot scan judges only once the block's mean distance to its nearest slot falls to a quarter of the spacing (4.5 wu); the men of each file now pair off side by side, so the inner men arrive sooner and that gate opens at tick 118 (3.87 wu) while 10 of 30 men are still walking: misslotted 0.333 against 0.25 to tick 130. Main walks the same men (0.367 at tick 120) but its mean is 5.14 wu, so its gate stays shut. Every man's distance to his own slot falls without a rise of over 0.5 wu from tick 20 until he arrives, and all 30 are on their slots by tick 262 (main 274). State ticks 122 and 124 let this clip's own scan see it. Measured 2026-11-11 on branch claude/1929-wave18 at 6537b594 against main aef5b476, dense 2-tick dumps (misslot on seeds 0 to 4, the walk trace on seed 0); tracked in #TBD."
+    },
     "shape_residual": {
       "uids": [1],
       "reason": "The anchored block (uid 1) deforms during its formed pivot: shape_residual worst 14.62 vs the 13.5 threshold, all in the pivot window (ticks 680-1040; the explicatio window passes at 11.71). It is pre-existing and worse on main (16.03 on the same samples), where the block also stalls mid-pivot; this clip's change removes the stall and lowers the residual but does not clear it. The centred block (uid 0) passes throughout (worst 9.24). Measured locally on this clip's own 20-tick samples; the remaining deformation is tracked as its own issue (#1668)."

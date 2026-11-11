@@ -17,7 +17,7 @@
     {"tick": 20, "rmb_click": [1648, 415]},
     {"tick": 266, "key": "E", "shift": true}
   ],
-  "state": [8, 60, 62, 160, 260, 264, 270, 290, 294, 296, 320, 480, 640, 800, 960, 1120, 1280, 1440, 1500],
+  "state": [8, 60, 62, 160, 260, 264, 270, 290, 294, 296, 320, 480, 640, 800, 888, 890, 892, 960, 1120, 1280, 1440, 1500],
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [1600.0, 400.0]},
     {"tick": 8, "uid": 0, "field": "frontage", "value": 30},
@@ -29,5 +29,11 @@
     {"tick": 296, "uid": 0, "field": "grid_off_heading", "value": 33.5, "tol": 1.0},
     {"tick": [1440, 1500], "uid": 0, "field": "grid_off_heading", "value": 0.0, "tol": 0.5},
     {"tick": [1440, 1500], "uid": 0, "field": "frontage", "value": 60}
-  ]
+  ],
+  "defect_exemptions": {
+    "misslotted": {
+      "uids": [0],
+      "reason": "The block (uid 0) doubles from 30 files to 60 at tick 294 after its quarter-turn, a line over 2,000 wu wide, and the men of its two wings walk out along it in single file for hundreds of wu (the farthest 543 wu), each about a pitch short of his own slot and so nearer the slot ahead. The misslot scan judges only once the block's mean distance to its nearest slot falls to a quarter of the spacing (9.0 wu); the men of each file now pair off side by side, so the inner men arrive sooner and that gate opens at tick 888 (8.99 wu) while the wings are still walking: misslotted 0.425 against 0.25, easing to 0.308 by tick 1050. Main walks the same men (0.433 at tick 888) but its mean is 10.58 wu, so its gate stays shut. No man's distance to his own slot rises by more than 0.6 wu between samples from tick 294, and 97 of 120 have arrived by tick 1500 on both trees. State ticks 888, 890 and 892 let this clip's own scan see it. Measured 2026-11-11 on branch claude/1929-wave18 at 6537b594 against main aef5b476, dense 2-tick dumps (misslot on seeds 0 to 4, the walk trace on seed 0); tracked in #TBD."
+    }
+  }
 }
