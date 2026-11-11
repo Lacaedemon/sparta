@@ -590,8 +590,8 @@ and each man still steps into the nearest new place as the block squares to its 
 one press runs a quarter-turn and then an explicatio, back to back, as a single order.
 Press <kbd>Shift+Q</kbd> to turn the selected unit a quarter-turn left, or
 <kbd>Shift+E</kbd> to turn it right, exactly as the plain key does --- and the instant the
-turn completes, the block doubles the frontage it *now* presents: the rear half of each
-file steps out sideways across the new facing, so the depth halves and the line broadens.
+turn completes, the block doubles the frontage it *now* presents: half of the men of each
+file step out sideways across the new facing, so the depth halves and the line broadens.
 The explicatio is measured against the direction the men face after the turn, not the
 grid they started in --- which is what makes the pair one drill rather than two unrelated
 keypresses (pressing <kbd>Q</kbd> and then <kbd>B</kbd> by hand doubles the grid's old
@@ -1186,9 +1186,12 @@ only, the west flank's edge holding its ground while the new files form up.
 
 **File-doubling (explicatio and duplicatio).** Where <kbd>[</kbd> / <kbd>]</kbd> nudge the
 width one file at a time, these two drill maneuvers reshape it by a whole factor at once.
-Press <kbd>B</kbd> for **explicatio**: each file splits and the rear half steps out to the
+Press <kbd>B</kbd> for **explicatio**: each file splits and half of its men step out to the
 side, so the frontage doubles and the depth halves --- a column unfolds into a broad line
-that brings more men to the front, good for overlapping a flank. Press <kbd>N</kbd> for
+that brings more men to the front, good for overlapping a flank. The men of a file sort
+themselves so that none of them walks straight through another on the way: where both new
+files lie to one side of the old one, its men pair off side by side into the new ranks
+rather than the rear half marching forward through the front half. Press <kbd>N</kbd> for
 **duplicatio**: alternate files tuck in behind their neighbours, so the frontage halves and
 the depth doubles --- a wide line folds into a deep, narrow column, good for punching through
 or squeezing down a lane. Nobody teleports: the soldiers walk to their new slots, so the
@@ -1208,6 +1211,25 @@ bottoms out at one file.
 
 File-doubling: duplicatio (N) folds the line into a deep column;
 explicatio (B) unfolds it back into a broad line.
+:::
+
+::: {#fig-file-line-untangle .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/file_line_untangle.jpg">
+  <source src="media/file_line_untangle.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8.
+The men of each file pair off side by side into the new ranks,
+and none walks through a man of his own file.
+Before, each file split its rear half from its front half,
+and 44 men set off on routes crossing those of men of their own file,
+into new files 0.45 m apart.
 :::
 
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
