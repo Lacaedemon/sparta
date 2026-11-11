@@ -39,7 +39,7 @@ DEMOS=(
   "router_outruns_pursuer|demos/inputs/close-tier-router-outruns-pursuer.json|30|176|640|input"
   "router_reentry_settle|demos/inputs/router-reentry-settle-1913.json|30|400|640|input"
   "router_anchor_flight_side|demos/inputs/router-anchor-flight-side-1825.json|30|440|640|input"
-  "router_flank_anchor|demos/inputs/router-flank-anchor-1938.json|30|250|640|input"
+  "router_flank_anchor|demos/inputs/router-flank-anchor-1938.json|30|190|640|input"
   "deep_router_close_start_hill|demos/inputs/deep-router-close-start-hill.json|30|176|640|input"
   "router_bends_round_wall|demos/inputs/router-bends-round-wall.json|30|176|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|360|640|input"
