@@ -240,6 +240,22 @@ func test_the_demo_record_reads_the_heading_anchor_rule() -> void:
 			"and true once they trail")
 
 
+func test_the_trail_margin_is_configurable() -> void:
+	var u := _folded_unit(BAND_FOLD)
+	var n: int = u._sim_soldier_pos.size()
+	for i in u.near_front_soldier_indices(n):
+		u._sim_soldier_pos[i] -= u.facing * HOLD_BACK
+	var lead: float = _lead(u, u.near_front_soldier_indices(n))
+	assert_lt(lead, 0.0, "setup: the held flank stands behind the centroid")
+	assert_true(u.position_anchor_on_heading(), "setup: under the default margin it trails")
+	# Moving half the block HOLD_BACK back moves its front's lead by less than HOLD_BACK.
+	assert_lt(-lead, HOLD_BACK, "setup: it trails by less than HOLD_BACK")
+	u.router_front_trail_margin = HOLD_BACK
+	assert_false(u.grid_front_trails(), "a trail inside the margin does not count")
+	assert_false(u.position_anchor_on_heading(), "so it keeps its grid's front ranks")
+	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
+
+
 func test_a_router_with_no_bodies_has_no_trailing_front() -> void:
 	var u: Unit = Unit.new()
 	add_child_autofree(u)
@@ -350,6 +366,8 @@ func test_a_router_whose_snap_left_its_front_on_a_flank_anchors_ahead_of_its_cen
 			"setup: the flight turn snapped and folded the grid")
 	assert_lte(w["max_fold"], Unit.ROUTER_HEADING_ANCHOR_FOLD,
 			"setup: no further than the fold threshold, so the fold alone does not decide")
+	assert_gt(w["front_trailed"], 0,
+			"setup: its grid's front ranks fell behind its centre on some anchored tick")
 	assert_gte(w["anchored"], BAND_MIN_ANCHORED_TICKS,
 			"setup: the router anchors on some of its men after the rout")
 	assert_eq(w["trailing"], 0,
@@ -359,10 +377,11 @@ func test_a_router_whose_snap_left_its_front_on_a_flank_anchors_ahead_of_its_cen
 
 ## Watch `router` for `watch` ticks of its rout (or until it stops routing), counting the ticks it
 ## anchors on any men and those on which they stand behind its centroid along its heading, with
-## the worst such lead and the largest wrapped fold seen.
+## the worst such lead, the largest wrapped fold seen, and the anchored ticks on which its grid's
+## front ranks trail its centre (grid_front_trails).
 func _watch_anchor(router: Unit, watch: int, safety: int) -> Dictionary:
 	var rout_tick: int = _battle.current_tick()
-	var out := {"anchored": 0, "trailing": 0, "worst": INF, "max_fold": 0.0}
+	var out := {"anchored": 0, "trailing": 0, "worst": INF, "max_fold": 0.0, "front_trailed": 0}
 	while _battle.current_tick() < rout_tick + watch and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
@@ -373,6 +392,8 @@ func _watch_anchor(router: Unit, watch: int, safety: int) -> Dictionary:
 		if indices.is_empty():
 			continue
 		out["anchored"] += 1
+		if router.grid_front_trails():
+			out["front_trailed"] += 1
 		var lead: float = _lead(router, indices)
 		out["worst"] = minf(out["worst"], lead)
 		if lead < 0.0:

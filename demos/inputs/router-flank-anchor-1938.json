@@ -1,5 +1,5 @@
 {
-  "_comment": "A brittle infantry block (team 0: 80 Infantry at morale 6, Tight) facing east, 6 degrees north of it, is attacked by a 120-man Infantry block (team 1, Tight) set 120 wu along its heading (#1938). It breaks still in contact at about tick 214 and flees north. Its first flight turn snaps, since it is more than ENGAGE_TURN_THRESHOLD (75 degrees) off its flee heading, and leaves its slot grid about 85 degrees off its heading: at or under a quarter-turn (ROUTER_HEADING_ANCHOR_FOLD), so its grid front ranks become its east flank, pressed by the pursuers. Before the fix the block stayed anchored on that flank, which falls behind its centre along the flight within about 40 ticks of the break: traced every tick on main e78d81be it anchored on men behind its centre on 137 to 190 of its 169 to 205 anchored ticks on seeds 0 to 4. With the fix a router whose grid front ranks stand behind its centre along its heading anchors on the men ahead along that heading (Unit.grid_front_trails), and it never anchors on men behind its centre on those seeds. Measured 2026-11-11 on seeds 0 to 4 against main e78d81be: the fold at the break reads 1.4696 to 1.4853 rad on every seed; the block is FIGHTING at tick 200, ROUTING and in contact at tick 230 on every seed, on both trees; anchor_on_heading reads true at every declared tick from 300 to 360 with the fix, and false at every declared tick on main. On this clip seed (seed 0) between ticks 230 and 360 the block drifts 22.9 wu west on main and 10.7 wu with the fix, and at tick 360 it stands at (872.4, 856.2) on main and (886.0, 838.1) with the fix. Positions scatter by seed, so no position is pinned. The clip ends at tick 380, before contact breaks on main: once it breaks the pursuer (uid 1) follows with its grid still scrambled from the fight and its shape_residual fails on both trees (#1824), as on last-unit-rally and router-anchor-flight-side-1825. The grid_off_heading check pins the band the rule is about: its value 82.8 and tol 7.8 cover 75.0 (ENGAGE_TURN_THRESHOLD) to 90.6 degrees (QUARTER_TURN_PAST, a quarter-turn plus 0.01 rad). anchor_on_heading is the rule itself (Unit.position_anchor_on_heading); it reads false on main, whose rule needs a fold past a quarter-turn, so that expect fails there.",
+  "_comment": "A brittle infantry block (team 0: 80 Infantry at morale 6, Tight) facing east, 6 degrees north of it, is attacked by a 120-man Infantry block (team 1, Tight) set 120 wu along its heading (#1938). It breaks still in contact at about tick 214 and flees north. Its first flight turn snaps, since it is more than ENGAGE_TURN_THRESHOLD (75 degrees) off its flee heading, and leaves its slot grid about 85 degrees off its heading: at or under a quarter-turn (ROUTER_HEADING_ANCHOR_FOLD), so its grid front ranks become its east flank, pressed by the pursuers. Before the fix the block stayed anchored on that flank, which falls behind its centre along the flight within about 40 ticks of the break: traced every tick on main e78d81be it anchored on men behind its centre on 137 to 190 of its 169 to 205 anchored ticks on seeds 0 to 4. With the fix a router whose grid front ranks stand behind its centre along its heading anchors on the men ahead along that heading (Unit.grid_front_trails), and it never anchors on men behind its centre on those seeds. Measured 2026-11-11 on seeds 0 to 4 against main e78d81be: the fold at the break reads 1.4696 to 1.4853 rad on every seed; the block is FIGHTING at tick 200, ROUTING and in contact at tick 230 on every seed, on both trees; anchor_on_heading reads true at ticks 300, 330 and 360 with the fix on every seed. Main has no anchor_on_heading field, so there those expects fail as uncheckable; with only the DemoState field added to main it reads false at every declared tick, since main's rule needs a fold past a quarter-turn. On this clip seed (seed 0) between ticks 230 (16 ticks after the break) and 360 the block drifts 22.9 wu west on main and 10.7 wu with the fix, and at tick 360 it stands at (872.4, 856.2) on main and (886.0, 838.1) with the fix. Positions scatter by seed, so no position is pinned. The clip ends at tick 380, before contact breaks on main: once it breaks the pursuer (uid 1) follows with its grid still scrambled from the fight and its shape_residual fails on both trees (#1824), as on last-unit-rally and router-anchor-flight-side-1825. The grid_off_heading check at tick 230 places the fold in the band the rule is about: its value 82.5 and tol 7.5 cover 75.0 (ENGAGE_TURN_THRESHOLD) to 90.0 degrees, under QUARTER_TURN_PAST (90.57 degrees, a quarter-turn plus 0.01 rad). The reading is taken from facing dumped to 2 decimals, which moves it by up to about 0.4 degrees, so the band cannot tell folds within that of either edge apart; this staging reads about 84 to 85 degrees. anchor_on_heading is the rule itself (Unit.position_anchor_on_heading).",
   "seed": "19380",
   "fixed_fps": 30,
   "max_frames": 190,
@@ -95,14 +95,23 @@
       "tick": 230,
       "uid": 0,
       "field": "grid_off_heading",
-      "value": 82.8,
-      "tol": 7.8
+      "value": 82.5,
+      "tol": 7.5
     },
     {
-      "tick": [
-        300,
-        360
-      ],
+      "tick": 300,
+      "uid": 0,
+      "field": "anchor_on_heading",
+      "value": true
+    },
+    {
+      "tick": 330,
+      "uid": 0,
+      "field": "anchor_on_heading",
+      "value": true
+    },
+    {
+      "tick": 360,
       "uid": 0,
       "field": "anchor_on_heading",
       "value": true

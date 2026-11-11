@@ -369,8 +369,9 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"last_redeal_tick": u._last_redeal_tick,
 		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
 		"anchor_held": u.position_anchor_held(),
-		# True while couple() would anchor this router on the men ahead of its centre along its
-		# heading rather than on its grid's front ranks (Unit.position_anchor_on_heading).
+		# True while the heading-anchor rule holds (Unit.position_anchor_on_heading): a router in
+		# anchor contact, with its front not in the melee, is then anchored by couple() on the men
+		# ahead of its centre along its heading rather than on its grid's front ranks.
 		"anchor_on_heading": u.position_anchor_on_heading(),
 		# True while a rallied unit's anchor is still coasting to a stop on its flight
 		# (Unit.is_rally_halting): DemoDefects' speed ceiling then allows its men the flee pace

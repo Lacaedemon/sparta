@@ -117,27 +117,6 @@ A turn of nearly a quarter-turn leaves them along one of its flanks,
 and once the pursuers hold that flank back behind the block's centre,
 it too is laid out from the men ahead instead.
 
-::: {#fig-router-flank-anchor .demo}
-
-```{=html}
-<video class="demo-video" controls muted loop playsinline preload="metadata"
-       poster="media/router_flank_anchor.jpg">
-  <source src="media/router_flank_anchor.mp4" type="video/mp4">
-  Your browser can't play this clip --- see the
-  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-</video>
-```
-
-A brittle infantry block (blue) facing east is attacked by a larger infantry block,
-breaks while still in contact and turns at once to flee north,
-its block turned about 85 degrees off its flight, so its front ranks become its east flank.
-The pursuers hold that flank back behind the block's centre,
-so it is laid out from its leading men instead.
-On this clip's seed (measured 2026-11-11 against main e78d81be)
-it drifts 0.5 m west in the 2.2 seconds after it breaks, against 1.1 m before this fix,
-and stands 0.9 m further north at the end of them.
-:::
-
 ::: {#fig-router-anchor-flight-side .demo}
 
 ```{=html}
@@ -157,6 +136,28 @@ not from the ranks still pressed against the infantry behind it.
 On this clip's seed (measured 2026-11-07 on 580995c5)
 it drifts 0.5 m east while the infantry still touch it
 and gets clear of them 3.5 seconds after it breaks.
+:::
+
+::: {#fig-router-flank-anchor .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_flank_anchor.jpg">
+  <source src="media/router_flank_anchor.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A brittle infantry block (blue) facing east is attacked by a larger infantry block,
+breaks while still in contact and turns at once to flee north,
+its block turned about 85 degrees off its flight, so its front ranks become its east flank.
+The pursuers hold that flank back behind the block's centre,
+so the block is laid out from its leading men instead.
+On this clip's seed (measured 2026-11-11 against main e78d81be)
+it drifts 0.5 m west over the 2.2 seconds from just after it breaks,
+against 1.1 m under the earlier rule,
+and stands 0.9 m further north at the end of them.
 :::
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
