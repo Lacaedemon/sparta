@@ -339,7 +339,9 @@ func test_the_rally_re_square_waits_for_the_coast_and_turns_at_a_bounded_rate() 
 ## a loss landing on the tick the re-square runs). The fold is a half-turn, so the first advance
 ## runs the re-square.
 func _rally_with_the_loss_pending(u: Unit, what: String) -> void:
+	# No flight left to coast on: the coast reads the speed the flight runs (_flee_velocity).
 	u._flee_pace = 0.0
+	u._flee_velocity = Vector2.ZERO
 	u._rally()
 	assert_true(u._slot_deal_pending(u.soldiers, u.formation_files(u.soldiers)),
 			"%s: setup: the loss is still pending when the re-square runs" % what)
