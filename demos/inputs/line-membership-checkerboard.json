@@ -17,11 +17,5 @@
     {"tick": 5, "box": {"from": [400, 400], "to": [920, 520]}},
     {"tick": 20, "rmb_drag": {"from": [950, 650], "to": [350, 650]}}
   ],
-  "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100],
-  "defect_exemptions": {
-    "path_crossing": {
-      "uids": [0, 1, 2, 3],
-      "reason": "Soldier paths transiently intersect while the multi-unit line splits into front/rear checkerboard positions before forming up."
-    }
-  }
+  "state": [10, 40, 120, 240, 360, 480, 600, 750, 900, 1000, 1100]
 }
