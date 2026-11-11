@@ -116,9 +116,13 @@ func test_the_deal_untangles_with_the_units_own_touch_margin() -> void:
 	var without: PackedInt32Array = UnitFormation.untangle_column_routes(live, slots, tie, 0.0)
 	assert_ne(with_margin, without, "precondition: the margin changes who trades here")
 	var expected := PackedInt32Array()
+	var expected_ranks := PackedInt32Array()
 	for i in range(with_margin.size()):
 		expected.push_back(dealt[with_margin[i]])
+		expected_ranks.push_back(ranks[with_margin[i]])
 	assert_eq(u._sim_soldier_file, expected, "the unit's files are the deal untangled with its margin")
+	assert_eq(u._sim_soldier_rank, expected_ranks,
+		"and each man takes the rank that goes with the file he traded into")
 
 
 ## The men never close below the overlap floor the demo defect scan judges a reshape by:
@@ -216,7 +220,6 @@ func test_untangle_leaves_a_mismatched_or_trivial_input_alone() -> void:
 	assert_eq(UnitFormation.untangle_column_routes(men, men, 0.0), identity, "no tie width")
 	assert_eq(UnitFormation.untangle_column_routes(PackedVector2Array([Vector2.ZERO]),
 		PackedVector2Array([Vector2.ONE]), 9.0), PackedInt32Array([0]), "a lone man")
-
 
 
 ## The demo scan's file_line_routes_crossing field judges a file line, and a crossing, by the

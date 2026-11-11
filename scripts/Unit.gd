@@ -7229,8 +7229,11 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 ## The lateral deal cannot tell apart the men of one file, who stand at the same lateral
 ## position, so a widening that splits a file across two new ones sends its rear half to one
 ## and its front half to the other by the depth tie-break, and the two halves walk through
-## each other to reach the shallower block. Those men are re-paired so no two of their routes
-## cross (_untangle_file_line_routes). On a 140-man explicatio from 9 files to 18 held on its
+## each other to reach the shallower block. Those men are re-paired so that no two of them are
+## left on crossing routes whose untangling would shorten their walk by more than
+## UnitFormation.UNTANGLE_MIN_GAIN_WU (_untangle_file_line_routes); routes that only touch, and
+## crossings between men of different file lines, are left. On a 140-man explicatio from 9 files
+## to 18 held on its
 ## right flank, the closest two men came to 1.7 wu of each other before, and 3.3 wu after.
 ##
 ## Falls back to the index-order fill (UnitFormation.file_ids_in_index_order) when there are
@@ -7289,7 +7292,8 @@ func _ensure_file_assignment(count: int, files: int) -> bool:
 
 
 ## Trade places between men of one file line whose straight routes to the slots just dealt
-## would cross (UnitFormation.untangle_column_routes). `live` is the bodies in the slot frame,
+## would properly cross, when the trade shortens their walk (UnitFormation.untangle_column_routes,
+## which states exactly what it leaves). `live` is the bodies in the slot frame,
 ## as the deal read them; the slots are the ones the deal laid out, with any standing flank
 ## anchor shift, since that shift moves every route's end.
 func _untangle_file_line_routes(live: PackedVector2Array, files: int) -> void:

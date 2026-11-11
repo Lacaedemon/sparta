@@ -1226,11 +1226,10 @@ explicatio (B) unfolds it back into a broad line.
 ```
 
 A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8.
-The men of each file pair off side by side into the new ranks,
-and none walks through a man of his own file.
-Before, each file split its rear half from its front half,
-and 44 men set off on routes crossing those of men of their own file,
-the two halves passing each other one file pitch (0.45 m) apart.
+Each old file splits across two new files,
+and its men pair off side by side into the new ranks,
+so none walks through a man of his own file:
+the closest two men stay about 0.2 m apart while the block unfolds.
 :::
 
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
