@@ -151,7 +151,7 @@ var _cached_combat_profile: Dictionary = {}
 # (SoldierBodies.flight_accel_share), as a multiple of its own acceleration, so a flight
 # that swings its direction in one tick cannot hand its men an unbounded kick. It also
 # bounds how fast the router's flight velocity itself changes (flight_velocity_accel, never
-# below `accel`), so the share alone can keep a man level with his moving slot.
+# below `accel`), the one component of a man's feed-forward the router steers.
 @export var flight_share_max_accel_mult: float = SoldierBodies.FLIGHT_SHARE_MAX_ACCEL_MULT
 # How far off his own slot (wu) a routing body must stand to take that share
 # (SoldierBodies.march_share_frac): none within flight_share_from_wu, all of it from
@@ -1904,6 +1904,12 @@ var _flight_turn_rate: float = 0.0
 # every _flight_step call and read by _process_rout in the same tick, so it carries nothing
 # from tick to tick.
 var _flight_step_narrow: bool = false
+# The direction the anchor's flight was steered on the last routing tick (the step direction,
+# or the side-step along a face _flight_front_veer turned it to), before the flight velocity's
+# bounded turn: _flight_step's turn-back reads it as the leg the flight last ran.
+# _flee_velocity cannot stand in for it, since it lags the steered direction while it turns.
+# Zero for a router just broken, which has run no leg yet. Read only while state == ROUTING.
+var _flight_leg: Vector2 = Vector2.ZERO
 # True from a rally until the anchor has pulled up from the flight it handed over (see _rally
 # and is_rally_halting). Cleared by _tick_idle_coast once the anchor stops, or the moment the
 # unit locomotes, fights, or carries a held march; and by _rout() -- whichever comes first.
@@ -11031,6 +11037,7 @@ func _rout() -> void:
 	# is dropped, as the pace above drops it: the flight never carries a router on toward the
 	# enemy, and a rally soon after must not coast it there.
 	_flee_velocity = _flee_heading() * _flee_pace
+	_flight_leg = Vector2.ZERO   # no leg run yet
 	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
 	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
@@ -11143,6 +11150,7 @@ func _process_rout(delta: float) -> void:
 	# flight step leaving a detour leg) turns the flight over a few ticks instead of moving
 	# every slot onto the new velocity at once.
 	_flee_velocity = _flee_velocity.move_toward(dir * _flee_pace, flight_velocity_accel() * delta)
+	_flight_leg = dir
 	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
@@ -11272,12 +11280,14 @@ func bounded_turn_accel(radius: float = -1.0) -> float:
 ## The most a router's flight velocity (_flee_velocity) changes by per second (wu/s^2):
 ## flight_share_max_accel_mult times its bodies' own acceleration, max(accel,
 ## SoldierBodies.BODY_ACCEL_FLOOR), the most extra acceleration the flight share
-## (SoldierBodies.flight_accel_share) hands a man off his slot. A flight that changes no
-## faster than that is one the share alone keeps a man level with his moving slot through,
-## so his own body acceleration stays free to close the gap; a faster change leaves him
-## falling further behind his slot while it lasts. It is never below `accel`, the rate the
-## pace builds at, so a multiplier of 0 (no share) still lets the flight build and turn at the
-## unit's own acceleration rather than freezing it.
+## (SoldierBodies.flight_accel_share) hands a man off his slot. This bounds only the flight
+## component of his feed-forward: the share is capped at that same figure for the whole of it
+## (the flight, his slot's turning velocity about the anchor and any friendly-contact
+## steering together), so while the heading turns or he is steered as well, the share alone
+## does not cover the flight's change. What it removes is the one-tick swing, which no
+## share could follow. It is never below `accel`, the rate the pace builds at, so a
+## multiplier of 0 (no share; the share's own cap is then 0) still lets the flight build and
+## turn at the unit's own acceleration rather than freezing it.
 func flight_velocity_accel() -> float:
 	return maxf(accel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR)
 			* maxf(flight_share_max_accel_mult, 0.0))
@@ -11289,6 +11299,7 @@ func _clear_flight() -> void:
 	_flee_pace = 0.0
 	_flee_velocity = Vector2.ZERO
 	_flight_turn_rate = 0.0
+	_flight_leg = Vector2.ZERO
 
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
@@ -11534,9 +11545,9 @@ func _begin_rally_halt() -> void:
 	# A flight with no direction (a zero _flee_velocity) has no leg to check: the idle coast
 	# would fall back to running along `facing`, which nothing here vetted.
 	# The coast runs from the speed the flight actually carries (|_flee_velocity|), which can
-	# lag _flee_pace while the flight turns or builds.
+	# lag _flee_pace while the flight turns or builds; a flight carrying no speed has no coast.
 	var speed: float = _flee_velocity.length()
-	if speed <= 0.01 or rally_halt_brake_rate() <= 0.0:
+	if speed <= SoldierBodies.REST_SPEED or rally_halt_brake_rate() <= 0.0:
 		return
 	var dir: Vector2 = _flee_velocity / speed
 	var stop_dist: float = speed * speed / (2.0 * rally_halt_brake_rate())
@@ -11689,8 +11700,9 @@ func _rout_step_clearance() -> float:
 ##   half-width, by its depth times the sine of the turn, so turning back now would run its
 ##   rear ranks into the terrain it just rounded. It runs on along its own heading until the
 ##   flight line is clear at the turned block's swept width (terrain_clearance along the
-##   flight line), as long as that heading itself runs clear, and only then turns back. Only a router whose last step ran a detour leg does this; a router
-##   just broken has no flight yet.
+##   flight line), as long as that heading itself runs clear, and only then turns back. Only
+##   a router whose flight was steered on a detour leg last tick (_flight_leg) does this; a
+##   router just broken has run no leg yet.
 ## - A detour whose waypoint would leave the turned block hanging off the field sideways (a
 ##   hill near the field's edge) falls back to the anchor's own margin (_rout_clearance), as
 ##   before the swept width existed, so the flight never leads the block off the field.
@@ -11701,8 +11713,9 @@ func _flight_step(flee: Vector2) -> Vector2:
 	var step: Vector2 = field.next_step_fleeing(position, flee, wide)
 	var dir: Vector2 = (step - position).normalized()
 	if dir.dot(flee) >= STRAIGHT_FLIGHT_DOT:
-		# Last tick's flight, if it ran a detour leg (a router just broken has no flight yet).
-		var leg: Vector2 = _flee_velocity.normalized()
+		# The leg the flight was steered on last tick, if it was a detour leg (a router just
+		# broken has run none yet). The steered direction, not _flee_velocity, which lags it.
+		var leg: Vector2 = _flight_leg
 		if leg != Vector2.ZERO and leg.dot(flee) < STRAIGHT_FLIGHT_DOT \
 				and facing.dot(flee) < STRAIGHT_FLIGHT_DOT \
 				and _across_flight_on_field(position, flee, wide):
@@ -11761,10 +11774,10 @@ func _flight_step(flee: Vector2) -> Vector2:
 ## _process_rout does not call it on a tick whose step fell back to the anchor's own margin
 ## (_flight_step_narrow): a block too wide to pass beside the field's edge has no room to
 ## side-step either, and veering it there led it off the field.
-## The veered travel stays in _flee_velocity like any flight, and its readers want the travel
-## itself: the bodies' feed-forward and a rally's coast run with the block as it moves, and
-## _flight_step's turn-back exception reads it only to tell a router already in flight from
-## one just broken, its real guard being a heading turned off the flight line.
+## The veered direction is what the flight velocity turns toward (at flight_velocity_accel),
+## and _process_rout keeps it as the leg the flight was steered on (_flight_leg), which
+## _flight_step's turn-back exception reads: a side-step along a face counts as a leg off the
+## flight line there, as any detour leg does.
 func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
 	var field: PathField = PathField.active
 	if not field.has_block_terrain() or _flee_pace <= 0.0 or delta <= 0.0:
@@ -12695,6 +12708,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
+		"flight_leg": _flight_leg,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"body_flight_ff_prev": _body_flight_ff_prev.duplicate(),
 		"march_target_frac": _march_target_frac,
@@ -12991,6 +13005,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
+	_flight_leg = d.get("flight_leg", _flight_leg)
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))

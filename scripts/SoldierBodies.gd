@@ -98,8 +98,11 @@ const MARCH_SHARE_FULL_PITCHES: float = 1.0
 # man's friendly-contact steering (_sim_steer), part of his feed-forward, which can change by
 # any amount from one tick to the next. The flight velocity itself (its pace, the bend of
 # its direction round a detour, and any swing of that direction) changes no faster than
-# this same multiple of body_accel (Unit.flight_velocity_accel), so the share alone keeps a
-# man level with it. Before that bound the direction could swing in one tick: on
+# this same multiple of body_accel (Unit.flight_velocity_accel). That bounds the flight
+# component alone: this cap is for a man's whole feed-forward, so while the grid turns or
+# he is steered as well, the share does not cover all of the flight's change, but a one-tick
+# swing no share could follow is gone. Before that bound the direction could swing in one
+# tick: on
 # deep-router-close-start-hill (clip seed, Windows, main aef5b476, 2026-11-10, by a temporary
 # per-tick log) the side-step along the hill's face (Unit._flight_front_veer) started at tick
 # 73 (1.02 rad at 48.7 wu/s, 2826 wu/s^2) and ended at tick 154 (1.11 rad at 102.7 wu/s,

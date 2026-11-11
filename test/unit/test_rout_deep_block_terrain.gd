@@ -467,6 +467,7 @@ func test_a_side_step_leg_does_not_hold_the_flight_off_its_line() -> void:
 	router.position = OPEN_GROUND
 	router._flee_pace = router.flee_speed()
 	router._flee_velocity = Vector2.LEFT * router._flee_pace
+	router._flight_leg = Vector2.LEFT
 	assert_almost_eq(router.facing.dot(Vector2.DOWN), 1.0, 0.0001, "setup: heading on the flight")
 	var step: Vector2 = router._flight_step(Vector2.DOWN)
 	assert_gte((step - router.position).normalized().dot(Vector2.DOWN), Unit.STRAIGHT_FLIGHT_DOT,

@@ -12,7 +12,10 @@ extends GutTest
 ## - A rout carries the pace the unit was already making away from the enemy on as its
 ##   first flight velocity, so the anchor's speed runs on unbroken through the rout.
 ## - The rate never drops below the unit's own acceleration, so a share multiplier of 0
-##   cannot freeze a router, and the stamina bill reads the speed the flight runs.
+##   cannot freeze a router, and the stamina bill and a rally's coast read the speed the
+##   flight runs.
+## - The flight step's turn-back reads the leg the flight was steered on last tick, not the
+##   lagging flight velocity, so it holds only after a detour leg.
 ##
 ## The regression this pins: on demos/inputs/deep-router-close-start-hill.json (clip seed,
 ## Windows, main aef5b476, 2026-11-10, by a temporary per-tick log) the flight velocity
@@ -140,6 +143,7 @@ func test_the_flight_turns_from_a_side_step_at_the_share_cap() -> void:
 	router.position = OPEN_GROUND
 	router._flee_pace = router.flee_speed()
 	router._flee_velocity = Vector2.LEFT * router._flee_pace
+	router._flight_leg = Vector2.LEFT
 	router.facing = Vector2.DOWN
 	router._flight_turn_rate = 0.0
 	var before: Vector2 = router._flee_velocity
@@ -233,3 +237,95 @@ func test_no_share_still_lets_a_router_build_its_flight_at_its_own_accel() -> vo
 	assert_gt(start.distance_to(squadron.position), 0.0, "the router moves")
 	assert_lt(squadron._moved_while_routing_pace, squadron._flee_pace,
 			"the stamina bill reads the speed run, not the pace still ahead of it")
+
+
+## Place `router` west of the hill, heading turned `turn` rad west of its southward flight,
+## where the plain step runs straight down the flight line beside the hill but the turned
+## block's swept width across that line would clip it: the turn-back's hold applies there
+## when the flight last ran a detour leg. Returns the plain step direction.
+func _place_for_turn_back(router: Unit, turn: float) -> Vector2:
+	router.facing = Vector2.DOWN.rotated(turn)
+	router._formation_angle = 0.0
+	router._grid_lag = 0.0
+	var wide: float = router._rout_step_clearance()
+	var turned: float = maxf(wide, router.terrain_clearance(Vector2.DOWN))
+	router.position = Vector2(CLOSE_HILL.position.x - 0.5 * (wide + turned),
+			CLOSE_HILL.position.y - 200.0)
+	router._flee_pace = router.flee_speed()
+	return (PathField.active.next_step_fleeing(router.position, Vector2.DOWN, wide)
+			- router.position).normalized()
+
+
+func test_the_turn_back_holds_only_after_a_detour_leg() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	var plain: Vector2 = _place_for_turn_back(router, deg_to_rad(30.0))
+	assert_gte(plain.dot(Vector2.DOWN), Unit.STRAIGHT_FLIGHT_DOT,
+			"setup: the plain step runs straight down the flight line (got %s)" % plain)
+	var detour := Vector2.DOWN.rotated(deg_to_rad(30.0))
+	# Steered on a detour leg last tick: the block runs on along its heading.
+	router._flight_leg = detour
+	router._flee_velocity = detour * router._flee_pace
+	var held: Vector2 = (router._flight_step(Vector2.DOWN) - router.position).normalized()
+	assert_almost_eq(held.dot(router.facing), 1.0, 0.0001,
+			"setup: after a detour leg the turn-back holds the heading (got %s)" % held)
+	# Steered straight down the flight line last tick, with the flight velocity still lagging
+	# on the detour: no hold, the flight takes its plain step.
+	router._flight_leg = Vector2.DOWN
+	var step: Vector2 = (router._flight_step(Vector2.DOWN) - router.position).normalized()
+	assert_gte(step.dot(Vector2.DOWN), Unit.STRAIGHT_FLIGHT_DOT,
+			"a straight last leg takes the plain step, whatever the lagging velocity (got %s)"
+			% step)
+
+
+## The squadron moved well clear of the router, so a rally's coast meets no enemy.
+func _clear_squadron() -> Unit:
+	var squadron: Unit = _squadron()
+	squadron.position = Vector2(1600.0, 2200.0)
+	return squadron
+
+
+func test_a_rally_coasts_from_the_speed_the_flight_runs() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	var squadron: Unit = _squadron()
+	assert_not_null(squadron, "the team-0 squadron deployed")
+	if router == null or squadron == null:
+		return
+	squadron = _clear_squadron()
+	squadron.morale = 0.0
+	squadron._rout()
+	squadron._flee_pace = squadron.flee_speed()
+	var speed: float = 0.5 * squadron.flee_speed()
+	squadron._flee_velocity = Vector2.UP * speed   # the flight still building toward its pace
+	var brake: float = squadron.rally_halt_brake_rate()
+	assert_gt(brake, 0.0, "setup: the coast brakes")
+	var by_speed: float = speed * speed / (2.0 * brake)
+	var by_pace: float = squadron._flee_pace * squadron._flee_pace / (2.0 * brake)
+	# The field's top edge between the two stopping points: a coast from the speed run stops
+	# inside it, one from the pace would leave it and be refused.
+	var top: float = squadron.position.y - 0.5 * (by_speed + by_pace)
+	squadron.retreat_bounds = Rect2(0.0, top, 1800.0, 2400.0 - top)
+	squadron._begin_rally_halt()
+	assert_true(squadron._rally_halt, "the coast from the speed run stops on the field")
+	assert_almost_eq(squadron._current_speed, speed, 0.0001, "and runs at that speed")
+	assert_eq(squadron._approach_velocity, squadron._flee_velocity, "along the flight")
+
+
+func test_a_flight_carrying_no_speed_hands_over_no_coast() -> void:
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	var squadron: Unit = _squadron()
+	assert_not_null(squadron, "the team-0 squadron deployed")
+	if router == null or squadron == null:
+		return
+	squadron = _clear_squadron()
+	squadron.morale = 0.0
+	squadron._rout()
+	squadron._flee_pace = squadron.flee_speed()   # a pace ahead of a flight not yet moving
+	squadron._flee_velocity = Vector2.ZERO
+	squadron._begin_rally_halt()
+	assert_false(squadron._rally_halt, "no coast from a flight that carries no speed")
+	assert_eq(squadron._current_speed, 0.0, "and no speed handed over")

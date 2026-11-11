@@ -217,8 +217,9 @@ and gets clear of them 3.5 seconds after it breaks.
   his place's own movement, plus any sidestep off a friendly block he presses against ---
   while that is not slowing
   (at most twice his usual rate on top).
-  The flight itself never changes faster than that extra,
-  so a man running with his place keeps up on it alone:
+  The flight itself never changes faster than that extra
+  (though a man's place also turns with the block, which adds to what he follows),
+  so a man is never left behind by the flight jumping in an instant:
   the block eases onto its side-step over a little under a second
   and takes about three seconds to turn back off it, rather than swinging in an instant,
   and its anchor starts the side-step sooner, while its leading rank's line is still short of the face.
