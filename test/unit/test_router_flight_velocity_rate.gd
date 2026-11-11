@@ -9,7 +9,8 @@ extends GutTest
 ##   (Unit._flight_step) does too, instead of the velocity swinging in one tick.
 ## - Since the flight turns at that rate, the leading rank looks along the flight it carries as
 ##   far as it runs while turning off at that rate, so the side-step starts in time.
-## - A rout carries on the pace the unit had away from the enemy as its first flight velocity.
+## - A rout starts its flight velocity from rest, even with a pace carried away from the
+##   enemy, and builds it at that same rate.
 ##
 ## The regression this pins: on demos/inputs/deep-router-close-start-hill.json (clip seed,
 ## Windows, main aef5b476, 2026-11-10, by a temporary per-tick log) the flight velocity
@@ -175,7 +176,7 @@ func test_a_flight_beyond_its_turning_look_of_a_face_keeps_its_direction() -> vo
 			"a face beyond the flight's turning look leaves its direction alone")
 
 
-func test_a_rout_starts_its_flight_at_the_pace_it_carried_away() -> void:
+func test_a_rout_builds_its_flight_velocity_from_rest_at_the_share_cap() -> void:
 	var router: Unit = await _spawn_close()
 	assert_not_null(router, "the team-1 cavalry deployed")
 	if router == null:
@@ -187,12 +188,17 @@ func test_a_rout_starts_its_flight_at_the_pace_it_carried_away() -> void:
 	assert_not_null(squadron, "the team-0 squadron deployed")
 	if squadron == null:
 		return
+	# Falling back toward its own (northern) edge at half its flee speed when it breaks.
 	var pace: float = 0.5 * squadron.flee_speed()
-	# Falling back toward its own (northern) edge, and drifting sideways too.
-	squadron._approach_velocity = Vector2.UP * pace + Vector2.RIGHT * pace
+	squadron._approach_velocity = Vector2.UP * pace
 	squadron.morale = 0.0
 	squadron._rout()
-	assert_almost_eq(squadron._flee_velocity.x, 0.0, 0.0001, "the sideways drift is dropped")
-	assert_almost_eq(squadron._flee_velocity.y, -pace, 0.0001,
-			"the flight starts at the pace carried along the flee heading (got %s)"
+	assert_almost_eq(squadron._flee_pace, pace, 0.0001, "setup: the rout carries that pace")
+	assert_eq(squadron._flee_velocity, Vector2.ZERO, "the flight velocity starts from rest")
+	var step: float = _share_cap(squadron) * TICK
+	assert_gt(pace, step, "setup: the carried pace is more than one tick's change")
+	squadron._process_rout(TICK)
+	var tol: float = 4.0 * squadron.flee_speed() * FLOAT32_EPS
+	assert_almost_eq(squadron._flee_velocity.length(), step, tol,
+			"the first flight tick builds the velocity by the share cap's worth (got %s)"
 			% squadron._flee_velocity)

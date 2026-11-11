@@ -1883,8 +1883,7 @@ var _moved_while_routing_pace: float = 0.0
 # Seeded by _rout() from the speed the unit was already carrying away from the enemy.
 var _flee_pace: float = 0.0
 # This tick's flight velocity, set by _process_rout: it moves toward the flee direction times
-# _flee_pace at no more than flight_velocity_accel(), from the pace along the flee heading
-# _rout() seeds it with. The
+# _flee_pace at no more than flight_velocity_accel(), from rest at the rout. The
 # routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
 # router's unengaged bodies so they run with the fleeing anchor; without it they only
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
@@ -11020,9 +11019,9 @@ func _rout() -> void:
 		_flee_pace = 0.0
 	else:
 		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
-	# The flight starts from that pace along the flee heading, and _process_rout turns it from
-	# there at a bounded rate (flight_velocity_accel).
-	_flee_velocity = _flee_heading() * _flee_pace
+	# The flight velocity starts from rest, and _process_rout builds it toward the flight at a
+	# bounded rate (flight_velocity_accel).
+	_flee_velocity = Vector2.ZERO
 	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
 	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
