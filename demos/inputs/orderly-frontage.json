@@ -42,25 +42,5 @@
       "key": "BracketRight"
     }
   ],
-  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
-  "defect_exemptions": {
-    "blob": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: median neighbour 3.28 wu while six successive frontage widenings re-deal the files."
-    },
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: residual 43.5 wu across the successive reshapes."
-    },
-    "path_crossing": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: 0.61 crossing fraction across the widening sequence."
-    }
-  }
+  "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9"
 }
