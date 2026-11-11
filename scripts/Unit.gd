@@ -1882,7 +1882,9 @@ var _moved_while_routing_pace: float = 0.0
 # it back, and the block would trail its slots by tens of world units until they caught up.
 # Seeded by _rout() from the speed the unit was already carrying away from the enemy.
 var _flee_pace: float = 0.0
-# This tick's flight velocity (flee direction * _flee_pace), set by _process_rout: the
+# This tick's flight velocity, set by _process_rout: it moves toward the flee direction times
+# _flee_pace at no more than flight_velocity_accel(), from the pace along the flee heading
+# _rout() seeds it with. The
 # routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
 # router's unengaged bodies so they run with the fleeing anchor; without it they only
 # chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
@@ -11018,7 +11020,9 @@ func _rout() -> void:
 		_flee_pace = 0.0
 	else:
 		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
-	_flee_velocity = Vector2.ZERO
+	# The flight starts from that pace along the flee heading, and _process_rout turns it from
+	# there at a bounded rate (flight_velocity_accel).
+	_flee_velocity = _flee_heading() * _flee_pace
 	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
 	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
@@ -11126,7 +11130,11 @@ func _process_rout(delta: float) -> void:
 	# rank is about to meet (_flight_front_veer).
 	if PathField.active != null and not _flight_step_narrow:
 		dir = _flight_front_veer(dir, step, delta)
-	_flee_velocity = dir * _flee_pace
+	# The flight velocity moves toward the travel at a bounded rate (flight_velocity_accel), so a
+	# step that swings in one tick (the side-step along a face starting or ending, or the
+	# flight step leaving a detour leg) turns the flight over a few ticks instead of moving
+	# every slot onto the new velocity at once.
+	_flee_velocity = _flee_velocity.move_toward(dir * _flee_pace, flight_velocity_accel() * delta)
 	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
@@ -11251,6 +11259,18 @@ func bounded_turn_accel(radius: float = -1.0) -> float:
 	if radius < 0.0:
 		radius = _formation_local_half_extents().length()
 	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) / radius if radius > 0.0 else INF
+
+
+## The most a router's flight velocity (_flee_velocity) changes by per second (wu/s^2):
+## flight_share_max_accel_mult times its bodies' own acceleration, max(accel,
+## SoldierBodies.BODY_ACCEL_FLOOR), the most extra acceleration the flight share
+## (SoldierBodies.flight_accel_share) hands a man off his slot. A flight that changes no
+## faster than that is one the share alone keeps a man level with his moving slot through,
+## so his own body acceleration stays free to close the gap; a faster change leaves him
+## falling further behind his slot while it lasts. The pace builds at `accel`, never above
+## this, so a straight flight building up runs exactly as before.
+func flight_velocity_accel() -> float:
+	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) * maxf(flight_share_max_accel_mult, 0.0)
 
 
 ## Drop the flight state a router carries (_flee_pace, _flee_velocity) on the way out of
@@ -11719,8 +11739,12 @@ func _flight_step(flee: Vector2) -> Vector2:
 ## rects meeting in a corner), it is turned once more along that one; travel that would need
 ## a third turn, or that would run back against `dir`, is dropped for `dir` itself, the
 ## flight as it ran before the veer existed. The whole block translates with the anchor, so
-## its men stay on their slots. Only this tick's travel is looked along, so a flight whose
-## heading turn swings its front clear in time travels exactly as before.
+## its men stay on their slots. The flight velocity turns onto the veered travel at a bounded
+## rate (flight_velocity_accel), so the line looks along two runs: this tick's travel, and
+## the flight it carries (_flee_velocity) as far as that flight runs while shedding its speed
+## at that rate, plus one tick. The side-step therefore starts while the flight can still
+## turn off the face. A flight whose heading turn swings its front clear of both looks
+## travels exactly as before.
 ## `dir` itself when there is no block terrain, or when the flight does not move this tick.
 ## _process_rout does not call it on a tick whose step fell back to the anchor's own margin
 ## (_flight_step_narrow): a block too wide to pass beside the field's edge has no room to
@@ -11737,13 +11761,26 @@ func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
 	var centre: Vector2 = line[0]
 	var reach: Vector2 = line[1]
 	var radius: float = soldier_body_radius()
-	var body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR)
+	var rate: float = flight_velocity_accel()
 	var want: Vector2 = dir * _flee_pace
 	var met: Array[Rect2] = _rects_met_by_line(centre, reach, want * delta, radius)
+	# The flight velocity turns at a bounded rate (_process_rout), so the line also looks along
+	# the flight it carries, as far as it runs while shedding that speed at that rate plus one
+	# tick (router_terrain_avoid's own look ahead along a run): the side-step then starts while
+	# the flight can still turn off the face, instead of the tick before the line meets it.
+	var carried: Vector2 = _flee_velocity
+	var speed: float = carried.length()
+	if speed > 0.0 and rate > 0.0:
+		var ahead: Vector2 = carried * (speed / (2.0 * rate) + delta)
+		for rect in _rects_met_by_line(centre, reach, ahead, radius):
+			if not met.has(rect):
+				met.append(rect)
+	else:
+		carried = Vector2.ZERO
 	if met.is_empty():
 		return dir
-	var travel: Vector2 = SoldierBodies.router_terrain_avoid(centre, Vector2.ZERO, step, want,
-			_grown_by_line(met, reach, radius), body_accel, delta)
+	var travel: Vector2 = SoldierBodies.router_terrain_avoid(centre, carried, step, want,
+			_grown_by_line(met, reach, radius), rate, delta)
 	# Re-check the turned travel. A rect it still passes into turns it again only if it heads
 	# into that rect's face (router_terrain_avoid leaves travel along or away from a face
 	# alone), so a line the grid's own bounded turn has tilted a hair past the face it slides
@@ -11753,7 +11790,7 @@ func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
 		if met.is_empty():
 			break
 		var turned: Vector2 = SoldierBodies.router_terrain_avoid(centre, Vector2.ZERO, step,
-				travel, _grown_by_line(met, reach, radius), body_accel, delta)
+				travel, _grown_by_line(met, reach, radius), rate, delta)
 		if turned == travel:
 			break
 		if again == 1:

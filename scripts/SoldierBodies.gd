@@ -94,16 +94,22 @@ const MARCH_SHARE_FULL_PITCHES: float = 1.0
 # which builds at unit.accel (Unit._process_rout) and body_accel is never below, and the
 # speed of the slot's turning velocity, which changes by at most body_accel at the block's
 # corner because the turn rate builds and sheds at Unit.bounded_turn_accel. Two body_accels
-# cover those two. Not counted: the turning velocity swinging round with the grid; the bend
-# of the flight's own heading as it follows a detour, about the pace times the rate the
-# heading turns, which nothing bounds; the man's friendly-contact steering (_sim_steer), part
-# of his feed-forward, which can change by any amount from one tick to the next; and a
-# one-tick swing of the flight's direction (the step leaving a detour leg, or a side-step
-# along a face starting or ending, Unit._flight_front_veer). So the cap binds while a flight
-# bends round terrain at pace: on deep-router-close-start-hill (seed 0, Windows) the uncapped
-# rate exceeded it on 279 of the 1637 man-ticks in which a man took any share and the flight
-# was not slowing, mostly between ticks 290 and 340 as the flight bent round the hill
-# (measured on 4a1c49aa, 2026-11-06, by a temporary per-man log of the uncapped rate).
+# cover those two. Not counted: the turning velocity swinging round with the grid, and the
+# man's friendly-contact steering (_sim_steer), part of his feed-forward, which can change by
+# any amount from one tick to the next. The flight velocity itself (its pace, the bend of
+# its direction round a detour, and any swing of that direction) changes no faster than
+# this same multiple of body_accel (Unit.flight_velocity_accel), so the share alone keeps a
+# man level with it. Before that bound the direction could swing in one tick: on
+# deep-router-close-start-hill (clip seed, Windows, main aef5b476, 2026-11-10, by a temporary
+# per-tick log) the side-step along the hill's face (Unit._flight_front_veer) started at tick
+# 73 (1.02 rad at 48.7 wu/s, 2826 wu/s^2) and ended at tick 154 (1.11 rad at 102.7 wu/s,
+# 6477 wu/s^2), and the flight step's turn-back (Unit._flight_step) held the facing for one
+# tick at 338 and left it at 339 (0.36 and 0.39 rad at 221 wu/s, 4756 and 5160 wu/s^2),
+# against a body_accel of 40. Before that bound, too, the cap bound while a flight bent
+# round terrain at pace: on the same clip (seed 0, Windows) the uncapped rate exceeded it on
+# 279 of the 1637 man-ticks in which a man took any share and the flight was not slowing,
+# mostly between ticks 290 and 340 (measured on 4a1c49aa, 2026-11-06, by a temporary per-man
+# log of the uncapped rate).
 const FLIGHT_SHARE_MAX_ACCEL_MULT: float = 2.0
 # Defaults for Unit.flight_share_from_wu and Unit.flight_share_full_wu: how far off his own
 # slot a routing body takes none of flight_accel_share and all of it (march_share_frac), a
