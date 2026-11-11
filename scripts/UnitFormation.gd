@@ -1217,6 +1217,98 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 	return out
 
 
+## Default for `untangle_column_routes`' tie width, as a fraction of the file pitch: two men
+## standing laterally closer than this stand in one file line, one behind the other.
+const COLUMN_TIE_PITCH_FRAC := 0.25
+
+
+## Re-pair the men of each file line so that no two of them walk straight through each other.
+## `positions` and `slots` are index-aligned and in the block's own local frame: `slots[i]`
+## is where the deal above currently sends man i. Returns `perm`, where man i is to take the
+## place (file, rank and slot) the deal gave man `perm[i]`.
+##
+## The lateral deal orders the men by their lateral position, which is well defined between
+## files and arbitrary within one: the men of a file stand at the same lateral position, so
+## when a widening splits that file across two new files, which of its men go to which falls
+## to the depth tie-break. That sends the rear half of the file to one new file and the front
+## half to the other, and since the new block is shallower, the rear half walks forward while
+## the front half walks back, in neighbouring files one body apart -- a straight route through
+## each other. An explicatio of 140 men from 9 files to 18 sends 110 of them on crossing
+## routes that way.
+##
+## So only men laterally closer than `tie_width` -- men of one file line -- are compared, and
+## any two of them whose straight routes cross trade places. A crossing counts only when each
+## route's ends lie more than `margin` to either side of the other's line. Routes that merely
+## touch are left alone: a man who walks straight up his file onto the spot a man ahead of him
+## is stepping out of follows him in, and trading the two sends him on a diagonal round a man
+## who has stood still, which a settled rank can block. Each trade shortens the pair's summed
+## route (the triangle inequality, strictly, for a proper crossing), and by more than
+## UNTANGLE_MIN_GAIN_WU, so the loop ends with no two men of a file line on crossing routes. On
+## that explicatio it interleaves each file into its two new ones, neighbouring men going side by
+## side to one new rank, and the closest two men come no nearer than 3.3 wu, where the halves
+## passing through each other brought two to 1.7 wu. Men further apart than `tie_width` are never
+## traded, so the lateral order the deal guarantees between files is untouched, and the shape of
+## the block is unchanged since only the labelling moves. Pure and deterministic.
+static func untangle_column_routes(positions: PackedVector2Array, slots: PackedVector2Array,
+		tie_width: float, margin: float = 0.0) -> PackedInt32Array:
+	var n: int = positions.size()
+	var perm: PackedInt32Array = identity_assignment(n)
+	if n < 2 or slots.size() != n or tie_width <= 0.0:
+		return perm
+	var order: PackedInt32Array = lateral_order(positions)
+	var changed: bool = true
+	while changed:
+		changed = false
+		for a in range(n - 1):
+			var i: int = order[a]
+			for b in range(a + 1, n):
+				var j: int = order[b]
+				if positions[j].x - positions[i].x >= tie_width:
+					break
+				var at_i: Vector2 = positions[i]
+				var at_j: Vector2 = positions[j]
+				var to_i: Vector2 = slots[perm[i]]
+				var to_j: Vector2 = slots[perm[j]]
+				var gain: float = at_i.distance_to(to_i) + at_j.distance_to(to_j) \
+						- at_i.distance_to(to_j) - at_j.distance_to(to_i)
+				if gain > UNTANGLE_MIN_GAIN_WU and routes_cross(at_i, to_i, at_j, to_j, margin):
+					var held: int = perm[i]
+					perm[i] = perm[j]
+					perm[j] = held
+					changed = true
+	return perm
+
+
+## The least a trade in `untangle_column_routes` must shorten a pair's summed route by. Solver
+## epsilon, not a gameplay knob: it keeps a float-rounding "gain" from trading two men back and
+## forth, and since every trade shortens the total by at least this much the loop must end.
+const UNTANGLE_MIN_GAIN_WU := 0.01   # tuned in wu
+
+
+## How far, as a fraction of the body radius, each route's ends must lie to either side of the
+## other's line for `untangle_column_routes` to read a crossing rather than a touch. A tenth of a
+## body is far below a real crossing's offsets (a file pitch or more) and above the jitter of
+## bodies standing on their slots.
+const ROUTE_TOUCH_BODY_FRAC := 0.1
+
+
+## Whether the straight route a1 -> a2 properly crosses the route b1 -> b2: each route's ends
+## lie on opposite sides of the other's line, each more than `margin` from it. A route of no
+## length crosses nothing.
+static func routes_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2,
+		margin: float = 0.0) -> bool:
+	var len_a: float = a1.distance_to(a2)
+	var len_b: float = b1.distance_to(b2)
+	if len_a <= 0.0 or len_b <= 0.0:
+		return false
+	var d1: float = (a2 - a1).cross(b1 - a1) / len_a
+	var d2: float = (a2 - a1).cross(b2 - a1) / len_a
+	var d3: float = (b2 - b1).cross(a1 - b1) / len_b
+	var d4: float = (b2 - b1).cross(a2 - b1) / len_b
+	return d1 * d2 < 0.0 and d3 * d4 < 0.0 and minf(absf(d1), absf(d2)) > margin \
+			and minf(absf(d3), absf(d4)) > margin
+
+
 ## `ranks` with the entry for the soldier at `index` removed and every SAME-FILE survivor
 ## standing behind him stepped one rank forward, so each file's ranks stay contiguous from 0.
 ##

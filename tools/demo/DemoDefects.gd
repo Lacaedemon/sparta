@@ -848,8 +848,16 @@ static func _is_numeric_value(v) -> bool:
 ## The expectation fields derived_field supplies.
 const DERIVED_FIELDS: Array[String] = [
 	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
-	"slot_distance_max",
+	"slot_distance_max", "file_line_routes_crossing",
 ]
+## How close laterally, as a fraction of the file pitch, two men stand to count as one file line
+## for file_line_routes_crossing. Must match UnitFormation.COLUMN_TIE_PITCH_FRAC, the width the
+## sim's own deal uses; it cannot be preloaded here for the same reason DemoState cannot.
+const FILE_LINE_TIE_FRAC := 0.25
+## How far, as a fraction of the body radius, two routes must pass to either side of each other
+## for file_line_routes_crossing to count a crossing rather than a touch. Must match
+## UnitFormation.ROUTE_TOUCH_BODY_FRAC.
+const ROUTE_TOUCH_BODY_FRAC := 0.1
 
 
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
@@ -885,6 +893,12 @@ const DERIVED_FIELDS: Array[String] = [
 ## - slot_distance_max: the farthest any man's slot lies from where he stands, in world units
 ##   to 0.1, in any direction. Unlike the lateral fields it sees a walk in depth, such as a
 ##   re-square that sends a man to the other end of his own file.
+## - file_line_routes_crossing: men whose straight route from where he stands to his slot
+##   properly crosses the route of another man of his own file line, one standing laterally
+##   within FILE_LINE_TIE_FRAC of a file pitch of him. These are the men a widening splits
+##   across two new files, and a route crossing one of theirs is a walk through a man one body
+##   away. Routes of men in different file lines are not compared: a block widening off one
+##   flank shears its men past each other at a distance, which is not this.
 ##
 ## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
 static func derived_field(u: Dictionary, field: String):
@@ -916,6 +930,10 @@ static func derived_field(u: Dictionary, field: String):
 	if field == "slots_beyond_flanks":
 		return _slots_beyond_flanks(slots, centre, ref)
 	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
+	if field == "file_line_routes_crossing":
+		return _file_line_routes_crossing(pos, slots, lateral,
+				float(ref.get("file_pitch", 0.0)) * FILE_LINE_TIE_FRAC,
+				float(ref.get("soldier_body_radius", 0.0)) * ROUTE_TOUCH_BODY_FRAC)
 	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
 	var n: int = pos.size()
 	var width: float = 0.0
@@ -932,6 +950,43 @@ static func derived_field(u: Dictionary, field: String):
 	if field == "slots_across_centreline":
 		return crossed
 	return snappedf(excess, 0.1)
+
+
+## file_line_routes_crossing (see derived_field): men whose straight route from `pos` to his own
+## entry in `slots` properly crosses the route of a man standing within `tie` of him along
+## `lateral`. A proper crossing has each route's ends on opposite sides of the other's line, each
+## more than `margin` from it, so routes that only touch, such as one man walking straight up his
+## file onto the spot another is stepping out of, do not count. Null with no file pitch to
+## measure the tie by.
+static func _file_line_routes_crossing(pos: Array, slots: Array, lateral: Vector2, tie: float,
+		margin: float):
+	if tie <= 0.0:
+		return null
+	var n: int = pos.size()
+	var crossed: Dictionary = {}
+	for i in range(n):
+		var a1 := Vector2(pos[i][0], pos[i][1])
+		var a2 := Vector2(slots[i][0], slots[i][1])
+		var len_a: float = a1.distance_to(a2)
+		if len_a <= 0.0:
+			continue
+		for j in range(i + 1, n):
+			var b1 := Vector2(pos[j][0], pos[j][1])
+			if absf((b1 - a1).dot(lateral)) >= tie:
+				continue
+			var b2 := Vector2(slots[j][0], slots[j][1])
+			var len_b: float = b1.distance_to(b2)
+			if len_b <= 0.0:
+				continue
+			var d1: float = (a2 - a1).cross(b1 - a1) / len_a
+			var d2: float = (a2 - a1).cross(b2 - a1) / len_a
+			var d3: float = (b2 - b1).cross(a1 - b1) / len_b
+			var d4: float = (b2 - b1).cross(a2 - b1) / len_b
+			if d1 * d2 < 0.0 and d3 * d4 < 0.0 and minf(absf(d1), absf(d2)) > margin \
+					and minf(absf(d3), absf(d4)) > margin:
+				crossed[i] = true
+				crossed[j] = true
+	return crossed.size()
 
 
 ## grid_off_heading (see derived_field): the angle in degrees, to 0.1, between the unit record's

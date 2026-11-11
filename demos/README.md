@@ -543,7 +543,7 @@ Two optional keys widen what an entry can say:
   A uid that never appeared, or any snapshot inside the range with no `units` list,
   fails rather than passing.
 
-Five more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
+Six more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
 defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
 The first three measure sideways from the unit's position.
 The first two compare every man's body with his own slot, along the unit's lateral axis.
@@ -599,7 +599,21 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
   Pin it with `"value": 0` and a `tol` in world units with a stated basis,
   such as a number of rank pitches (`motion_ref.rank_pitch`).
 
-A dump without the full arrays cannot supply any of the first three fields or `slot_distance_max`,
+- `file_line_routes_crossing` -- how many men have a straight route, from where he stands to his slot,
+  that properly crosses the route of another man of his own file line:
+  one standing within a quarter of a file pitch of him, sideways (`DemoDefects.FILE_LINE_TIE_FRAC`,
+  the width the sim's own deal uses).
+  These are the men a widening splits across two new files;
+  a crossing between two of them is a walk through a man one body away.
+  A crossing counts only when each route's ends lie more than a tenth of a body radius
+  (`DemoDefects.ROUTE_TOUCH_BODY_FRAC`) to either side of the other's line,
+  so a man walking straight up his file onto the spot another is stepping out of only touches.
+  Routes of men in different file lines are not compared,
+  since a block widening off one flank shears its files past each other at a distance.
+  Sample it just after the reshape, and pin it with `"value": 0`; it is an exact count.
+
+A dump without the full arrays cannot supply any of the first three fields, `slot_distance_max`
+or `file_line_routes_crossing`,
 and one without `motion_ref.slot_grid` cannot supply `grid_off_heading`.
 Neither can one whose per-soldier bodies and slots are empty or differ in count
 (a casualty the body layer has not caught up with yet).

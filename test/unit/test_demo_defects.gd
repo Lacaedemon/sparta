@@ -1020,6 +1020,41 @@ func test_derived_slot_distance_sees_a_walk_in_depth() -> void:
 			"bodies and slots out of step are uncheckable, not measured short")
 
 
+func test_derived_file_line_routes_crossing_counts_only_men_of_one_file_line() -> void:
+	# One file line at x 0 split across two new files to one side: the rear man sent forward to
+	# the far file and the front man sent back to the near one cross. The pitch is 10, so the
+	# tie is 2.5 wu, and both men are of one file line.
+	var split: Dictionary = _derived_record([[0.0, -5.0], [0.0, 5.0]], [[-20.0, 5.0], [-10.0, -5.0]])
+	assert_eq(DemoDefects.derived_field(split, "file_line_routes_crossing"), 2,
+			"both men of the crossing pair count")
+	var interleaved: Dictionary = _derived_record([[0.0, -5.0], [0.0, 5.0]],
+			[[-20.0, 0.0], [-10.0, 0.0]])
+	assert_eq(DemoDefects.derived_field(interleaved, "file_line_routes_crossing"), 0,
+			"side by side on one rank, the routes do not cross")
+	# Crossing routes from men a file pitch apart are a shear between files, not a file split.
+	assert_true(DemoDefects._segments_cross(Vector2(0, -5), Vector2(-20, 5), Vector2(10, 5),
+			Vector2(-10, -5)), "precondition: these two routes cross")
+	var apart: Dictionary = _derived_record([[0.0, -5.0], [10.0, 5.0]], [[-20.0, 5.0], [-10.0, -5.0]])
+	assert_eq(DemoDefects.derived_field(apart, "file_line_routes_crossing"), 0,
+			"men of different file lines are not compared")
+	# A crossing whose one route starts 0.2 wu off the other's line is a touch for a 4.5 wu body:
+	# its margin is a tenth of the radius, 0.45 wu.
+	var touch: Dictionary = _derived_record([[0.0, 0.0], [0.2, 9.0]], [[0.0, 18.0], [-9.0, 9.0]])
+	assert_eq(DemoDefects.derived_field(touch, "file_line_routes_crossing"), 2,
+			"precondition: with no body radius dumped, the margin is 0 and the pair crosses")
+	touch["motion_ref"]["soldier_body_radius"] = 4.5
+	assert_eq(DemoDefects.derived_field(touch, "file_line_routes_crossing"), 0,
+			"inside the body's margin the routes only touch")
+	var swapped: Dictionary = _derived_record([[0.2, 9.0], [0.0, 0.0]], [[-9.0, 9.0], [0.0, 18.0]])
+	swapped["motion_ref"]["soldier_body_radius"] = 4.5
+	assert_eq(DemoDefects.derived_field(swapped, "file_line_routes_crossing"), 0,
+			"and with the men listed the other way round")
+	var no_pitch: Dictionary = _derived_record([[0.0, -5.0], [0.0, 5.0]], [[-20.0, 5.0], [-10.0, -5.0]])
+	no_pitch["motion_ref"] = {}
+	assert_null(DemoDefects.derived_field(no_pitch, "file_line_routes_crossing"),
+			"no file pitch to measure the tie by is uncheckable")
+
+
 func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:
 	# A narrowing: the man at x 40 stands outside the new block (half-width 10), so his walk in
 	# to its near edge is not excess; the man at the centre stepping out to -10 is.
