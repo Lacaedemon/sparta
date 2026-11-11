@@ -1904,12 +1904,16 @@ var _flight_turn_rate: float = 0.0
 # every _flight_step call and read by _process_rout in the same tick, so it carries nothing
 # from tick to tick.
 var _flight_step_narrow: bool = false
-# The direction the anchor's flight was steered on the last routing tick (the step direction,
-# or the side-step along a face _flight_front_veer turned it to), before the flight velocity's
-# bounded turn: _flight_step's turn-back reads it as the leg the flight last ran.
-# _flee_velocity cannot stand in for it, since it lags the steered direction while it turns.
-# Zero for a router just broken, which has run no leg yet. Read only while state == ROUTING.
-var _flight_leg: Vector2 = Vector2.ZERO
+# True when this tick's _flight_step returned the turn-back's hold (the step along the
+# heading). Set by every _flight_step call and read by _process_rout in the same tick.
+var _flight_step_held: bool = false
+# True when the last routing tick's flight was steered off the flight line by a detour step
+# or by the side-step along a face (_flight_front_veer); false after a straight tick, after a
+# turn-back hold, and for a router just broken. _flight_step's turn-back holds only after such
+# a leg, so a held tick, which steers along the heading, cannot re-arm the hold on the next
+# tick: the hold lasts one tick at most after a detour leg. _flee_velocity cannot stand in for
+# the leg, since it lags the steered direction while it turns. Read only while state == ROUTING.
+var _flight_leg_was_detour: bool = false
 # True from a rally until the anchor has pulled up from the flight it handed over (see _rally
 # and is_rally_halting). Cleared by _tick_idle_coast once the anchor stops, or the moment the
 # unit locomotes, fights, or carries a held march; and by _rout() -- whichever comes first.
@@ -11037,7 +11041,8 @@ func _rout() -> void:
 	# is dropped, as the pace above drops it: the flight never carries a router on toward the
 	# enemy, and a rally soon after must not coast it there.
 	_flee_velocity = _flee_heading() * _flee_pace
-	_flight_leg = Vector2.ZERO   # no leg run yet
+	_flight_leg_was_detour = false   # no leg run yet
+	_flight_step_held = false
 	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
 	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
 	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
@@ -11150,7 +11155,7 @@ func _process_rout(delta: float) -> void:
 	# flight step leaving a detour leg) turns the flight over a few ticks instead of moving
 	# every slot onto the new velocity at once.
 	_flee_velocity = _flee_velocity.move_toward(dir * _flee_pace, flight_velocity_accel() * delta)
-	_flight_leg = dir
+	_flight_leg_was_detour = not _flight_step_held and dir.dot(flee) < STRAIGHT_FLIGHT_DOT
 	var next: Vector2 = position + _flee_velocity * delta
 	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
 			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
@@ -11299,7 +11304,7 @@ func _clear_flight() -> void:
 	_flee_pace = 0.0
 	_flee_velocity = Vector2.ZERO
 	_flight_turn_rate = 0.0
-	_flight_leg = Vector2.ZERO
+	_flight_leg_was_detour = false
 
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
@@ -11701,29 +11706,30 @@ func _rout_step_clearance() -> float:
 ##   rear ranks into the terrain it just rounded. It runs on along its own heading until the
 ##   flight line is clear at the turned block's swept width (terrain_clearance along the
 ##   flight line), as long as that heading itself runs clear, and only then turns back. Only
-##   a router whose flight was steered on a detour leg last tick (_flight_leg) does this; a
-##   router just broken has run no leg yet.
+##   a router whose flight a detour step or a side-step steered off the flight line last tick
+##   (_flight_leg_was_detour) does this, and a held tick is not such a leg, so the hold lasts
+##   one tick at most after a detour leg; a router just broken has run no leg yet.
 ## - A detour whose waypoint would leave the turned block hanging off the field sideways (a
 ##   hill near the field's edge) falls back to the anchor's own margin (_rout_clearance), as
 ##   before the swept width existed, so the flight never leads the block off the field.
 func _flight_step(flee: Vector2) -> Vector2:
 	_flight_step_narrow = false
+	_flight_step_held = false
 	var field: PathField = PathField.active
 	var wide: float = _rout_step_clearance()
 	var step: Vector2 = field.next_step_fleeing(position, flee, wide)
 	var dir: Vector2 = (step - position).normalized()
 	if dir.dot(flee) >= STRAIGHT_FLIGHT_DOT:
-		# The leg the flight was steered on last tick, if it was a detour leg (a router just
-		# broken has run none yet). The steered direction, not _flee_velocity, which lags it.
-		var leg: Vector2 = _flight_leg
-		if leg != Vector2.ZERO and leg.dot(flee) < STRAIGHT_FLIGHT_DOT \
-				and facing.dot(flee) < STRAIGHT_FLIGHT_DOT \
+		# Only after a leg a detour step or side-step steered last tick (never after a hold of
+		# its own, so the hold cannot feed itself; a router just broken has run no leg yet).
+		if _flight_leg_was_detour and facing.dot(flee) < STRAIGHT_FLIGHT_DOT \
 				and _across_flight_on_field(position, flee, wide):
 			var turned: float = maxf(wide, terrain_clearance(flee))
 			var straight: Vector2 = field.next_step_fleeing(position, flee, turned)
 			if (straight - position).normalized().dot(flee) < STRAIGHT_FLIGHT_DOT:
 				var ahead: Vector2 = field.next_step_fleeing(position, facing, wide)
 				if (ahead - position).normalized().dot(facing) >= STRAIGHT_FLIGHT_DOT:
+					_flight_step_held = true
 					return ahead
 		return step
 	if wide <= _rout_clearance():
@@ -11774,10 +11780,9 @@ func _flight_step(flee: Vector2) -> Vector2:
 ## _process_rout does not call it on a tick whose step fell back to the anchor's own margin
 ## (_flight_step_narrow): a block too wide to pass beside the field's edge has no room to
 ## side-step either, and veering it there led it off the field.
-## The veered direction is what the flight velocity turns toward (at flight_velocity_accel),
-## and _process_rout keeps it as the leg the flight was steered on (_flight_leg), which
-## _flight_step's turn-back exception reads: a side-step along a face counts as a leg off the
-## flight line there, as any detour leg does.
+## The veered direction is what the flight velocity turns toward (at flight_velocity_accel). A
+## side-step counts as a detour leg for _flight_step's turn-back (_flight_leg_was_detour), as
+## a detour step does.
 func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
 	var field: PathField = PathField.active
 	if not field.has_block_terrain() or _flee_pace <= 0.0 or delta <= 0.0:
@@ -12708,7 +12713,7 @@ func to_snapshot_dict() -> Dictionary:
 		"moved_while_routing": _moved_while_routing,
 		"moved_while_routing_pace": _moved_while_routing_pace,
 		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
-		"flight_leg": _flight_leg,
+		"flight_leg_was_detour": _flight_leg_was_detour,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"body_flight_ff_prev": _body_flight_ff_prev.duplicate(),
 		"march_target_frac": _march_target_frac,
@@ -13005,7 +13010,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
 	_flee_pace = float(d.get("flee_pace", _flee_pace))
 	_flee_velocity = d.get("flee_velocity", _flee_velocity)
-	_flight_leg = d.get("flight_leg", _flight_leg)
+	_flight_leg_was_detour = bool(d.get("flight_leg_was_detour", _flight_leg_was_detour))
 	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))

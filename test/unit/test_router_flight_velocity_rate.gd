@@ -46,6 +46,12 @@ const TICK := 1.0 / 60.0
 # velocity change read back from two stored velocities carries up to that much of each
 # component's size as rounding.
 const FLOAT32_EPS := 1.0 / 8388608.0
+# The longest a turn-back hold can last after a detour leg: the held tick clears
+# Unit._flight_leg_was_detour, which the hold needs, so the tick after it cannot hold.
+const HOLD_TICKS_MAX := 1
+# Ticks watched after the detour leg for the hold to release: enough that a self-sustaining
+# hold would show.
+const HOLD_WATCH_TICKS := 30
 
 var _battle: Node = null
 
@@ -143,7 +149,7 @@ func test_the_flight_turns_from_a_side_step_at_the_share_cap() -> void:
 	router.position = OPEN_GROUND
 	router._flee_pace = router.flee_speed()
 	router._flee_velocity = Vector2.LEFT * router._flee_pace
-	router._flight_leg = Vector2.LEFT
+	router._flight_leg_was_detour = true
 	router.facing = Vector2.DOWN
 	router._flight_turn_rate = 0.0
 	var before: Vector2 = router._flee_velocity
@@ -266,18 +272,48 @@ func test_the_turn_back_holds_only_after_a_detour_leg() -> void:
 			"setup: the plain step runs straight down the flight line (got %s)" % plain)
 	var detour := Vector2.DOWN.rotated(deg_to_rad(30.0))
 	# Steered on a detour leg last tick: the block runs on along its heading.
-	router._flight_leg = detour
+	router._flight_leg_was_detour = true
 	router._flee_velocity = detour * router._flee_pace
 	var held: Vector2 = (router._flight_step(Vector2.DOWN) - router.position).normalized()
 	assert_almost_eq(held.dot(router.facing), 1.0, 0.0001,
 			"setup: after a detour leg the turn-back holds the heading (got %s)" % held)
+	assert_true(router._flight_step_held, "and says it held")
 	# Steered straight down the flight line last tick, with the flight velocity still lagging
 	# on the detour: no hold, the flight takes its plain step.
-	router._flight_leg = Vector2.DOWN
+	router._flight_leg_was_detour = false
 	var step: Vector2 = (router._flight_step(Vector2.DOWN) - router.position).normalized()
 	assert_gte(step.dot(Vector2.DOWN), Unit.STRAIGHT_FLIGHT_DOT,
 			"a straight last leg takes the plain step, whatever the lagging velocity (got %s)"
 			% step)
+
+
+func test_a_turn_back_hold_cannot_sustain_itself() -> void:
+	# A held tick steers along the heading, which is off the flight line, but it is not a
+	# detour leg (_flight_leg_was_detour), so it cannot re-arm the hold: after a detour leg
+	# the hold lasts at most HOLD_TICKS_MAX = 1 tick, however long the turned block's swept
+	# width keeps the flight line blocked.
+	var router: Unit = await _spawn_close()
+	assert_not_null(router, "the team-1 cavalry deployed")
+	if router == null:
+		return
+	_place_for_turn_back(router, deg_to_rad(30.0))
+	router._flight_leg_was_detour = true
+	router._flee_velocity = Vector2.DOWN.rotated(deg_to_rad(30.0)) * router._flee_pace
+	router.rally_morale_threshold = 1000.0
+	router.rout_time = 1000.0
+	router.morale = 0.0
+	var held: int = 0
+	var first_free: int = -1
+	for k in range(HOLD_WATCH_TICKS):
+		router._process_rout(TICK)
+		if router._flight_step_held:
+			held += 1
+		elif first_free < 0:
+			first_free = k
+	assert_gt(held, 0, "setup: the hold engaged after the detour leg")
+	assert_lte(held, HOLD_TICKS_MAX,
+			"the hold lasted %d ticks of %d, no more than %d" % [held, HOLD_WATCH_TICKS, HOLD_TICKS_MAX])
+	assert_eq(first_free, HOLD_TICKS_MAX, "and released on the tick after it")
 
 
 ## The squadron moved well clear of the router, so a rally's coast meets no enemy.

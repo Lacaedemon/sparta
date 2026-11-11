@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/deep-router-close-start-hill.json",
-  "caption": "A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 2 m short of a hill and side-steps west along the hill's face until its front rank is clear. The flight now changes its velocity by at most 4 m/s per second, the most a rider off his place can be helped to follow: it eases onto the side-step over 0.8 s and takes about 3 s to turn back off it while its pace keeps building. Before this fix it swung in a single tick: up to 324 m/s per second as the side-step ended. To turn in time, the side-step now starts earlier, so at 4 s the block stands 1.4 m further north and 0.8 m further west than before, and near the end of the clip no rider is more than 4.9 m off his place.",
+  "caption": "A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 2 m short of a hill and side-steps west along the hill's face until its front rank is clear. The flight now changes its velocity by at most 4 m/s per second, the most a rider off his place can be helped to follow: it eases onto the side-step over 0.8 s and takes about 2.7 s to turn back off it while its pace keeps building. Before this fix it swung in a single tick: up to 324 m/s per second as the side-step ended. To turn in time, the side-step now starts earlier, so at 4 s the block stands 1.4 m further north and 0.8 m further west than before, and near the end of the clip no rider is more than 4.9 m off his place.",
   "fixed_fps": 30,
   "max_frames": 176,
   "fps": 15,

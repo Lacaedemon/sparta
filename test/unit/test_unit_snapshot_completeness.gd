@@ -34,6 +34,7 @@ const EXCLUDED := {
 	"_formation_slots_call_count": COUNTER,
 	"_combat_wheel_tick": "saved as combat_wheel_ticks_ago and rebased onto the clock on restore, since the physics frame counter does not rewind on a replay seek",
 	"_flight_step_narrow": "whether this tick's flight step fell back to the anchor's own margin, set by every _flight_step call and read only later in the same tick (_process_rout), so no snapshot taken between ticks needs it",
+	"_flight_step_held": "whether this tick's flight step returned the turn-back's hold, set by every _flight_step call and read only later in the same tick (_process_rout), so no snapshot taken between ticks needs it",
 	"_facing_turn_step": "this tick's heading pivot, cleared at the top of every tick and read only later in the same tick (_hold_pivot_for_resquare, _advance_grid_lag), so no snapshot taken between ticks needs it",
 	"_relief_reverse_scan_count": COUNTER,
 	"_adjacent_engaged_cache": CACHE,

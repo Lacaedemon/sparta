@@ -221,7 +221,7 @@ and gets clear of them 3.5 seconds after it breaks.
   (though a man's place also turns with the block, which adds to what he follows),
   so a man is never left behind by the flight jumping in an instant:
   the block eases onto its side-step over a little under a second
-  and takes about three seconds to turn back off it, rather than swinging in an instant,
+  and a little under three seconds to turn back off it, rather than swinging in an instant,
   and its anchor starts the side-step sooner, while its leading rank's line is still short of the face.
   On the demo clip of such a block
   no rider ends more than about 5 m from his place, against 9.6 m before
