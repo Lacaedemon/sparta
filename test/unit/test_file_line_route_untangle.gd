@@ -157,9 +157,10 @@ func _column(n: int, pitch: float) -> PackedVector2Array:
 
 
 ## The column of 8 split the way the lateral deal splits it when the block widens off its far
-## flank, so both new files lie to one side of the old one: the rear four to the farther new
-## file and the front four to the nearer, on a block half as deep. The rear half walks forward
-## past the front half walking back, and the halves cross; once untangled no two routes cross.
+## flank, so both new files lie to one side of the old one: the front four (ranks 0 to 3, the
+## smallest y) to the farther new file and the rear four to the nearer, on a block half as deep.
+## The rear half walks forward past the front half walking back, and the halves cross; once
+## untangled no two routes cross.
 ## (Two new files straddling the old one, as
 ## the centre file of a centred explicatio splits, cannot cross: each half keeps to its side.)
 func test_untangle_interleaves_a_file_split_by_the_depth_tie_break() -> void:
@@ -178,8 +179,8 @@ func test_untangle_interleaves_a_file_split_by_the_depth_tie_break() -> void:
 
 ## A trade can set up a crossing with a man the pass has already gone by, so the loop runs
 ## until a pass trades nobody. A file of 16 split across three new files to one side, dealt in
-## depth order (the rear six to the nearest, the next six to the middle one, the front four to
-## the farthest), still has crossing routes after a single pass.
+## depth order (the front six, ranks 0 to 5, to the nearest, the next six to the middle one,
+## the rear four to the farthest), still has crossing routes after a single pass.
 func test_untangle_runs_until_no_routes_cross() -> void:
 	var pitch: float = 9.0
 	var men: PackedVector2Array = _column(16, pitch)
@@ -218,7 +219,6 @@ func test_untangle_leaves_a_mismatched_or_trivial_input_alone() -> void:
 
 
 
-
 ## The demo scan's file_line_routes_crossing field judges a file line, and a crossing, by the
 ## same widths the sim's deal untangles them by.
 func test_the_demo_scan_reads_file_lines_at_the_sims_own_widths() -> void:
@@ -226,10 +226,10 @@ func test_the_demo_scan_reads_file_lines_at_the_sims_own_widths() -> void:
 	assert_eq(DemoDefects.ROUTE_TOUCH_BODY_FRAC, UnitFormation.ROUTE_TOUCH_BODY_FRAC)
 
 
-## When a file's near new file is its own line, a man of the rear half walks straight up the
-## line onto the spot a man of the front half is stepping out of. The routes only touch, and the
-## rear man follows the other in; trading them would send him on a diagonal round a man who
-## stands still, which a settled rank can block. The untangle leaves them.
+## When a file's near new file is its own line, a man of the front half walks straight back
+## down the line onto the spot a man of the rear half is stepping out of. The routes only touch,
+## and the first man follows the other in; trading them would send him on a diagonal round a man
+## who stands still, which a settled rank can block. The untangle leaves them.
 func test_untangle_leaves_a_man_following_another_into_his_spot() -> void:
 	var pitch: float = 9.0
 	var men: PackedVector2Array = _column(4, pitch)

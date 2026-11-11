@@ -474,6 +474,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 		"_combat_wheel_bearing": -1.25,
 		"flanking_maneuver_wrap_files": 6, "flanking_maneuver_cooldown_ticks": 90,
 		"flanking_maneuver_hysteresis": 3,
+		"column_tie_pitch_frac": 0.4, "route_touch_body_frac": 0.2,
 	}
 	var original := _sample_unit()
 	var fresh := Unit.new()
@@ -516,7 +517,8 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 			"melee_front_line_min_cos",
 			"melee_side_contact_max_cos", "interior_strike_margin",
 			"melee_reface_fold_footprint_scale", "combat_reface_snap_turn", "flanking_maneuver_wrap_files",
-			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis"]:
+			"flanking_maneuver_cooldown_ticks", "flanking_maneuver_hysteresis",
+			"column_tie_pitch_frac", "route_touch_body_frac"]:
 		fields[tunable] = tunable
 	for key in fields:
 		d.erase(key)

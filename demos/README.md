@@ -601,8 +601,12 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
 
 - `file_line_routes_crossing` -- how many men have a straight route, from where he stands to his slot,
   that properly crosses the route of another man of his own file line:
-  one standing within a quarter of a file pitch of him, sideways (`DemoDefects.FILE_LINE_TIE_FRAC`,
-  the width the sim's own deal uses).
+  one standing within a quarter of a file pitch of him along the slot grid's own file axis,
+  `motion_ref.slot_grid.axis` (`DemoDefects.FILE_LINE_TIE_FRAC`, the width the sim's own deal uses),
+  so a grid folded off its facing is read along its files.
+  A dump without `motion_ref.slot_grid` cannot supply it.
+  The sim's deal leaves a crossing whose untangling would shorten the pair's walk by less than
+  `UnitFormation.UNTANGLE_MIN_GAIN_WU` (0.01 wu); this field still counts one.
   These are the men a widening splits across two new files;
   a crossing between two of them is a walk through a man one body away.
   A crossing counts only when each route's ends lie more than a tenth of a body radius

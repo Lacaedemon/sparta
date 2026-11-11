@@ -1233,8 +1233,9 @@ const COLUMN_TIE_PITCH_FRAC := 0.25
 ## to the depth tie-break. That sends the rear half of the file to one new file and the front
 ## half to the other, and since the new block is shallower, the rear half walks forward while
 ## the front half walks back, in neighbouring files one body apart -- a straight route through
-## each other. An explicatio of 140 men from 9 files to 18 sends 110 of them on crossing
-## routes that way.
+## each other. An explicatio of 140 men from 9 files to 18 held on one flank sends 178 pairs
+## of men of one file line on crossing routes that way (110 of the 140 men cross someone's
+## route when every pair in the block is counted).
 ##
 ## So only men laterally closer than `tie_width` -- men of one file line -- are compared, and
 ## any two of them whose straight routes cross trade places. A crossing counts only when each
@@ -1243,7 +1244,11 @@ const COLUMN_TIE_PITCH_FRAC := 0.25
 ## is stepping out of follows him in, and trading the two sends him on a diagonal round a man
 ## who has stood still, which a settled rank can block. Each trade shortens the pair's summed
 ## route (the triangle inequality, strictly, for a proper crossing), and by more than
-## UNTANGLE_MIN_GAIN_WU, so the loop ends with no two men of a file line on crossing routes. On
+## UNTANGLE_MIN_GAIN_WU, so the loop ends. It leaves no two men of a file line on crossing
+## routes whose untangling would shorten their walk by more than UNTANGLE_MIN_GAIN_WU; a
+## crossing that would save less stays, and the demo scan's file_line_routes_crossing, which
+## applies no gain gate, would still count it. Crossings between men of different file lines
+## stay too, which is why a widening held on one flank still reads some path_crossing. On
 ## that explicatio it interleaves each file into its two new ones, neighbouring men going side by
 ## side to one new rank, and the closest two men come no nearer than 3.3 wu, where the halves
 ## passing through each other brought two to 1.7 wu. Men further apart than `tie_width` are never

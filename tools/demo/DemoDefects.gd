@@ -303,12 +303,27 @@ static func speed_quantization_margin(dt_ticks: int, tps: float = 60.0) -> float
 ## Do two open segments properly cross? Orientation (cross-product sign) test on both
 ## pairs. Collinear and endpoint-touching cases are not crossings worth reporting, and
 ## exact zeros are measure-zero in float body data anyway.
-static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2) -> bool:
+##
+## With a positive `margin`, each segment's ends must also lie more than `margin` (a
+## distance) to either side of the other's line, so a crossing that passes within `margin`
+## of an end reads as a touch, and a segment of no length crosses nothing. That is the rule
+## the sim's deal untangles by (UnitFormation.routes_cross); the default 0 keeps the sign test
+## path_crossing has always used.
+static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2,
+		margin: float = 0.0) -> bool:
 	var d1: float = (a2 - a1).cross(b1 - a1)
 	var d2: float = (a2 - a1).cross(b2 - a1)
 	var d3: float = (b2 - b1).cross(a1 - b1)
 	var d4: float = (b2 - b1).cross(a2 - b1)
-	return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
+	if margin <= 0.0:
+		return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
+	var len_a: float = a1.distance_to(a2)
+	var len_b: float = b1.distance_to(b2)
+	if len_a <= 0.0 or len_b <= 0.0:
+		return false
+	return d1 * d2 < 0.0 and d3 * d4 < 0.0 \
+			and minf(absf(d1), absf(d2)) / len_a > margin \
+			and minf(absf(d3), absf(d4)) / len_b > margin
 
 
 ## Which soldiers take a CROSSING route between two consecutive body samples -- the
@@ -863,11 +878,12 @@ const ROUTE_TOUCH_BODY_FRAC := 0.1
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
 ## claims about where each man is sent rather than where the unit is. Null when the record
 ## cannot supply the field (not one of these names, or a dump without soldiers_full), which
-## check_expectations reports as uncheckable. All but the last measure sideways from the unit's
-## position.
+## check_expectations reports as uncheckable. The first three measure sideways from the unit's
+## position; grid_off_heading is an angle, slot_distance_max a distance in any direction, and
+## file_line_routes_crossing a count of crossing routes.
 ## The first two read every man's body against his own slot along the unit's lateral axis (its
-## facing turned a quarter); the third reads every slot against the grid's own footprint, along
-## the grid's own file axis:
+## facing turned a quarter); the third reads every slot against the grid's own footprint, and
+## file_line_routes_crossing groups the men by file line, both along the grid's own file axis:
 ##
 ## - slots_across_centreline: men whose slot lies across the centreline from them, each more
 ##   than half a file pitch off it -- the walk through the block a reshape must not send.
@@ -894,8 +910,9 @@ const ROUTE_TOUCH_BODY_FRAC := 0.1
 ##   to 0.1, in any direction. Unlike the lateral fields it sees a walk in depth, such as a
 ##   re-square that sends a man to the other end of his own file.
 ## - file_line_routes_crossing: men whose straight route from where he stands to his slot
-##   properly crosses the route of another man of his own file line, one standing laterally
-##   within FILE_LINE_TIE_FRAC of a file pitch of him. These are the men a widening splits
+##   properly crosses the route of another man of his own file line, one standing within
+##   FILE_LINE_TIE_FRAC of a file pitch of him along motion_ref.slot_grid's file axis (a dump
+##   without the footprint cannot supply it). These are the men a widening splits
 ##   across two new files, and a route crossing one of theirs is a walk through a man one body
 ##   away. Routes of men in different file lines are not compared: a block widening off one
 ##   flank shears its men past each other at a distance, which is not this.
@@ -929,11 +946,9 @@ static func derived_field(u: Dictionary, field: String):
 	var centre := Vector2(float(centre_pair[0]), float(centre_pair[1]))
 	if field == "slots_beyond_flanks":
 		return _slots_beyond_flanks(slots, centre, ref)
-	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
 	if field == "file_line_routes_crossing":
-		return _file_line_routes_crossing(pos, slots, lateral,
-				float(ref.get("file_pitch", 0.0)) * FILE_LINE_TIE_FRAC,
-				float(ref.get("soldier_body_radius", 0.0)) * ROUTE_TOUCH_BODY_FRAC)
+		return _file_line_routes_crossing(pos, slots, ref)
+	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
 	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
 	var n: int = pos.size()
 	var width: float = 0.0
@@ -953,37 +968,35 @@ static func derived_field(u: Dictionary, field: String):
 
 
 ## file_line_routes_crossing (see derived_field): men whose straight route from `pos` to his own
-## entry in `slots` properly crosses the route of a man standing within `tie` of him along
-## `lateral`. A proper crossing has each route's ends on opposite sides of the other's line, each
-## more than `margin` from it, so routes that only touch, such as one man walking straight up his
-## file onto the spot another is stepping out of, do not count. Null with no file pitch to
-## measure the tie by.
-static func _file_line_routes_crossing(pos: Array, slots: Array, lateral: Vector2, tie: float,
-		margin: float):
-	if tie <= 0.0:
+## entry in `slots` properly crosses the route of a man of his own file line: one standing
+## within FILE_LINE_TIE_FRAC of a file pitch of him along the slot grid's own file axis,
+## motion_ref.slot_grid.axis, the frame the sim's deal untangles in, so a grid folded off its
+## facing is read along its files rather than across them. A crossing is _segments_cross with a
+## margin of ROUTE_TOUCH_BODY_FRAC of the body radius, so routes that only touch, such as one man
+## walking straight up his file onto the spot another is stepping out of, do not count. The
+## sim's deal also trades only crossings whose untangling shortens the pair's walk by more than
+## UnitFormation.UNTANGLE_MIN_GAIN_WU (0.01 wu); this field applies no such gate, so it can count
+## a crossing the deal left for saving less than that. Null with no file pitch or no slot grid.
+static func _file_line_routes_crossing(pos: Array, slots: Array, ref: Dictionary):
+	var tie: float = float(ref.get("file_pitch", 0.0)) * FILE_LINE_TIE_FRAC
+	var grid = ref.get("slot_grid")
+	if tie <= 0.0 or not (grid is Dictionary):
 		return null
+	var axis_pair = grid.get("axis")
+	if not (axis_pair is Array) or (axis_pair as Array).size() != 2:
+		return null
+	var axis := Vector2(float(axis_pair[0]), float(axis_pair[1])).normalized()
+	var margin: float = float(ref.get("soldier_body_radius", 0.0)) * ROUTE_TOUCH_BODY_FRAC
 	var n: int = pos.size()
 	var crossed: Dictionary = {}
 	for i in range(n):
 		var a1 := Vector2(pos[i][0], pos[i][1])
 		var a2 := Vector2(slots[i][0], slots[i][1])
-		var len_a: float = a1.distance_to(a2)
-		if len_a <= 0.0:
-			continue
 		for j in range(i + 1, n):
 			var b1 := Vector2(pos[j][0], pos[j][1])
-			if absf((b1 - a1).dot(lateral)) >= tie:
+			if absf((b1 - a1).dot(axis)) >= tie:
 				continue
-			var b2 := Vector2(slots[j][0], slots[j][1])
-			var len_b: float = b1.distance_to(b2)
-			if len_b <= 0.0:
-				continue
-			var d1: float = (a2 - a1).cross(b1 - a1) / len_a
-			var d2: float = (a2 - a1).cross(b2 - a1) / len_a
-			var d3: float = (b2 - b1).cross(a1 - b1) / len_b
-			var d4: float = (b2 - b1).cross(a2 - b1) / len_b
-			if d1 * d2 < 0.0 and d3 * d4 < 0.0 and minf(absf(d1), absf(d2)) > margin \
-					and minf(absf(d3), absf(d4)) > margin:
+			if _segments_cross(a1, a2, b1, Vector2(slots[j][0], slots[j][1]), margin):
 				crossed[i] = true
 				crossed[j] = true
 	return crossed.size()
