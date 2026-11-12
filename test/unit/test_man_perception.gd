@@ -4,7 +4,7 @@ extends GutTest
 ## never typed in by hand.
 
 const ManPerception = preload("res://scripts/ManPerception.gd")
-const Perception = preload("res://scripts/Perception.gd")
+const PathField = preload("res://scripts/PathField.gd")
 
 # Sight radius for the bare test units, world units: a round figure well inside any field.
 const SIGHT: float = 300.0
@@ -14,12 +14,20 @@ const MAN_FACING := Vector2.DOWN
 const EPS: float = 1e-5
 
 
+var _saved_active_field: Object = null
+
+
 func before_each() -> void:
 	SpatialHash.reset()
+	# Perception.perceives falls back to the global sight field when given neither terrain
+	# nor a field; isolate these tests from whatever field another script left there.
+	_saved_active_field = PathField.active
+	PathField.active = null
 
 
 func after_each() -> void:
 	SpatialHash.reset()
+	PathField.active = _saved_active_field
 
 
 ## A bare (out-of-tree) unit carrying the given bodies, all facing `body_facing`.
@@ -53,11 +61,11 @@ func _observer() -> Unit:
 	return _unit(1, 0, PackedVector2Array([MAN_POS]))
 
 
-func _perceive(observer: Unit, units: Array, frame: int = 1, seen: Dictionary = {},
+func _perceive(observer: Unit, units: Array, frame: int = 1, terrain: Array = [],
 		mp: ManPerception = null) -> Dictionary:
 	if mp == null:
 		mp = ManPerception.new()
-	mp.prepare(frame, units, seen)
+	mp.prepare(frame, units, terrain, null)
 	return mp.perceive(observer, 0)
 
 
@@ -96,7 +104,7 @@ func test_arc_weight_is_full_in_the_visual_field_and_falls_to_the_rear_weight() 
 	var rear: float = ManPerception.REAR_WEIGHT
 	assert_eq(ManPerception.arc_weight(MAN_FACING, MAN_FACING, half, rear), 1.0, "straight ahead")
 	assert_eq(ManPerception.arc_weight(MAN_FACING, Vector2.RIGHT, half, rear), 1.0,
-		"square to his side is inside a 107-degree half-field")
+		"square to his side is inside the visual field")
 	assert_almost_eq(ManPerception.arc_weight(MAN_FACING, MAN_FACING.rotated(half - 1e-4), half, rear),
 		1.0, EPS, "just inside the field edge")
 	assert_almost_eq(ManPerception.arc_weight(MAN_FACING, -MAN_FACING, half, rear), rear, EPS,
@@ -116,8 +124,7 @@ func test_arc_weight_is_continuous_at_the_field_edge() -> void:
 	assert_lt(outside, 1.0, "past the edge the weight has begun to fall")
 
 
-func test_the_visual_field_constant_is_the_cited_107_degrees() -> void:
-	assert_almost_eq(rad_to_deg(ManPerception.VISUAL_FIELD_HALF_ANGLE), 107.0, 1e-4)
+func test_the_rear_weight_default_lies_between_none_and_full() -> void:
 	assert_gt(ManPerception.REAR_WEIGHT, 0.0, "a foe behind a man must still register")
 	assert_lt(ManPerception.REAR_WEIGHT, 1.0, "and weigh less than one he can see")
 
@@ -164,16 +171,17 @@ func test_a_foe_on_the_edge_of_sight_is_perceived_with_no_weight() -> void:
 	assert_almost_eq(float(r["nearest_distance"]), SIGHT, EPS)
 
 
-func test_default_radius_is_the_mans_unit_observer_range() -> void:
+func test_default_radius_is_the_mans_unit_sight_range() -> void:
 	var man := _observer()
+	var inside := _unit(2, 1, PackedVector2Array([Vector2(0.0, SIGHT - 1.0)]))
+	var beyond := _unit(3, 1, PackedVector2Array([Vector2(0.0, -(SIGHT + 1.0))]))
+	assert_eq(_perceive(man, [man, inside, beyond])["perceived"], 1, "out to his unit's sight_range")
+	man.sight_range = SIGHT * 0.5
+	assert_eq(_perceive(man, [man, inside, beyond], 2)["perceived"], 0, "it follows the unit's range")
+	man.sight_range = SIGHT
 	man.state = Unit.State.ROUTING
-	var routed_range: float = Perception.observer_range(man)
-	assert_lt(routed_range, SIGHT, "precondition: routing cuts the observer range")
-	var gap: float = (routed_range + SIGHT) * 0.5   # inside SIGHT, beyond the routing range
-	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, gap)]))
-	assert_eq(_perceive(man, [man, foe])["perceived"], 0, "a fleeing man's sight is cut")
-	man.state = Unit.State.IDLE
-	assert_eq(_perceive(man, [man, foe], 2)["perceived"], 1, "a formed man sees the full range")
+	assert_eq(_perceive(man, [man, inside, beyond], 3)["perceived"], 1,
+		"a fleeing man still sees: where he looks is his facing, not a cut radius")
 
 
 func test_a_caller_can_set_the_sight_radius() -> void:
@@ -181,10 +189,10 @@ func test_a_caller_can_set_the_sight_radius() -> void:
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
 	var mp := ManPerception.new()
 	mp.sight_radius = 50.0
-	assert_eq(_perceive(man, [man, foe], 1, {}, mp)["perceived"], 0)
+	assert_eq(_perceive(man, [man, foe], 1, [], mp)["perceived"], 0)
 	var mp2 := ManPerception.new()
 	mp2.sight_radius = 400.0
-	var r: Dictionary = _perceive(man, [man, foe], 1, {}, mp2)
+	var r: Dictionary = _perceive(man, [man, foe], 1, [], mp2)
 	assert_almost_eq((r["threat"] as Vector2).y, ManPerception.distance_weight(100.0, 400.0), EPS)
 
 
@@ -193,13 +201,13 @@ func test_a_caller_can_set_the_arc() -> void:
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, -100.0)]))
 	var mp := ManPerception.new()
 	mp.rear_weight = 1.0
-	var t: Vector2 = _perceive(man, [man, foe], 1, {}, mp)["threat"]
+	var t: Vector2 = _perceive(man, [man, foe], 1, [], mp)["threat"]
 	assert_almost_eq(t.y, -ManPerception.distance_weight(100.0, SIGHT), EPS,
 		"rear weight 1: a foe behind counts in full")
 	var side := _unit(3, 1, PackedVector2Array([Vector2(100.0, 0.0)]))
 	var narrow := ManPerception.new()
 	narrow.visual_field_half_angle = deg_to_rad(45.0)
-	var ts: Vector2 = _perceive(man, [man, side], 1, {}, narrow)["threat"]
+	var ts: Vector2 = _perceive(man, [man, side], 1, [], narrow)["threat"]
 	var expected: float = ManPerception.distance_weight(100.0, SIGHT) \
 		* ManPerception.arc_weight(MAN_FACING, Vector2.RIGHT, deg_to_rad(45.0), ManPerception.REAR_WEIGHT)
 	assert_almost_eq(ts.x, expected, EPS, "a narrow helmet field puts a side foe in the falloff")
@@ -232,14 +240,34 @@ func test_friends_and_the_dead_are_not_threats() -> void:
 	assert_eq(r["threat"], Vector2.ZERO)
 
 
-func test_fog_hides_bodies_of_units_the_team_does_not_see() -> void:
+func test_occluding_terrain_hides_a_foe_from_the_man() -> void:
 	var man := _observer()
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
-	assert_eq(_perceive(man, [man, foe], 1, {0: {}})["perceived"], 0, "unseen unit: no bodies")
-	assert_eq(_perceive(man, [man, foe], 1, {0: {2: true}})["perceived"], 1, "seen unit counts")
-	assert_eq(_perceive(man, [man, foe], 1, {1: {}})["perceived"], 1,
-		"another team's fog does not apply to this man")
-	assert_eq(_perceive(man, [man, foe], 1, {0: null})["perceived"], 1, "null: no fog")
+	var wall := {"rect": Rect2(-50.0, 40.0, 100.0, 20.0), "kind": "block", "sight": "block"}
+	assert_eq(_perceive(man, [man, foe], 1, [wall])["perceived"], 0, "behind the wall: unseen")
+	var aside := {"rect": Rect2(200.0, 40.0, 100.0, 20.0), "kind": "block", "sight": "block"}
+	assert_eq(_perceive(man, [man, foe], 1, [aside])["perceived"], 1, "a wall off his line: seen")
+
+
+func test_screening_terrain_shortens_the_mans_sight() -> void:
+	var man := _observer()
+	var screen := {"rect": Rect2(-50.0, 40.0, 100.0, 20.0), "kind": "slow", "sight": "screen"}
+	var factor: float = Unit.SIGHT_SCREEN_FACTOR
+	var near := _unit(2, 1, PackedVector2Array([Vector2(0.0, SIGHT * factor - 1.0)]))
+	var far := _unit(3, 1, PackedVector2Array([Vector2(0.0, SIGHT * factor + 1.0)]))
+	assert_eq(_perceive(man, [man, near], 1, [screen])["perceived"], 1, "inside the screened range")
+	assert_eq(_perceive(man, [man, far], 1, [screen])["perceived"], 0, "beyond the screened range")
+
+
+func test_a_foe_at_his_elbow_is_seen_though_its_units_centre_is_far() -> void:
+	# A wide enemy line whose centre is far beyond the man's sight: its near wing still
+	# stands at his elbow, and he sees that man himself.
+	var man := _observer()
+	var line := _unit(2, 1, PackedVector2Array([Vector2(0.0, 20.0), Vector2(4000.0, 20.0)]))
+	assert_gt(line.position.length(), SIGHT * 2.0, "precondition: the unit centre is far away")
+	var r: Dictionary = _perceive(man, [man, line])
+	assert_eq(r["perceived"], 1)
+	assert_eq(r["nearest_index"], 0)
 
 
 func test_nearest_foe_ignores_the_arc() -> void:
@@ -271,7 +299,7 @@ func test_a_man_without_a_body_perceives_nothing() -> void:
 	var man := _observer()
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 50.0)]))
 	var mp := ManPerception.new()
-	mp.prepare(1, [man, foe])
+	mp.prepare(1, [man, foe], [], null)
 	assert_eq(mp.perceive(man, 5)["perceived"], 0, "out-of-range index")
 	assert_eq(mp.perceive(man, -1)["perceived"], 0, "negative index")
 	var far_tier := _unit(3, 0, PackedVector2Array())
@@ -294,12 +322,12 @@ func test_the_answer_is_cached_for_the_frame() -> void:
 	var man := _observer()
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
 	var mp := ManPerception.new()
-	mp.prepare(1, [man, foe])
+	mp.prepare(1, [man, foe], [], null)
 	var first: Dictionary = mp.perceive(man, 0)
 	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, -100.0)])
-	mp.prepare(1, [man, foe])   # same frame: a no-op
+	mp.prepare(1, [man, foe], [], null)   # same frame: a no-op
 	assert_eq(mp.perceive(man, 0), first, "same frame: the cached answer")
-	mp.prepare(2, [man, foe])
+	mp.prepare(2, [man, foe], [], null)
 	assert_lt((mp.perceive(man, 0)["threat"] as Vector2).y, 0.0, "a new frame recomputes")
 
 
@@ -307,7 +335,7 @@ func test_a_change_in_body_count_drops_the_units_cache() -> void:
 	var man := _unit(1, 0, PackedVector2Array([MAN_POS, Vector2(0.0, -500.0)]))
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
 	var mp := ManPerception.new()
-	mp.prepare(1, [man, foe])
+	mp.prepare(1, [man, foe], [], null)
 	assert_eq(mp.perceive(man, 0)["perceived"], 1, "man 0 sees the foe")
 	assert_eq(mp.perceive(man, 1)["perceived"], 0, "man 1 stands out of sight")
 	# Man 0 falls and the arrays re-pack: index 0 now names the man who stood at index 1.
@@ -344,11 +372,11 @@ func test_the_hash_path_matches_the_list_path_bit_for_bit() -> void:
 	var far := _tree_unit(4, 1, PackedVector2Array([Vector2(3000.0, 3000.0)]))
 	var units: Array = [man, a, b, far]
 	var listed := ManPerception.new()
-	listed.prepare(1, units)
+	listed.prepare(1, units, [], null)
 	SpatialHash.rebuild(get_tree(), 7)
 	assert_true(SpatialHash.is_current(7))
 	var hashed := ManPerception.new()
-	hashed.prepare(7, units)
+	hashed.prepare(7, units, [], null)
 	for i in range(2):
 		var l: Dictionary = listed.perceive(man, i)
 		var h: Dictionary = hashed.perceive(man, i)
@@ -367,8 +395,73 @@ func test_the_hash_path_reaches_a_wide_blocks_far_bodies() -> void:
 	assert_gt(wide.position.distance_to(Vector2.ZERO), SIGHT + SpatialHash.CELL_SIZE,
 		"precondition: the block's centre is beyond sight plus the hash pad")
 	SpatialHash.rebuild(get_tree(), 3)
+	assert_true(SpatialHash.is_current(3), "precondition: the hash path runs")
 	var mp := ManPerception.new()
-	mp.prepare(3, [man, wide])
+	mp.prepare(3, [man, wide], [], null)
 	var r: Dictionary = mp.perceive(man, 0)
 	assert_eq(r["perceived"], 1)
 	assert_eq(r["nearest_index"], 0)
+
+
+func test_the_hash_path_finds_a_unit_that_moved_since_the_rebuild() -> void:
+	# The hash buckets positions at the start of the frame. A foe that has since stepped
+	# into the man's sight from a cell just past his query ring must still be found.
+	var cell: float = SpatialHash.CELL_SIZE
+	var rings: int = 3
+	var radius: float = rings * cell                   # the query ring spans exactly 3 cells
+	var man_pos := Vector2(0.0, cell - 1.0)            # the far edge of his own cell
+	var start := Vector2(0.0, (rings + 1) * cell + 8.0)   # first cell past the ring
+	var moved := Vector2(0.0, man_pos.y + radius - 1.0)   # just inside his sight
+	assert_lt(start.y - moved.y, cell, "precondition: the foe moved less than one cell")
+	var man := _tree_unit(1, 0, PackedVector2Array([man_pos]))
+	var foe := _tree_unit(2, 1, PackedVector2Array([start]))
+	SpatialHash.rebuild(get_tree(), 5)
+	assert_true(SpatialHash.is_current(5), "precondition: the hash path runs")
+	foe.position = moved
+	foe._sim_soldier_pos = PackedVector2Array([moved])
+	assert_false(SpatialHash.query(man_pos, radius).has(foe),
+		"precondition: an unpadded query of the stale grid misses it")
+	var mp := ManPerception.new()
+	mp.sight_radius = radius
+	mp.prepare(5, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0)["perceived"], 1)
+
+
+func test_a_reaped_foe_drops_a_cached_nearest_index() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 300.0) * 0.1, Vector2(0.0, 60.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0)["nearest_index"], 0, "the foe at 30 is nearest")
+	# The nearest foe falls and the arrays re-pack: index 0 now names the man at 60.
+	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 60.0)])
+	foe._sim_soldier_facing = PackedVector2Array([MAN_FACING])
+	var r: Dictionary = mp.perceive(man, 0)
+	assert_eq(r["nearest_index"], 0)
+	assert_almost_eq(float(r["nearest_distance"]), 60.0, EPS, "recomputed for the man now there")
+	assert_eq(r["perceived"], 1)
+
+
+func test_a_unit_that_gains_bodies_mid_frame_is_perceived() -> void:
+	var man := _observer()
+	var promoted := _unit(2, 1, PackedVector2Array())   # far tier: no bodies yet
+	var other := _unit(3, 0, PackedVector2Array([Vector2(500.0, 500.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, promoted, other], [], null)
+	assert_eq(mp.perceive(other, 0)["perceived"], 0, "first query of the frame: nothing near")
+	promoted._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 80.0)])
+	promoted._sim_soldier_facing = PackedVector2Array([MAN_FACING])
+	promoted.position = Vector2(0.0, 80.0)
+	assert_eq(mp.perceive(man, 0)["perceived"], 1, "promoted later in the frame: seen")
+
+
+func test_out_of_range_parameters_are_reported_and_clamped() -> void:
+	var mp := ManPerception.new()
+	mp.rear_weight = -0.5
+	assert_push_error("rear_weight")
+	assert_eq(mp.rear_weight, 0.0)
+	mp.visual_field_half_angle = 4.0
+	assert_push_error("visual_field_half_angle")
+	assert_eq(mp.visual_field_half_angle, PI)
+	mp.rear_weight = 0.25
+	assert_eq(mp.rear_weight, 0.25, "an in-range value passes through")

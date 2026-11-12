@@ -2,18 +2,22 @@ extends RefCounted
 ## Per-man threat perception: what one soldier can perceive of the enemy around him.
 ##
 ## Perception.gd answers which enemy UNITS a team sees, from unit centres. This answers the
-## question one level down, for a single man: which enemy bodies are near him, how strongly
-## each one presses on his attention, and which of them is nearest. It is the sense a man
-## acts on when he flees, turns to a foe, or picks whom to strike.
+## question one level down, for a single man: which enemy bodies he himself can see, how
+## strongly each one presses on his attention, and which of them is nearest. It is the
+## sense a man acts on when he flees, turns to a foe, or picks whom to strike.
 ##
 ## What a man perceives, and why:
-## - Sight radius. He perceives enemy bodies within `sight_radius` of himself. By default
-##   that is his own unit's observer range (Perception.observer_range: Unit.sight_range,
-##   cut by Unit.SIGHT_ROUTING_PENALTY while the unit flees), the same disc the battle's
-##   fog model already gives his unit. A man sees no farther than his unit's observers do.
-## - Team line of sight and fog. He counts a body only when his team currently sees that
-##   body's unit (the team's Perception.visible_enemy_uids set). What his army cannot see,
-##   he cannot see either.
+## - His own line of sight. A foe body counts only when Perception.perceives holds from
+##   the man's own position to that body: the same rule the battle's fog applies to unit
+##   centres (range, screening terrain that shortens it, occluding terrain that blocks
+##   it), applied man to man. Fog therefore applies to him exactly as it does to his
+##   unit's observers, without a unit-level gate deciding for him: a foe at his elbow is
+##   seen even if its unit's centre is out of view, and a foe behind a hill is not.
+## - Sight radius. By default his unit's `sight_range`, the radius the fog model gives
+##   every observer of that unit. Unit.gd documents that value as tuned for legibility
+##   on the field rather than as an eyesight claim; a man's sense uses it so that what a
+##   man reacts to stays consistent with what the battle shows under fog. A caller sets
+##   `sight_radius` to model a different reach.
 ## - Front arc. His eyes face his own facing (Unit.soldier_facing). A foe inside his visual
 ##   field counts in full; behind it the weight falls off to `rear_weight` directly behind
 ##   him, where he knows of a foe only by sound, by a comrade's shout, or by contact.
@@ -29,18 +33,21 @@ extends RefCounted
 ##
 ## Read-only: it reads unit positions, teams, states, body positions and facings, and
 ## writes nothing back into any unit. Cached per tick: the first query for a man in a frame
-## fixes his answer for that frame. Candidate enemy units come from the per-frame unit
-## SpatialHash when it has been rebuilt for the frame, and from the `units` list otherwise.
+## fixes his answer for that frame, unless his unit's or his nearest foe's body arrays are
+## re-packed (a casualty or a merge changes their size), which recomputes it. Candidate
+## enemy units come from the per-frame unit SpatialHash when it has been rebuilt for the
+## frame, and from the `units` list otherwise.
 ##
-## Limitation: a far-tier unit carries no bodies, so its men are not perceived. The tier
-## pass promotes a block once an enemy comes near it.
+## Limitations: a far-tier unit carries no bodies, so its men are not perceived (the tier
+## pass promotes a block once an enemy comes near it); a unit that enters play after the
+## frame's SpatialHash rebuild is found only on the list path until the next rebuild.
 const PerceptionRef = preload("res://scripts/Perception.gd")
 
 ## Half-angle of a man's visual field, measured from straight ahead. The normal monocular
-## field reaches about 107 degrees temporally from the line of sight (Traquair, "An
-## Introduction to Clinical Perimetry", 1938, ch. 1; Ronne 1915), so with the eyes
-## looking ahead a man sees out to 107 degrees on either side. A closed helmet (the
-## Corinthian type, for one) narrowed this; a caller modelling one sets a smaller angle.
+## field reaches about 107 degrees temporally from the line of sight (H. M. Traquair, "An
+## Introduction to Clinical Perimetry", 1938, ch. 1), so with the eyes looking ahead a man
+## sees out to 107 degrees on either side. A closed helmet (the Corinthian type, for one)
+## narrowed this; a caller modelling one sets a smaller angle.
 const VISUAL_FIELD_HALF_ANGLE: float = deg_to_rad(107.0)
 ## Weight of a foe directly behind a man, relative to one in his visual field. He cannot
 ## see a foe there; he learns of one by sound, by a comrade's shout or by contact. No
@@ -49,38 +56,47 @@ const VISUAL_FIELD_HALF_ANGLE: float = deg_to_rad(107.0)
 const REAR_WEIGHT: float = 0.5
 
 ## The sight radius every queried man uses, in world units. Zero or negative (the
-## default) means each man uses his own unit's observer range.
+## default) means each man uses his own unit's `sight_range`.
 var sight_radius: float = -1.0
-## Half-angle of the visual field, radians, from straight ahead (0..PI).
-var visual_field_half_angle: float = VISUAL_FIELD_HALF_ANGLE
-## Weight of a foe directly behind a man (0..1).
-var rear_weight: float = REAR_WEIGHT
+## Half-angle of the visual field, radians, from straight ahead. Must lie in [0, PI].
+var visual_field_half_angle: float = VISUAL_FIELD_HALF_ANGLE:
+	set(value):
+		if value < 0.0 or value > PI:
+			push_error("ManPerception: visual_field_half_angle %f outside [0, PI]" % value)
+		visual_field_half_angle = clampf(value, 0.0, PI)
+## Weight of a foe directly behind a man. Must lie in (0, 1].
+var rear_weight: float = REAR_WEIGHT:
+	set(value):
+		if value <= 0.0 or value > 1.0:
+			push_error("ManPerception: rear_weight %f outside (0, 1]" % value)
+		rear_weight = clampf(value, 0.0, 1.0)
 
 var _frame: int = -1
 var _units: Array = []
-var _seen_by_team: Dictionary = {}
+var _terrain: Array = []
+var _path_field: Object = null
 # Per frame: unit -> farthest body from that unit's position (its bounding circle), filled
-# on the first query of a frame, and the largest of them.
+# lazily per unit, and the largest of them.
 var _reach: Dictionary = {}
-var _max_reach: float = -1.0
+var _max_reach: float = 0.0
 # Per frame: unit -> {"count": body count when cached, "by_index": {index -> result}}.
 var _results: Dictionary = {}
 
 
 ## Bind this frame's inputs. `frame` is the physics-frame counter the caller also builds
 ## SpatialHash with (Engine.get_physics_frames()). `units` is every unit in play (the
-## "units" and "routers" groups together). `seen_by_team` maps a team to its seen set
-## (uid -> true, as Perception.visible_enemy_uids returns); a team absent from it, or
-## mapped to null, perceives every enemy unit (no fog for that team). Idempotent within a
-## frame: a second call for the same frame keeps the first call's inputs and cache.
-func prepare(frame: int, units: Array, seen_by_team: Dictionary = {}) -> void:
+## "units" and "routers" groups together). `terrain` and `path_field` are the sight inputs
+## Perception.perceives takes (Battle's terrain and its sight path field). Idempotent
+## within a frame: a second call for the same frame keeps the first call's inputs and cache.
+func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> void:
 	if frame == _frame:
 		return
 	_frame = frame
 	_units = units
-	_seen_by_team = seen_by_team
+	_terrain = terrain
+	_path_field = path_field
 	_reach.clear()
-	_max_reach = -1.0
+	_max_reach = 0.0
 	_results.clear()
 
 
@@ -103,10 +119,12 @@ func perceive(unit: Unit, index: int) -> Dictionary:
 		_results[unit] = entry
 	var by_index: Dictionary = entry["by_index"]
 	if by_index.has(index):
-		return by_index[index]
+		var cached: Dictionary = by_index[index]
+		if _nearest_still_valid(cached):
+			return _public(cached)
 	var result: Dictionary = _compute(unit, index)
 	by_index[index] = result
-	return result
+	return _public(result)
 
 
 ## Weight of a foe in direction `to_foe` from a man facing `facing`: 1 inside the visual
@@ -127,21 +145,31 @@ static func distance_weight(dist: float, radius: float) -> float:
 	return 1.0 - dist / radius
 
 
-func _empty_result() -> Dictionary:
-	return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
-		"nearest_distance": INF, "perceived": 0}
+# A cached nearest index stays valid while the foe unit's body arrays keep the size they
+# had when it was computed; a reap or a merge re-packs them.
+func _nearest_still_valid(cached: Dictionary) -> bool:
+	var foe: Variant = cached["nearest_unit"]
+	if foe == null:
+		return true
+	return (foe as Unit)._sim_soldier_pos.size() == int(cached["nearest_count"])
+
+
+func _public(r: Dictionary) -> Dictionary:
+	return {"threat": r["threat"], "nearest_unit": r["nearest_unit"],
+		"nearest_index": r["nearest_index"], "nearest_distance": r["nearest_distance"],
+		"perceived": r["perceived"]}
 
 
 func _compute(unit: Unit, index: int) -> Dictionary:
-	var out: Dictionary = _empty_result()
+	var out: Dictionary = {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
+		"nearest_distance": INF, "perceived": 0, "nearest_count": 0}
 	if index < 0 or index >= unit._sim_soldier_pos.size():
 		return out
-	var radius: float = sight_radius if sight_radius > 0.0 else PerceptionRef.observer_range(unit)
+	var radius: float = sight_radius if sight_radius > 0.0 else unit.sight_range
 	if radius <= 0.0:
 		return out
 	var pos: Vector2 = unit._sim_soldier_pos[index]
 	var facing: Vector2 = unit.soldier_facing(index)
-	var seen: Variant = _seen_by_team.get(unit.team)
 	var radius_sq: float = radius * radius
 	var threat := Vector2.ZERO
 	var nearest_sq: float = INF
@@ -149,10 +177,8 @@ func _compute(unit: Unit, index: int) -> Dictionary:
 	for foe in _candidates(pos, radius):
 		if foe.team == unit.team or foe.state == Unit.State.DEAD:
 			continue
-		if seen != null and not (seen as Dictionary).has(foe.uid):
-			continue
-		# The reach was measured at the frame's first query; the same one-cell pad as the
-		# hash query covers how far the block can have moved since.
+		# The reach is measured once per frame; the same one-cell pad as the hash query
+		# covers how far the block can have moved since.
 		var reach_out: float = radius + float(_reach[foe]) + SpatialHash.CELL_SIZE
 		if foe.position.distance_squared_to(pos) > reach_out * reach_out:
 			continue
@@ -161,11 +187,14 @@ func _compute(unit: Unit, index: int) -> Dictionary:
 			var d_sq: float = pos.distance_squared_to(bodies[j])
 			if d_sq > radius_sq:
 				continue
+			if not PerceptionRef.perceives(pos, radius, bodies[j], _terrain, _path_field):
+				continue
 			perceived += 1
 			if d_sq < nearest_sq:
 				nearest_sq = d_sq
 				out["nearest_unit"] = foe
 				out["nearest_index"] = j
+				out["nearest_count"] = bodies.size()
 			if d_sq <= 0.0:
 				continue
 			var to_foe: Vector2 = bodies[j] - pos
@@ -181,8 +210,8 @@ func _compute(unit: Unit, index: int) -> Dictionary:
 
 
 # Units that could hold a body within `radius` of `pos`, in ascending uid order so the
-# hash path and the list path sum the same bodies in the same order. Every unit in
-# `_units` with bodies has a reach entry; a hash candidate without one is not in play.
+# hash path and the list path sum the same bodies in the same order. Only members of
+# `_units` count: the caller's list says which units are in play.
 func _candidates(pos: Vector2, radius: float) -> Array:
 	_ensure_reach()
 	var raw: Array
@@ -200,13 +229,13 @@ func _candidates(pos: Vector2, radius: float) -> Array:
 	return out
 
 
+# Measure the bounding circle of every unit in play that has bodies and none yet this
+# frame. Checked on every query, so a unit that gains bodies mid-frame (a far-tier block
+# promoted, a merge) is measured as soon as it has them.
 func _ensure_reach() -> void:
-	if _max_reach >= 0.0:
-		return
-	_max_reach = 0.0
 	for u in _units:
 		var unit: Unit = u as Unit
-		if unit == null or unit._sim_soldier_pos.is_empty():
+		if unit == null or _reach.has(unit) or unit._sim_soldier_pos.is_empty():
 			continue
 		var far_sq: float = 0.0
 		for p in unit._sim_soldier_pos:
