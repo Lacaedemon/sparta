@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Adds a read-only per-man threat query (scripts/ManPerception.gd) that nothing in the battle calls yet, so no battle behaves differently: a hash sweep of every demos/inputs clip on seeds 0 to 4 matches main tick for tick. A recorded battle cannot show a query no unit acts on; the routing and engagement changes that will consume it bring their own clips."
+}
