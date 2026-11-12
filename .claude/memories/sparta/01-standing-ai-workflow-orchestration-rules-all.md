@@ -92,9 +92,51 @@ modifier or an instant state switch that ignores it. Concretely:
   redesign), and resolution authority -- so treat it as the general rule rather than a
   list of special cases.
 
+- **No anchoring or control-theory mechanics.**
+  The owner (2026-11-11) bans these as he bans snaps.
+  That means no unit-level anchor point that the men are laid out from or steered toward,
+  no rule that chooses which men an anchor sits on,
+  and no controller patches on such a layer:
+  holds, latches, enter/leave margins (hysteresis), deadbands, or rate caps on a unit-level quantity.
+  A unit's position and motion come from its men.
+  Each man acts on what he can perceive:
+  he dresses on his file leader and the men beside him,
+  follows the man ahead in his file,
+  and flees from threats.
+  A drill is a sequence of what particular men do (who moves, whom he follows, where he goes),
+  not a re-laid slot grid.
+  Worked instances:
+  PR #1945 (#1938) chose a router's anchor men by a lead rule,
+  and the rule flickered, so it would have needed hysteresis margins;
+  it closed unmerged.
+  PR #1944 (#1932) bounded a router's flight velocity,
+  which made a turn-back hold feed itself,
+  and the next fix was another gate.
+  Bottom-up routing (#1949) replaces that whole layer.
+  Existing anchor and control mechanics are audited in #1950.
+  When a defect sits in such a layer,
+  the fix is to move the behaviour down to the men, not to add a rule on top.
+
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
 the former; flag the latter as a candidate for this list.
+
+## Standing rule: realism and historical accuracy are crucial
+
+The owner (2026-11-11): "realism and historical accuracy are crucial in this project".
+A drill or maneuver (explicatio/doubling, duplicatio, countermarch, wheel, form-up)
+must match the ancient manuals (Asclepiodotus, Aelian, Arrian *Tactica*, Vegetius)
+and narrative accounts (Xenophon, Polybius),
+with cited passages, before it merges.
+A mismatch is a defect, not a style point,
+and clean demo verdicts do not show a drill is right.
+When the sources describe more than one way to do a drill,
+implement each as its own named drill rather than merging them.
+Worked instance:
+#1948 found that main's explicatio re-centres the block
+and walks each file's rear half through its front half.
+The manuals keep the front fixed
+and lead the rear half-file up the interval behind its half-file leader.
 
 ## Issue-selection priority: core mechanics over polish
 
