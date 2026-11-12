@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/file-line-explicatio-untangle-1929.json",
-  "caption": "A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8 (explicatio, B). Every old file splits across two new files, and off the centre both lie to one side of it. The men of each file now pair off side by side into the new ranks, so nobody walks through a man of his own file: 0 men set off on routes crossing those of their own file, and the closest two men stay 0.219 m apart. Before, each file sent its rear half forward through its front half walking back: 44 men set off on crossing routes, and two men came within 0.112 m of each other, under the 0.1125 m floor the demo defect scan judges a reshape by.",
+  "input": "demos/inputs/explicatio-half-file-1929.json",
+  "caption": "A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8 (explicatio, B). The front rank keeps its ground, within 0.03 m of where it stood. The rear half of each file steps sideways into the interval on its right and marches up it in column behind its half-file leader, so no man walks through a man of his own file: 0 men set off on routes crossing those of their own file, and the closest two men stay 0.68 m apart. Before, the block re-centred, so its front walked back 3.05 m, and each file sent its rear half forward through its front half: 44 men set off on crossing routes, and two men came within 0.223 m of each other, under the 0.225 m floor the demo defect scan judges a reshape by.",
   "fixed_fps": 30,
-  "max_frames": 150,
+  "max_frames": 225,
   "fps": 15,
   "width": 720
 }

@@ -1,5 +1,5 @@
 extends GutTest
-## The explicatio as the drill manuals describe it (#1948): the front stays where it stands, and
+## The explicatio as the drill manuals describe it: the front stays where it stands, and
 ## the men who change file step sideways into the interval beside their own file and march
 ## straight up it in column, the man who leads the column first and nobody overtaking the man
 ## ahead of him. Two drills choose who changes file (UnitFormation.ExplicatioDrill):
