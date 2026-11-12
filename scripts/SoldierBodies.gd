@@ -1331,6 +1331,10 @@ static func couple(unit: Unit, delta: float) -> void:
 	# in-progress turn or reform keep the wider contact_soldier_indices selection this
 	# always used to be. Also anchors a merely-in-contact (not fighting) regiment on its real
 	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact.
+	# A router decides here, on the bodies it is about to anchor on, whether its grid's front
+	# ranks trail its centre (Unit.grid_front_trails), so the anchor never lags them by a tick.
+	if unit.state == Unit.State.ROUTING:
+		unit._update_router_front_trailing()
 	var indices: PackedInt32Array = unit.position_anchor_indices(n)
 	# With no engaged front to anchor on, the drift is averaged over every body -- and while
 	# a reinforcement's newcomers are still walking in from behind, that average reads their

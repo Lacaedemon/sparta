@@ -79,6 +79,10 @@ const BAND_ROUT_BY_TICK := 300
 const BAND_WATCH_TICKS := 250
 # Half of the fewest anchored ticks on either tree across the seed runs (151, with the fix).
 const BAND_MIN_ANCHORED_TICKS := 75
+# The block's anchor should switch onto its heading once its flank trails, and stay there while
+# it is anchored. Without the trail latch's margins it switched 1 to 3 times while anchored on
+# the clip's seed runs 0 to 4 (measured 2026-11-11 on c41c9a8c), back and forth near the break.
+const BAND_MAX_SWITCHES := 1
 
 var _battle: Node = null
 
@@ -207,6 +211,7 @@ func test_a_router_under_a_quarter_turn_keeps_its_grid_front_while_it_leads() ->
 		var n: int = u._sim_soldier_pos.size()
 		assert_gt(_lead(u, u.near_front_soldier_indices(n)), 0.0,
 				"setup: on their slots the grid's front ranks stand ahead of the centroid")
+		u._update_router_front_trailing()
 		assert_false(u.grid_front_trails(), "its front ranks lead it (at %s)" % origin)
 		assert_false(u.position_anchor_on_heading(), "so it keeps them as its anchor")
 		assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
@@ -219,10 +224,11 @@ func test_a_router_under_a_quarter_turn_whose_front_ranks_trail_anchors_on_its_h
 		# A pursuer holds the grid's front ranks, now a flank, back behind the block's centre.
 		for i in u.near_front_soldier_indices(n):
 			u._sim_soldier_pos[i] -= u.facing * HOLD_BACK
-		assert_lt(_lead(u, u.near_front_soldier_indices(n)), 0.0,
-				"setup: the held flank stands behind the centroid")
+		assert_lt(_lead(u, u.near_front_soldier_indices(n)), -u.router_front_trail_enter,
+				"setup: the held flank stands more than the enter margin behind the centroid")
 		assert_lte(absf(u.grid_fold()), Unit.ROUTER_HEADING_ANCHOR_FOLD,
 				"setup: the grid is turned no more than the fold threshold")
+		u._update_router_front_trailing()
 		assert_true(u.grid_front_trails(), "its front ranks trail it (at %s)" % origin)
 		assert_true(u.position_anchor_on_heading(), "so it anchors on the men ahead along its heading")
 		var indices: PackedInt32Array = u.position_anchor_indices(n)
@@ -236,24 +242,100 @@ func test_the_demo_record_reads_the_heading_anchor_rule() -> void:
 			"a block whose front ranks lead reads false")
 	for i in u.near_front_soldier_indices(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] -= u.facing * HOLD_BACK
+	u._update_router_front_trailing()
 	assert_true(bool(DemoState.unit_record(u, {}, 1.0, false)["anchor_on_heading"]),
 			"and true once they trail")
 
 
-func test_the_trail_margin_is_configurable() -> void:
+func test_the_trail_enter_margin_is_configurable() -> void:
 	var u := _folded_unit(BAND_FOLD)
 	var n: int = u._sim_soldier_pos.size()
 	for i in u.near_front_soldier_indices(n):
 		u._sim_soldier_pos[i] -= u.facing * HOLD_BACK
 	var lead: float = _lead(u, u.near_front_soldier_indices(n))
-	assert_lt(lead, 0.0, "setup: the held flank stands behind the centroid")
-	assert_true(u.position_anchor_on_heading(), "setup: under the default margin it trails")
 	# Moving half the block HOLD_BACK back moves its front's lead by less than HOLD_BACK.
 	assert_lt(-lead, HOLD_BACK, "setup: it trails by less than HOLD_BACK")
-	u.router_front_trail_margin = HOLD_BACK
-	assert_false(u.grid_front_trails(), "a trail inside the margin does not count")
+	u.router_front_trail_enter = HOLD_BACK
+	u._update_router_front_trailing()
+	assert_false(u.grid_front_trails(), "a trail inside the enter margin does not count")
 	assert_false(u.position_anchor_on_heading(), "so it keeps its grid's front ranks")
 	assert_eq(u.position_anchor_indices(n), u.near_front_soldier_indices(n))
+	u.router_front_trail_enter = -lead * 0.5
+	u._update_router_front_trailing()
+	assert_true(u.grid_front_trails(), "the same trail past a lowered enter margin counts")
+
+
+## Move the grid's front-rank men of `u` (the selection grid_front_trails reads) along its heading
+## from where `home` has them, so their mean leads the whole block's centroid by `target` wu, and
+## return the lead that results. Moving those k of n men by d moves the lead by d * (1 - k / n).
+func _set_front_lead(u: Unit, home: PackedVector2Array, target: float) -> float:
+	u._sim_soldier_pos = home.duplicate()
+	var n: int = home.size()
+	var front: PackedInt32Array = u.near_front_soldier_indices(n)
+	var shift: float = (target - _lead(u, front)) / (1.0 - float(front.size()) / float(n))
+	for i in front:
+		u._sim_soldier_pos[i] += u.facing * shift
+	return _lead(u, u.near_front_soldier_indices(n))
+
+
+func test_the_trail_latch_holds_through_a_small_oscillation_about_zero_lead() -> void:
+	var u := _folded_unit(BAND_FOLD)
+	var home: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var enter: float = u.router_front_trail_enter
+	var leave: float = u.router_front_trail_leave
+	assert_gt(enter, 0.0, "setup: a positive enter margin")
+	assert_gt(leave, 0.0, "setup: a positive leave margin")
+	# Each step: the lead to set, and whether the ranks should count as trailing after it.
+	var steps: Array = [
+		[-0.5 * enter, false],   # behind the centre, but inside the enter margin: not yet
+		[0.5 * leave, false],
+		[-0.5 * enter, false],
+		[-1.5 * enter, true],    # past the enter margin: it trails
+		[0.5 * leave, true],     # ahead again, but inside the leave margin: still trails
+		[-0.5 * enter, true],
+		[0.5 * leave, true],
+		[1.5 * leave, false],    # past the leave margin: it leads again
+		[-0.5 * enter, false],
+	]
+	for step in steps:
+		var got: float = _set_front_lead(u, home, step[0])
+		assert_almost_eq(got, step[0], 0.25 * minf(enter, leave),
+				"setup: the front ranks lead by %.2f wu (got %.2f)" % [step[0], got])
+		u._update_router_front_trailing()
+		assert_eq(u.grid_front_trails(), step[1],
+				"at a lead of %.2f wu the ranks count as trailing: %s" % [got, step[1]])
+		assert_eq(u.position_anchor_on_heading(), step[1], "and the anchor follows the latch")
+
+
+func test_the_trail_leave_margin_is_configurable() -> void:
+	var u := _folded_unit(BAND_FOLD)
+	var home: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	_set_front_lead(u, home, -2.0 * u.router_front_trail_enter)
+	u._update_router_front_trailing()
+	assert_true(u.grid_front_trails(), "setup: it trails")
+	var lead: float = _set_front_lead(u, home, 2.0 * u.router_front_trail_leave)
+	u.router_front_trail_leave = lead * 2.0
+	u._update_router_front_trailing()
+	assert_true(u.grid_front_trails(), "a lead inside a raised leave margin keeps it trailing")
+	u.router_front_trail_leave = lead * 0.5
+	u._update_router_front_trailing()
+	assert_false(u.grid_front_trails(), "and past a lowered one it leads again")
+
+
+func test_only_a_router_reads_the_trail_latch() -> void:
+	var u := _folded_unit(BAND_FOLD)
+	u._router_front_trailing = true
+	assert_true(u.grid_front_trails(), "setup: latched")
+	u.state = Unit.State.IDLE
+	assert_false(u.grid_front_trails(), "only a router's front ranks can count as trailing")
+
+
+func test_a_new_rout_clears_the_trail_latch() -> void:
+	var u := _folded_unit(BAND_FOLD, Unit.State.FIGHTING)
+	u._router_front_trailing = true
+	u._rout()
+	assert_eq(u.state, Unit.State.ROUTING, "setup: it routs")
+	assert_false(u._router_front_trailing, "a fresh rout starts with its front ranks leading")
 
 
 func test_a_router_with_no_bodies_has_no_trailing_front() -> void:
@@ -261,6 +343,8 @@ func test_a_router_with_no_bodies_has_no_trailing_front() -> void:
 	add_child_autofree(u)
 	u.state = Unit.State.ROUTING
 	assert_eq(u._sim_soldier_pos.size(), 0, "setup: no bodies")
+	u.router_front_trail_enter = 0.0
+	u._update_router_front_trailing()
 	assert_false(u.grid_front_trails(), "no bodies stand behind anything")
 
 
@@ -273,6 +357,7 @@ func test_the_threshold_is_configurable() -> void:
 	# A small fold whose front ranks lead, so only the threshold can move it onto its heading.
 	var u := _folded_unit(SMALL_FOLD)
 	var n: int = u._sim_soldier_pos.size()
+	u._update_router_front_trailing()
 	assert_false(u.grid_front_trails(), "setup: its front ranks lead it")
 	assert_false(u.position_anchor_on_heading(), "setup: under the default it keeps them")
 	u.router_heading_anchor_fold = SMALL_FOLD * 0.5
@@ -337,7 +422,7 @@ func test_a_router_whose_flight_turn_snapped_anchors_ahead_of_its_centre() -> vo
 			"setup: the squadron routs by tick %d" % EDGE_ROUT_BY_TICK)
 	if router.state != Unit.State.ROUTING:
 		return
-	var w: Dictionary = await _watch_anchor(router, EDGE_WATCH_TICKS, safety)
+	var w: Dictionary = await _watch_anchor(router, EDGE_WATCH_TICKS, safety, 0.0)
 	assert_gt(w["max_fold"], PI * 0.5, "setup: the flight turn left the grid's front pointing back")
 	assert_gte(w["anchored"], EDGE_MIN_ANCHORED_TICKS,
 			"setup: the router anchors on some of its men after the rout")
@@ -361,7 +446,8 @@ func test_a_router_whose_snap_left_its_front_on_a_flank_anchors_ahead_of_its_cen
 			"setup: the block routs by tick %d" % BAND_ROUT_BY_TICK)
 	if router.state != Unit.State.ROUTING:
 		return
-	var w: Dictionary = await _watch_anchor(router, BAND_WATCH_TICKS, safety)
+	var w: Dictionary = await _watch_anchor(router, BAND_WATCH_TICKS, safety,
+			router.router_front_trail_enter)
 	assert_gt(w["max_fold"], Unit.FACING_SNAP_ABSORB_THRESHOLD,
 			"setup: the flight turn snapped and folded the grid")
 	assert_lte(w["max_fold"], Unit.ROUTER_HEADING_ANCHOR_FOLD,
@@ -371,17 +457,22 @@ func test_a_router_whose_snap_left_its_front_on_a_flank_anchors_ahead_of_its_cen
 	assert_gte(w["anchored"], BAND_MIN_ANCHORED_TICKS,
 			"setup: the router anchors on some of its men after the rout")
 	assert_eq(w["trailing"], 0,
-			"it never anchors on men behind its centre (%d of %d ticks, worst %.1f wu)"
-			% [w["trailing"], w["anchored"], w["worst"]])
+			"it never anchors on men more than the enter margin behind its centre "
+			+ "(%d of %d ticks, worst %.1f wu)" % [w["trailing"], w["anchored"], w["worst"]])
+	assert_lte(w["switches"], BAND_MAX_SWITCHES,
+			"its anchor switches onto its heading once and stays (%d switches)" % w["switches"])
 
 
 ## Watch `router` for `watch` ticks of its rout (or until it stops routing), counting the ticks it
-## anchors on any men and those on which they stand behind its centroid along its heading, with
-## the worst such lead, the largest wrapped fold seen, and the anchored ticks on which its grid's
-## front ranks trail its centre (grid_front_trails).
-func _watch_anchor(router: Unit, watch: int, safety: int) -> Dictionary:
+## anchors on any men and those on which they stand more than `tolerance` behind its centroid
+## along its heading, with the worst lead, the largest wrapped fold seen, the anchored ticks on
+## which its grid's front ranks trail its centre (grid_front_trails), and how often
+## position_anchor_on_heading changed between anchored ticks.
+func _watch_anchor(router: Unit, watch: int, safety: int, tolerance: float) -> Dictionary:
 	var rout_tick: int = _battle.current_tick()
-	var out := {"anchored": 0, "trailing": 0, "worst": INF, "max_fold": 0.0, "front_trailed": 0}
+	var out := {"anchored": 0, "trailing": 0, "worst": INF, "max_fold": 0.0, "front_trailed": 0,
+			"switches": 0}
+	var last_on_heading = null
 	while _battle.current_tick() < rout_tick + watch and safety > 0:
 		safety -= 1
 		await get_tree().physics_frame
@@ -394,8 +485,12 @@ func _watch_anchor(router: Unit, watch: int, safety: int) -> Dictionary:
 		out["anchored"] += 1
 		if router.grid_front_trails():
 			out["front_trailed"] += 1
+		var on_heading: bool = router.position_anchor_on_heading()
+		if last_on_heading != null and on_heading != last_on_heading:
+			out["switches"] += 1
+		last_on_heading = on_heading
 		var lead: float = _lead(router, indices)
 		out["worst"] = minf(out["worst"], lead)
-		if lead < 0.0:
+		if lead < -tolerance:
 			out["trailing"] += 1
 	return out

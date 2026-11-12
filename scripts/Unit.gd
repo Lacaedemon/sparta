@@ -1341,6 +1341,9 @@ var _router_anchor_contact: bool = false
 # Whether this router has left anchor contact since it routed: set on the routing tick
 # _router_anchor_contact falls, cleared by _rout().
 var _router_left_contact: bool = false
+# Whether this router's grid's front ranks count as trailing its centre (grid_front_trails):
+# latched each routing tick by _update_router_front_trailing, cleared by _rout().
+var _router_front_trailing: bool = false
 # Whether this router's front ranks are still the ones in the melee it broke from: armed
 # once, when it routs (_arm_router_front_in_melee), and cleared for the rest of that rout
 # once its heading lands on its flight line or it leaves enemy contact
@@ -1436,19 +1439,27 @@ const QUARTER_TURN_PAST: float = PI * 0.5 + 0.01
 # it on the men ahead of its centre along the heading rather than on the grid's front ranks
 # (position_anchor_on_heading): QUARTER_TURN_PAST, past which those front ranks trail the
 # router's centre along its flight. At a quarter-turn or less they are a flank or lie ahead, so
-# there they stay the anchor until they actually fall behind the centre (grid_front_trails): the
+# there they stay the anchor until they fall behind the centre (grid_front_trails): the
 # router-reentry-settle-1913 squadron routs with its grid turned exactly a quarter-turn, and its
 # grid's front ranks stood 6.9 wu ahead of its centroid (measured 2026-11-06 on main 1d0d7705).
 # A caller-configurable parameter defaulting to ROUTER_HEADING_ANCHOR_FOLD, with rout_time's
 # set-before-_ready contract.
 const ROUTER_HEADING_ANCHOR_FOLD: float = QUARTER_TURN_PAST
 var router_heading_anchor_fold: float = ROUTER_HEADING_ANCHOR_FOLD
-# How far (wu) the grid's front ranks of a router turned no further than
-# router_heading_anchor_fold must stand behind its centre along its heading before it anchors on
-# the men ahead instead (grid_front_trails): 0, so any trail counts. A caller-configurable
-# parameter defaulting to ROUTER_FRONT_TRAIL_MARGIN, with rout_time's set-before-_ready contract.
-const ROUTER_FRONT_TRAIL_MARGIN: float = 0.0   # tuned in wu
-var router_front_trail_margin: float = ROUTER_FRONT_TRAIL_MARGIN
+# The two margins (wu) of the trail latch (_update_router_front_trailing) for a router turned no
+# further than router_heading_anchor_fold: its grid's front ranks start to count as trailing once
+# their mean stands more than router_front_trail_enter behind the centre of all its men along its
+# heading, and stop only once it stands more than router_front_trail_leave ahead of it. Both
+# default to MARK_RADIUS, a foot soldier's body radius: a lead within one man's radius of the
+# centre says nothing about which side of it the ranks stand on, since the bodies jostle by about
+# that much from tick to tick. On the router-flank-anchor-1938 staging the lead crossed zero and
+# back within 6 ticks of the break, swinging up to 2.5 wu, and with no margins the anchor
+# switched 1 to 3 times while anchored on each of seeds 0 to 4 (measured 2026-11-11 on c41c9a8c).
+# Caller-configurable parameters defaulting to these, with rout_time's set-before-_ready contract.
+const ROUTER_FRONT_TRAIL_ENTER: float = MARK_RADIUS
+const ROUTER_FRONT_TRAIL_LEAVE: float = MARK_RADIUS
+var router_front_trail_enter: float = ROUTER_FRONT_TRAIL_ENTER
+var router_front_trail_leave: float = ROUTER_FRONT_TRAIL_LEAVE
 # The share of the melee contact range inside which a router that has already left enemy
 # contact in its current rout anchors as one in contact again (_router_anchor_contact). It
 # still leaves at the full range, and its physical contact (_in_enemy_contact) keeps the full
@@ -9980,11 +9991,23 @@ func position_anchor_on_heading() -> bool:
 	return absf(wrapf(grid_fold(), -PI, PI)) > router_heading_anchor_fold or grid_front_trails()
 
 
-## Whether the ANCHOR_RANKS-worth of live bodies farthest forward along the grid's front
-## (the selection near_front_soldier_indices anchors on) stand, on average, more than
-## router_front_trail_margin behind the centre of all the bodies along the heading: a flank of a
-## router folded off its heading that the block has stretched past.
+## Whether this router's grid's front ranks count as trailing its centre along its heading: a
+## flank of a router folded off its heading that the block has stretched past. The latch
+## _update_router_front_trailing sets it once a routing tick (in SoldierBodies.couple()), so
+## every reader after it within a tick agrees, and its two margins keep a lead hovering about zero from switching the anchor back
+## and forth.
 func grid_front_trails() -> bool:
+	return state == State.ROUTING and _router_front_trailing
+
+
+## Latch _router_front_trailing from the ANCHOR_RANKS-worth of live bodies farthest forward along
+## the grid's front (the selection near_front_soldier_indices anchors on): set once their mean
+## stands more than router_front_trail_enter behind the centre of all the bodies along the
+## heading, cleared once it stands more than router_front_trail_leave ahead of it, and held
+## in between. SoldierBodies.couple() runs it once each routing tick, on the bodies it is about
+## to anchor on, just before it picks the anchor; the contact refresh earlier in the tick reads
+## the previous tick's latch.
+func _update_router_front_trailing() -> void:
 	var n: int = _sim_soldier_pos.size()
 	var cutoff: int = mini(n, formation_files(n) * ANCHOR_RANKS)
 	var front: PackedInt32Array = UnitFormation.live_front_indices(
@@ -9995,10 +10018,14 @@ func grid_front_trails() -> bool:
 	var front_sum := Vector2.ZERO
 	for i in front:
 		front_sum += _sim_soldier_pos[i]
-	# The front's mean less the whole block's, scaled by both counts so no body count divides.
+	# The front's mean lead less the whole block's, and the margins, both scaled by the two
+	# counts so no body count divides.
 	var scale: float = float(n) * float(front.size())
-	return (front_sum * float(n) - all_sum * float(front.size())).dot(facing) \
-			< -router_front_trail_margin * scale
+	var lead: float = (front_sum * float(n) - all_sum * float(front.size())).dot(facing)
+	if _router_front_trailing:
+		_router_front_trailing = not (lead > router_front_trail_leave * scale)
+	else:
+		_router_front_trailing = lead < -router_front_trail_enter * scale
 
 
 ## The ANCHOR_RANKS-worth of live bodies farthest ahead of `position` along the heading: the
@@ -11084,6 +11111,7 @@ func _rout() -> void:
 	_bake_formation_mirror()
 	_arm_router_front_in_melee()
 	_router_left_contact = false
+	_router_front_trailing = false
 	_router_anchor_contact = _in_enemy_contact
 	_drill_turn_fold = 0.0
 	_rally_resquare_pending = false
@@ -12699,7 +12727,9 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "router_front_arc": router_front_arc,
 		"router_heading_anchor_fold": router_heading_anchor_fold,
-		"router_front_trail_margin": router_front_trail_margin,
+		"router_front_trail_enter": router_front_trail_enter,
+		"router_front_trail_leave": router_front_trail_leave,
+		"router_front_trailing": _router_front_trailing,
 		"router_contact_reentry_frac": router_contact_reentry_frac,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
@@ -12997,7 +13027,9 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_time = float(d.get("rout_time", rout_time))
 	router_front_arc = float(d.get("router_front_arc", router_front_arc))
 	router_heading_anchor_fold = float(d.get("router_heading_anchor_fold", router_heading_anchor_fold))
-	router_front_trail_margin = float(d.get("router_front_trail_margin", router_front_trail_margin))
+	router_front_trail_enter = float(d.get("router_front_trail_enter", router_front_trail_enter))
+	router_front_trail_leave = float(d.get("router_front_trail_leave", router_front_trail_leave))
+	_router_front_trailing = bool(d.get("router_front_trailing", false))
 	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))
