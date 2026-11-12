@@ -129,10 +129,10 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 # --- The half-file drill, live ---------------------------------------------------
 
 
-## The front rank stays on the line it stood on, and the block stands doubled. On main the shallower block
-## re-centred on the old centre and the front walked back half the depth the block lost: four
-## rank pitches (36 wu) for 140 Spearmen going from 16 ranks to 8. The bound is a quarter of a
-## rank pitch.
+## The front rank stays on the line it stood on, and the block stands doubled. On main the
+## shallower block re-centred on the old centre and the front walked back half the depth the
+## block lost: four rank pitches (36 wu) for 140 Spearmen going from 16 ranks to 8. The bound is
+## a quarter of a rank pitch.
 func test_the_front_rank_holds_its_ground() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]

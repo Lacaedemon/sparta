@@ -1399,7 +1399,8 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 ## For each man, the index of the man directly ahead of him in his own file (rank one less), or
 ## -1 for a file leader or when the arrays do not line up. Index-aligned with `file_ids` and
 ## `ranks`.
-static func man_ahead_in_file(file_ids: PackedInt32Array, ranks: PackedInt32Array) -> PackedInt32Array:
+static func man_ahead_in_file(file_ids: PackedInt32Array,
+		ranks: PackedInt32Array) -> PackedInt32Array:
 	var n: int = file_ids.size()
 	var out := PackedInt32Array()
 	out.resize(n)

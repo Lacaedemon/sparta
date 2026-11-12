@@ -7060,7 +7060,8 @@ var _explicatio_stay_parity: int = 0
 var _explicatio_stand_file: int = -1
 var _explicatio_stand_point: Vector2 = Vector2.ZERO
 # This tick's follow plan of the explicatio under way (_explicatio_follow): whom each man follows,
-# his place and the room he has to step into it, read once a tick from where the men stand, and the tick it was read on.
+# his place and the room he has to step into it, read once a tick from where the men stand, and
+# the tick it was read on.
 var _explicatio_leaders: PackedInt32Array = PackedInt32Array()
 var _explicatio_places: PackedVector2Array = PackedVector2Array()
 var _explicatio_rooms: PackedFloat32Array = PackedFloat32Array()

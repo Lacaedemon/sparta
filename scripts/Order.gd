@@ -303,9 +303,9 @@ var frontage_anchor_offset: float = 0.0
 ## absolute file count Battle's ORDER_FRONTAGE_ONLY command carries.
 var dir: int = 0
 ## On a relative FRONTAGE step that widens (dir > 0), the explicatio drill it asks for
-## (UnitFormation.ExplicatioDrill): who moves into the new files, and in what order. Unit.set_frontage
-## deals it only to a block that can do it; the turn-and-unfold combo's widen, after its
-## quarter-turn, cannot yet.
+## (UnitFormation.ExplicatioDrill): who moves into the new files, and in what order.
+## Unit.set_frontage deals it only to a block that can do it; the turn-and-unfold combo's widen,
+## after its quarter-turn, cannot yet.
 var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
@@ -727,7 +727,8 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 ## wanting an absolute file count belong on `new_frontage` instead.
 ## `drill` (UnitFormation.ExplicatioDrill) is the explicatio a widen is dealt as; the
 ## half-file drill unless the order names another.
-static func new_file_double(direction: int, drill: int = UnitFormation.ExplicatioDrill.HALF_FILE) -> Order:
+static func new_file_double(direction: int,
+		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE) -> Order:
 	if direction == 0:
 		push_error("Order.new_file_double: direction must be nonzero (0 has no relative " +
 				"widen/narrow meaning); defaulting to an explicatio. Use new_frontage for " +
