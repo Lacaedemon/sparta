@@ -5,6 +5,7 @@ extends GutTest
 
 const ManPerception = preload("res://scripts/ManPerception.gd")
 const PathField = preload("res://scripts/PathField.gd")
+const Perception = preload("res://scripts/Perception.gd")
 
 # Sight radius for the bare test units, world units: a round figure well inside any field.
 const SIGHT: float = 300.0
@@ -455,13 +456,102 @@ func test_a_unit_that_gains_bodies_mid_frame_is_perceived() -> void:
 	assert_eq(mp.perceive(man, 0)["perceived"], 1, "promoted later in the frame: seen")
 
 
-func test_out_of_range_parameters_are_reported_and_clamped() -> void:
+func test_out_of_range_parameters_are_reported_and_refused() -> void:
 	var mp := ManPerception.new()
-	mp.rear_weight = -0.5
+	mp.rear_weight = 0.0
 	assert_push_error("rear_weight")
-	assert_eq(mp.rear_weight, 0.0)
+	assert_eq(mp.rear_weight, ManPerception.REAR_WEIGHT, "a zero rear weight is refused")
+	mp.rear_weight = 1.5
+	assert_push_error("rear_weight")
+	assert_eq(mp.rear_weight, ManPerception.REAR_WEIGHT, "above 1 is refused")
 	mp.visual_field_half_angle = 4.0
 	assert_push_error("visual_field_half_angle")
-	assert_eq(mp.visual_field_half_angle, PI)
+	assert_eq(mp.visual_field_half_angle, ManPerception.VISUAL_FIELD_HALF_ANGLE)
+	mp.visual_field_half_angle = -0.1
+	assert_push_error("visual_field_half_angle")
+	assert_eq(mp.visual_field_half_angle, ManPerception.VISUAL_FIELD_HALF_ANGLE)
 	mp.rear_weight = 0.25
 	assert_eq(mp.rear_weight, 0.25, "an in-range value passes through")
+	mp.visual_field_half_angle = PI
+	assert_eq(mp.visual_field_half_angle, PI, "the closed bound is allowed")
+
+
+# --- the compiled sight rule matches Perception.perceives ---------------------------------
+
+
+# Terrain with two overlapping screens of different factors and a block, so the factor
+# product, its order and the occlusion all show up in a grid of sightlines.
+func _mixed_terrain() -> Array:
+	return [
+		{"rect": Rect2(-120.0, 60.0, 140.0, 40.0), "kind": "slow", "sight": "screen", "screen_factor": 0.7},
+		{"rect": Rect2(-40.0, 80.0, 200.0, 60.0), "kind": "slow", "sight": "screen"},
+		{"rect": Rect2(60.0, -140.0, 50.0, 90.0), "kind": "block"},
+		{"rect": Rect2(-200.0, -60.0, 30.0, 30.0), "kind": "block", "sight": "screen", "screen_factor": 0.3},
+	]
+
+
+func _sightline_grid() -> Array:
+	var out: Array = []
+	for gx in range(-12, 13):
+		for gy in range(-12, 13):
+			out.append(Vector2(gx * 25.0 + 3.0, gy * 25.0 - 7.0))
+	return out
+
+
+func _assert_matches_perceives(terrain: Array, path_field: Object, label: String) -> void:
+	var o := Vector2(5.0, 2.0)
+	var rule: Dictionary = ManPerception.sight_rule(terrain, path_field)
+	var seen := 0
+	var hidden := 0
+	for t in _sightline_grid():
+		if o.distance_squared_to(t) > SIGHT * SIGHT:
+			continue
+		var expected: bool = Perception.perceives(o, SIGHT, t, terrain, path_field)
+		assert_eq(ManPerception.line_of_sight(o, SIGHT, t, rule), expected, "%s: %s" % [label, t])
+		if expected:
+			seen += 1
+		else:
+			hidden += 1
+	assert_gt(seen, 0, "%s: precondition: some sightlines are open" % label)
+	assert_gt(hidden, 0, "%s: precondition: some sightlines are cut" % label)
+
+
+func test_line_of_sight_matches_perceives_from_terrain() -> void:
+	_assert_matches_perceives(_mixed_terrain(), null, "terrain")
+
+
+func test_line_of_sight_matches_perceives_with_a_sight_field() -> void:
+	var terrain := _mixed_terrain()
+	var field := PathField.new(Rect2(-1000.0, -1000.0, 2000.0, 2000.0))
+	field.block_rect(Rect2(-90.0, -150.0, 40.0, 60.0))   # a block only the field knows
+	_assert_matches_perceives(terrain, field, "field")
+
+
+func test_line_of_sight_matches_perceives_on_the_global_field() -> void:
+	var field := PathField.new(Rect2(-1000.0, -1000.0, 2000.0, 2000.0))
+	field.block_rect(Rect2(60.0, -140.0, 50.0, 90.0))
+	PathField.active = field
+	_assert_matches_perceives([], null, "global")
+
+
+func test_a_far_wall_is_left_out_of_the_mans_sightlines() -> void:
+	# Only terrain inside the box around his sight disc can cut a sightline; a wall far off
+	# changes nothing, and one across his line still hides the foe.
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
+	var far_wall := {"rect": Rect2(-50.0, 2000.0, 100.0, 20.0), "kind": "block"}
+	assert_eq(_perceive(man, [man, foe], 1, [far_wall])["perceived"], 1)
+	var near_wall := {"rect": Rect2(-50.0, 40.0, 100.0, 20.0), "kind": "block"}
+	assert_eq(_perceive(man, [man, foe], 1, [far_wall, near_wall])["perceived"], 0)
+
+
+func test_a_host_that_gains_a_distant_body_mid_frame_is_remeasured() -> void:
+	var man := _unit(1, 0, PackedVector2Array([Vector2.ZERO, Vector2(1.0, 0.0)]))
+	var host := _unit(2, 1, PackedVector2Array([Vector2(0.0, 1000.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, host], [], null)
+	assert_eq(mp.perceive(man, 0)["perceived"], 0, "the host stands far out of sight")
+	# A newcomer is inserted into the host near the man; the host's centre stays put.
+	host._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 1000.0), Vector2(0.0, 250.0)])
+	host._sim_soldier_facing = PackedVector2Array([MAN_FACING, MAN_FACING])
+	assert_eq(mp.perceive(man, 1)["perceived"], 1, "the newcomer at 250 is seen")

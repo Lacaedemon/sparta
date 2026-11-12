@@ -7,23 +7,27 @@ extends RefCounted
 ## sense a man acts on when he flees, turns to a foe, or picks whom to strike.
 ##
 ## What a man perceives, and why:
-## - His own line of sight. A foe body counts only when Perception.perceives holds from
-##   the man's own position to that body: the same rule the battle's fog applies to unit
-##   centres (range, screening terrain that shortens it, occluding terrain that blocks
-##   it), applied man to man. Fog therefore applies to him exactly as it does to his
-##   unit's observers, without a unit-level gate deciding for him: a foe at his elbow is
-##   seen even if its unit's centre is out of view, and a foe behind a hill is not.
-## - Sight radius. By default his unit's `sight_range`, the radius the fog model gives
-##   every observer of that unit. Unit.gd documents that value as tuned for legibility
-##   on the field rather than as an eyesight claim; a man's sense uses it so that what a
-##   man reacts to stays consistent with what the battle shows under fog. A caller sets
-##   `sight_radius` to model a different reach.
+## - His own line of sight. A foe body counts only when it passes the fog's sight rule
+##   (Perception.perceives: range, screening terrain that shortens it, occluding terrain
+##   that blocks it) sighted from the man's own position rather than from his unit's
+##   centre. No unit-level gate decides for him: a foe at his elbow is seen even if its
+##   unit's centre is out of view, and a foe behind a hill is not, even if a comrade sees
+##   it. sight_rule() compiles the terrain once per frame; line_of_sight() applies it and
+##   gives the same answer as Perception.perceives for the same inputs.
+## - Sight radius. By default his unit's base `sight_range`, the radius the fog model gives
+##   that unit's observers, without the cut the fog applies while a unit routs: where a
+##   fleeing man looks is his facing, which the front arc below already models. Unit.gd
+##   documents the value as tuned for legibility on the field rather than as an eyesight
+##   claim; a man's sense uses it so that what he reacts to stays on the scale the battle
+##   shows under fog. A caller sets `sight_radius` to model a different reach.
 ## - Front arc. His eyes face his own facing (Unit.soldier_facing). A foe inside his visual
 ##   field counts in full; behind it the weight falls off to `rear_weight` directly behind
-##   him, where he knows of a foe only by sound, by a comrade's shout, or by contact.
+##   him, where he knows of a foe only by sound, by a comrade's shout, or by contact. The
+##   same line-of-sight test applies all round him: sound through a wood is not modelled.
 ## - Distance. A nearer foe weighs more: the weight falls linearly from 1 at his own
-##   position to 0 at the edge of his sight, so a foe crossing the sight radius adds
-##   nothing abruptly.
+##   position to 0 at the edge of his sight. No source fixes the shape; linear is the
+##   simplest falloff that is continuous at the edge, so a foe crossing the sight radius
+##   adds nothing abruptly.
 ##
 ## The answer per man is a threat vector, the weighted sum of the unit directions from him
 ## to each foe he perceives, so it points TOWARD the threat (a man fleeing it runs the other
@@ -32,16 +36,27 @@ extends RefCounted
 ## the arc weighting: a man knows the foe at his elbow whichever way he faces.
 ##
 ## Read-only: it reads unit positions, teams, states, body positions and facings, and
-## writes nothing back into any unit. Cached per tick: the first query for a man in a frame
-## fixes his answer for that frame, unless his unit's or his nearest foe's body arrays are
-## re-packed (a casualty or a merge changes their size), which recomputes it. Candidate
-## enemy units come from the per-frame unit SpatialHash when it has been rebuilt for the
-## frame, and from the `units` list otherwise.
+## writes nothing back into any unit. It also reads two pieces of global state: the static
+## SpatialHash grid, and PathField.active, which decides occlusion when a caller passes
+## neither terrain nor a path field (Perception.perceives' own fallback).
+##
+## Cached per tick: the first query for a man in a frame fixes his answer for that frame,
+## unless his unit's or his nearest foe's body arrays change size (a casualty reap or a
+## merge re-packs them), which recomputes it. A reap and a merge in the same frame that
+## leave a unit's size unchanged are not detected. Candidate enemy units come from the
+## per-frame unit SpatialHash when it has been rebuilt for the frame, and from the `units`
+## list otherwise.
+##
+## Cost: each query visits the bodies of the enemy units whose bounding circles reach the
+## man's sight disc, so a tick's cost is the number of men queried times the foe bodies
+## near each. Querying every close-tier man of cannae_scale is far dearer than querying the
+## few a consumer needs (the routers, the men in contact).
 ##
 ## Limitations: a far-tier unit carries no bodies, so its men are not perceived (the tier
 ## pass promotes a block once an enemy comes near it); a unit that enters play after the
 ## frame's SpatialHash rebuild is found only on the list path until the next rebuild.
 const PerceptionRef = preload("res://scripts/Perception.gd")
+const PathFieldRef = preload("res://scripts/PathField.gd")
 
 ## Half-angle of a man's visual field, measured from straight ahead. The normal monocular
 ## field reaches about 107 degrees temporally from the line of sight (H. M. Traquair, "An
@@ -58,25 +73,28 @@ const REAR_WEIGHT: float = 0.5
 ## The sight radius every queried man uses, in world units. Zero or negative (the
 ## default) means each man uses his own unit's `sight_range`.
 var sight_radius: float = -1.0
-## Half-angle of the visual field, radians, from straight ahead. Must lie in [0, PI].
+## Half-angle of the visual field, radians, from straight ahead. Must lie in [0, PI]; an
+## out-of-range value is reported and refused, keeping the previous one.
 var visual_field_half_angle: float = VISUAL_FIELD_HALF_ANGLE:
 	set(value):
 		if value < 0.0 or value > PI:
 			push_error("ManPerception: visual_field_half_angle %f outside [0, PI]" % value)
-		visual_field_half_angle = clampf(value, 0.0, PI)
-## Weight of a foe directly behind a man. Must lie in (0, 1].
+			return
+		visual_field_half_angle = value
+## Weight of a foe directly behind a man. Must lie in (0, 1]; an out-of-range value is
+## reported and refused, keeping the previous one.
 var rear_weight: float = REAR_WEIGHT:
 	set(value):
 		if value <= 0.0 or value > 1.0:
 			push_error("ManPerception: rear_weight %f outside (0, 1]" % value)
-		rear_weight = clampf(value, 0.0, 1.0)
+			return
+		rear_weight = value
 
 var _frame: int = -1
 var _units: Array = []
-var _terrain: Array = []
-var _path_field: Object = null
-# Per frame: unit -> farthest body from that unit's position (its bounding circle), filled
-# lazily per unit, and the largest of them.
+var _sight: Dictionary = {}
+# Per frame: unit -> [body count when measured, farthest body from the unit's position]
+# (its bounding circle), and the largest reach of any unit.
 var _reach: Dictionary = {}
 var _max_reach: float = 0.0
 # Per frame: unit -> {"count": body count when cached, "by_index": {index -> result}}.
@@ -93,8 +111,7 @@ func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> vo
 		return
 	_frame = frame
 	_units = units
-	_terrain = terrain
-	_path_field = path_field
+	_sight = sight_rule(terrain, path_field)
 	_reach.clear()
 	_max_reach = 0.0
 	_results.clear()
@@ -145,6 +162,69 @@ static func distance_weight(dist: float, radius: float) -> float:
 	return 1.0 - dist / radius
 
 
+## The terrain inputs of Perception.perceives, sorted once into what a sightline tests:
+## "screens" (rects that shorten sight, in terrain order) with their "factors", and
+## "blocks" (rects that stop it). Blocks come from where perceives reads them: the path
+## field when one is given, else the terrain's blocking patches, else PathField.active.
+## Pure apart from that last fallback's global read.
+static func sight_rule(terrain: Array, path_field: Object) -> Dictionary:
+	var screens: Array[Rect2] = []
+	var factors := PackedFloat64Array()
+	var blocks: Array[Rect2] = []
+	for patch in terrain:
+		var sight: String = patch.get("sight", "block" if patch.get("kind", "block") == "block" else "screen")
+		if sight == "screen":
+			screens.append(patch["rect"])
+			factors.append(float(patch.get("screen_factor", Unit.SIGHT_SCREEN_FACTOR)))
+	if path_field != null:
+		blocks.append_array(path_field.block_rects())
+	elif not terrain.is_empty():
+		for patch in terrain:
+			var sight: String = patch.get("sight", "block" if patch.get("kind", "block") == "block" else "screen")
+			if sight == "block":
+				blocks.append(patch["rect"])
+	elif PathFieldRef.active != null:
+		blocks.append_array(PathFieldRef.active.block_rects())
+	return {"screens": screens, "factors": factors, "blocks": blocks}
+
+
+## Whether `target` is in sight from `observer` at `radius` under `rule` (from
+## sight_rule): Perception.perceives' answer for the same inputs, for a target already
+## known to lie within `radius`. Pure.
+static func line_of_sight(observer: Vector2, radius: float, target: Vector2, rule: Dictionary) -> bool:
+	var screens: Array[Rect2] = rule["screens"]
+	var factors: PackedFloat64Array = rule["factors"]
+	var eff: float = radius
+	for k in range(screens.size()):
+		if PathFieldRef.segment_intersects_rect(observer, target, screens[k]):
+			eff *= factors[k]
+	if observer.distance_squared_to(target) > eff * eff:
+		return false
+	for r in (rule["blocks"] as Array[Rect2]):
+		if PathFieldRef.segment_intersects_rect(observer, target, r):
+			return false
+	return true
+
+
+# The part of the frame's sight rule that can touch a sightline from `pos` of length at
+# most `radius`: rects overlapping the box around his sight disc, kept in their order.
+func _local_sight(pos: Vector2, radius: float) -> Dictionary:
+	var disc := Rect2(pos - Vector2(radius, radius), Vector2(radius, radius) * 2.0)
+	var screens: Array[Rect2] = []
+	var factors := PackedFloat64Array()
+	var all_screens: Array[Rect2] = _sight["screens"]
+	var all_factors: PackedFloat64Array = _sight["factors"]
+	for k in range(all_screens.size()):
+		if all_screens[k].intersects(disc, true):
+			screens.append(all_screens[k])
+			factors.append(all_factors[k])
+	var blocks: Array[Rect2] = []
+	for r in (_sight["blocks"] as Array[Rect2]):
+		if r.intersects(disc, true):
+			blocks.append(r)
+	return {"screens": screens, "factors": factors, "blocks": blocks}
+
+
 # A cached nearest index stays valid while the foe unit's body arrays keep the size they
 # had when it was computed; a reap or a merge re-packs them.
 func _nearest_still_valid(cached: Dictionary) -> bool:
@@ -170,6 +250,8 @@ func _compute(unit: Unit, index: int) -> Dictionary:
 		return out
 	var pos: Vector2 = unit._sim_soldier_pos[index]
 	var facing: Vector2 = unit.soldier_facing(index)
+	var local: Dictionary = _local_sight(pos, radius)
+	var open_ground: bool = (local["screens"] as Array).is_empty() and (local["blocks"] as Array).is_empty()
 	var radius_sq: float = radius * radius
 	var threat := Vector2.ZERO
 	var nearest_sq: float = INF
@@ -177,9 +259,9 @@ func _compute(unit: Unit, index: int) -> Dictionary:
 	for foe in _candidates(pos, radius):
 		if foe.team == unit.team or foe.state == Unit.State.DEAD:
 			continue
-		# The reach is measured once per frame; the same one-cell pad as the hash query
-		# covers how far the block can have moved since.
-		var reach_out: float = radius + float(_reach[foe]) + SpatialHash.CELL_SIZE
+		# The reach is measured at its first use this frame; the same one-cell pad as the
+		# hash query covers how far the block can have moved since.
+		var reach_out: float = radius + float(_reach[foe][1]) + SpatialHash.CELL_SIZE
 		if foe.position.distance_squared_to(pos) > reach_out * reach_out:
 			continue
 		var bodies: PackedVector2Array = foe._sim_soldier_pos
@@ -187,7 +269,7 @@ func _compute(unit: Unit, index: int) -> Dictionary:
 			var d_sq: float = pos.distance_squared_to(bodies[j])
 			if d_sq > radius_sq:
 				continue
-			if not PerceptionRef.perceives(pos, radius, bodies[j], _terrain, _path_field):
+			if not open_ground and not line_of_sight(pos, radius, bodies[j], local):
 				continue
 			perceived += 1
 			if d_sq < nearest_sq:
@@ -229,17 +311,25 @@ func _candidates(pos: Vector2, radius: float) -> Array:
 	return out
 
 
-# Measure the bounding circle of every unit in play that has bodies and none yet this
-# frame. Checked on every query, so a unit that gains bodies mid-frame (a far-tier block
-# promoted, a merge) is measured as soon as it has them.
+# Measure the bounding circle of every unit in play that has bodies, again whenever its
+# body count has changed since it was measured. Checked on every query, so a unit that
+# gains bodies mid-frame (a far-tier block promoted, a merge inserting newcomers) is
+# measured as soon as it has them. A unit that has lost all its bodies drops out.
 func _ensure_reach() -> void:
 	for u in _units:
 		var unit: Unit = u as Unit
-		if unit == null or _reach.has(unit) or unit._sim_soldier_pos.is_empty():
+		if unit == null:
+			continue
+		var count: int = unit._sim_soldier_pos.size()
+		if count == 0:
+			_reach.erase(unit)
+			continue
+		var known: Variant = _reach.get(unit)
+		if known != null and int(known[0]) == count:
 			continue
 		var far_sq: float = 0.0
 		for p in unit._sim_soldier_pos:
 			far_sq = maxf(far_sq, unit.position.distance_squared_to(p))
 		var reach: float = sqrt(far_sq)
-		_reach[unit] = reach
+		_reach[unit] = [count, reach]
 		_max_reach = maxf(_max_reach, reach)
