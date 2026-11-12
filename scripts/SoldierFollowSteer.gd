@@ -32,10 +32,12 @@ static func steer_point(pos: Vector2, facing: Vector2, target: Vector2, line_wid
 
 
 ## How much of the gap between two men at `a` and `b` has opened for a third to step into, seen
-## across the front of a man facing `facing`: none while they stand `line_width` or less apart
-## across it (shoulder to shoulder), all of it once they stand twice that apart.
+## across the front of a man facing `facing`: none while they stand one and a half `line_width`s
+## or less apart across it, since a man of that width between them would stand within half a
+## width, a body's radius, of one of them; all of it once they stand twice that width apart, a
+## full width each side of him.
 static func room_between(a: Vector2, b: Vector2, facing: Vector2, line_width: float) -> float:
 	if line_width <= 0.0:
 		return 1.0
 	var apart: float = absf((b - a).dot(SoldierFollow.right_of(facing.normalized())))
-	return clampf(apart / line_width - 1.0, 0.0, 1.0)
+	return clampf(2.0 * apart / line_width - 3.0, 0.0, 1.0)

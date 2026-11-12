@@ -303,26 +303,12 @@ static func speed_quantization_margin(dt_ticks: int, tps: float = 60.0) -> float
 ## Do two open segments properly cross? Orientation (cross-product sign) test on both
 ## pairs. Collinear and endpoint-touching cases are not crossings worth reporting, and
 ## exact zeros are measure-zero in float body data anyway.
-##
-## With a positive `margin`, each segment's ends must also lie more than `margin` (a
-## distance) to either side of the other's line, so a crossing that passes within `margin`
-## of an end reads as a touch, and a segment of no length crosses nothing. The default 0 keeps
-## the sign test path_crossing has always used.
-static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2,
-		margin: float = 0.0) -> bool:
+static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2) -> bool:
 	var d1: float = (a2 - a1).cross(b1 - a1)
 	var d2: float = (a2 - a1).cross(b2 - a1)
 	var d3: float = (b2 - b1).cross(a1 - b1)
 	var d4: float = (b2 - b1).cross(a2 - b1)
-	if margin <= 0.0:
-		return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
-	var len_a: float = a1.distance_to(a2)
-	var len_b: float = b1.distance_to(b2)
-	if len_a <= 0.0 or len_b <= 0.0:
-		return false
-	return d1 * d2 < 0.0 and d3 * d4 < 0.0 \
-			and minf(absf(d1), absf(d2)) / len_a > margin \
-			and minf(absf(d3), absf(d4)) / len_b > margin
+	return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
 
 
 ## Which soldiers take a CROSSING route between two consecutive body samples -- the
@@ -862,17 +848,8 @@ static func _is_numeric_value(v) -> bool:
 ## The expectation fields derived_field supplies.
 const DERIVED_FIELDS: Array[String] = [
 	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
-	"slot_distance_max", "file_line_routes_crossing",
+	"slot_distance_max", "pairs_within_body_radius", "front_rank_line",
 ]
-## How close laterally, as a fraction of the file pitch, two men stand to count as one file line
-## for file_line_routes_crossing: men of one file stand at one lateral position, give or take
-## the jitter of bodies on their slots, which stays far inside a quarter of a pitch.
-const FILE_LINE_TIE_FRAC := 0.25
-## How far, as a fraction of the body radius, two routes must pass to either side of each other
-## for file_line_routes_crossing to count a crossing rather than a touch: a tenth of a body is
-## far below a real crossing's offsets (a file pitch or more) and above the jitter of bodies
-## standing on their slots.
-const ROUTE_TOUCH_BODY_FRAC := 0.1
 
 
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
@@ -880,10 +857,10 @@ const ROUTE_TOUCH_BODY_FRAC := 0.1
 ## cannot supply the field (not one of these names, or a dump without soldiers_full), which
 ## check_expectations reports as uncheckable. The first three measure sideways from the unit's
 ## position; grid_off_heading is an angle, slot_distance_max a distance in any direction, and
-## file_line_routes_crossing a count of crossing routes.
+## the last two read the bodies themselves.
 ## The first two read every man's body against his own slot along the unit's lateral axis (its
-## facing turned a quarter); the third reads every slot against the grid's own footprint, and
-## file_line_routes_crossing groups the men by file line, both along the grid's own file axis:
+## facing turned a quarter); the third reads every slot against the grid's own footprint, along
+## the grid's own file axis:
 ##
 ## - slots_across_centreline: men whose slot lies across the centreline from them, each more
 ##   than half a file pitch off it -- the walk through the block a reshape must not send.
@@ -909,15 +886,16 @@ const ROUTE_TOUCH_BODY_FRAC := 0.1
 ## - slot_distance_max: the farthest any man's slot lies from where he stands, in world units
 ##   to 0.1, in any direction. Unlike the lateral fields it sees a walk in depth, such as a
 ##   re-square that sends a man to the other end of his own file.
-## - file_line_routes_crossing: men whose straight route from where he stands to his slot
-##   properly crosses the route of another man of his own file line, one standing within
-##   FILE_LINE_TIE_FRAC of a file pitch of him along motion_ref.slot_grid's file axis (a dump
-##   without the footprint cannot supply it). These are the men a widening splits
-##   across two new files, and a route crossing one of theirs is a walk through a man one body
-##   away. Routes of men in different file lines are not compared: a block widening off one
-##   flank shears its men past each other at a distance, which is not this.
+## - pairs_within_body_radius: how many pairs of the unit's men stand with their centres closer
+##   than one body radius (motion_ref.soldier_body_radius), each overlapping the other by more
+##   than half his body: a man walking through another rather than past him. An exact count.
+## - front_rank_line: [nearest, farthest] the front rank stands along the unit's facing, in world
+##   units to 0.01: the men whose slot lies within half a rank pitch (motion_ref.rank_pitch) of
+##   the front-most slot, read off their bodies. A front rank standing on one line reads one
+##   value twice; pin it with that value and a `tol` stated in rank pitches.
 ##
-## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
+## Sampled the tick after a reshape, before the men have walked, the first five measure the deal
+## itself.
 static func derived_field(u: Dictionary, field: String):
 	if not DERIVED_FIELDS.has(field):
 		return null
@@ -939,15 +917,18 @@ static func derived_field(u: Dictionary, field: String):
 			farthest = maxf(farthest, Vector2(pos[i][0], pos[i][1]).distance_to(
 					Vector2(slots[i][0], slots[i][1])))
 		return snappedf(farthest, 0.1)
+	if field == "pairs_within_body_radius":
+		return _pairs_within_body_radius(pos, ref)
 	var centre_pair: Array = u.get("position", [])
 	var facing_pair: Array = u.get("facing", [])
 	if centre_pair.size() != 2 or facing_pair.size() != 2:
 		return null
+	if field == "front_rank_line":
+		return _front_rank_line(pos, slots, Vector2(float(facing_pair[0]), float(facing_pair[1])),
+				ref)
 	var centre := Vector2(float(centre_pair[0]), float(centre_pair[1]))
 	if field == "slots_beyond_flanks":
 		return _slots_beyond_flanks(slots, centre, ref)
-	if field == "file_line_routes_crossing":
-		return _file_line_routes_crossing(pos, slots, ref)
 	var lateral: Vector2 = Vector2(float(facing_pair[0]), float(facing_pair[1])).normalized().orthogonal()
 	var half: float = float(ref.get("file_pitch", 0.0)) * 0.5
 	var n: int = pos.size()
@@ -967,37 +948,41 @@ static func derived_field(u: Dictionary, field: String):
 	return snappedf(excess, 0.1)
 
 
-## file_line_routes_crossing (see derived_field): men whose straight route from `pos` to his own
-## entry in `slots` properly crosses the route of a man of his own file line: one standing
-## within FILE_LINE_TIE_FRAC of a file pitch of him along the slot grid's own file axis,
-## motion_ref.slot_grid.axis, the frame the sim deals in, so a grid folded off its facing is
-## read along its files rather than across them. A crossing is _segments_cross with a margin of
-## ROUTE_TOUCH_BODY_FRAC of the body radius, so routes that only touch, such as one man walking
-## straight up his file onto the spot another is stepping out of, do not count. Null with no
-## file pitch or no slot grid.
-static func _file_line_routes_crossing(pos: Array, slots: Array, ref: Dictionary):
-	var tie: float = float(ref.get("file_pitch", 0.0)) * FILE_LINE_TIE_FRAC
-	var grid = ref.get("slot_grid")
-	if tie <= 0.0 or not (grid is Dictionary):
+## pairs_within_body_radius (see derived_field): how many pairs of the men at `pos` stand with
+## their centres closer than one body radius, motion_ref.soldier_body_radius. Null with no body
+## radius dumped.
+static func _pairs_within_body_radius(pos: Array, ref: Dictionary):
+	var r: float = float(ref.get("soldier_body_radius", 0.0))
+	if r <= 0.0:
 		return null
-	var axis_pair = grid.get("axis")
-	if not (axis_pair is Array) or (axis_pair as Array).size() != 2:
+	var pairs: int = 0
+	for i in range(pos.size()):
+		var a := Vector2(pos[i][0], pos[i][1])
+		for j in range(i + 1, pos.size()):
+			if a.distance_to(Vector2(pos[j][0], pos[j][1])) < r:
+				pairs += 1
+	return pairs
+
+
+## front_rank_line (see derived_field): [nearest, farthest] along `facing`, to 0.01, of the men
+## at `pos` whose entry in `slots` lies within half a rank pitch, motion_ref.rank_pitch, of the
+## front-most slot. Null with no rank pitch or no facing.
+static func _front_rank_line(pos: Array, slots: Array, facing: Vector2, ref: Dictionary):
+	var half: float = float(ref.get("rank_pitch", 0.0)) * 0.5
+	if half <= 0.0 or facing == Vector2.ZERO:
 		return null
-	var axis := Vector2(float(axis_pair[0]), float(axis_pair[1])).normalized()
-	var margin: float = float(ref.get("soldier_body_radius", 0.0)) * ROUTE_TOUCH_BODY_FRAC
-	var n: int = pos.size()
-	var crossed: Dictionary = {}
-	for i in range(n):
-		var a1 := Vector2(pos[i][0], pos[i][1])
-		var a2 := Vector2(slots[i][0], slots[i][1])
-		for j in range(i + 1, n):
-			var b1 := Vector2(pos[j][0], pos[j][1])
-			if absf((b1 - a1).dot(axis)) >= tie:
-				continue
-			if _segments_cross(a1, a2, b1, Vector2(slots[j][0], slots[j][1]), margin):
-				crossed[i] = true
-				crossed[j] = true
-	return crossed.size()
+	var f: Vector2 = facing.normalized()
+	var front: float = -INF
+	for s in slots:
+		front = maxf(front, Vector2(s[0], s[1]).dot(f))
+	var lo: float = INF
+	var hi: float = -INF
+	for i in range(pos.size()):
+		if front - Vector2(slots[i][0], slots[i][1]).dot(f) < half:
+			var d: float = Vector2(pos[i][0], pos[i][1]).dot(f)
+			lo = minf(lo, d)
+			hi = maxf(hi, d)
+	return [snappedf(lo, 0.01), snappedf(hi, 0.01)]
 
 
 ## grid_off_heading (see derived_field): the angle in degrees, to 0.1, between the unit record's

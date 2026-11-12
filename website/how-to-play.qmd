@@ -1190,13 +1190,20 @@ Press <kbd>B</kbd> for **explicatio**: the frontage doubles and the depth halves
 unfolds into a broad line that brings more men to the front, good for overlapping a flank.
 The men do it as the drill manuals describe, each following a man he can see.
 The front rank stays on the line it stood on while its files open out sideways.
-The rear half of each file steps sideways into the interval on its right,
-then comes up it in column behind its half-file leader (the *hemilochites*),
+The two files next to the middle stand, and each wing opens outward:
+the rear half of each file in the left wing steps sideways into the interval on its left,
+and in the right wing into the interval on its right.
+Each rear half then comes up its interval in column behind its half-file leader (the *hemilochites*),
 who comes up into line beside his own file leader as the interval opens.
 Nobody passes the man in front of him,
 and if the leader falls, the man behind him takes the lead.
-The drill is for a formed block standing still;
-a block on the march, and the turn-and-unfold combo, widen as they always have.
+With an even number of files both flanks step out by the same amount.
+With an odd number the middle file counts with the right wing,
+so the right flank steps out one file further than the left:
+a block of 9 files widening to 18 moves its left flank out 4 files and its right flank 5.
+The drill is for a block standing still, whether or not its men have settled into place;
+a block on the march widens as it always has, and so does the turn-and-unfold combo
+unless its turned block's files number half the new width.
 Press <kbd>N</kbd> for
 **duplicatio**: alternate files tuck in behind their neighbours, so the frontage halves and
 the depth doubles --- a wide line folds into a deep, narrow column, good for punching through
@@ -1232,17 +1239,18 @@ explicatio (B) unfolds it back into a broad line.
 
 A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8,
 each man following a man he can see.
-The front rank stays on the line it stood on, within 0.002 m, while its files open out sideways.
-The rear half of each file steps sideways into the interval on its right
-and comes up it in column behind its half-file leader,
-so no man walks through a man of his own file:
-the closest two men stay 0.37 m apart while the block unfolds.
+The two middle files stand and each wing opens outward.
+The rear half of each file steps sideways into the interval on its outer side,
+then comes up it in column behind its half-file leader once the interval has opened where he is.
+The front rank ends within 2 mm of the line it stood on.
+No two men come closer than 0.44 m, centre to centre,
+where men shoulder to shoulder stand 0.45 m apart.
 :::
 
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
-symmetrically about the unit's own centre --- both flanks step outward by the
-same amount. Press <kbd>Shift+B</kbd> to widen instead while holding the
-**right** flank fixed, or <kbd>Ctrl+B</kbd> to hold the **left** flank fixed:
+about the middle of the block, its two middle files standing, so both flanks step
+outward (by the same amount when the files are even). Press <kbd>Shift+B</kbd> to
+widen instead while holding the **right** flank fixed, or <kbd>Ctrl+B</kbd> to hold the **left** flank fixed:
 the whole widen lands on the opposite side, so the unit's position on the
 field shifts rather than staying centred. The rear half-files then take the
 interval on the side away from the held flank, so its own file keeps its

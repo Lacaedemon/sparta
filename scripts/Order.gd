@@ -558,7 +558,9 @@ static func from_dict(d: Dictionary) -> Order:
 	o.frontage = int(d.get("frontage", -1))
 	o.frontage_anchor_offset = float(d.get("frontage_anchor_offset", 0.0))
 	o.dir = int(d.get("dir", 0))
-	o.explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.HALF_FILE))
+	# Absent in an order saved before the drill: its widen was the lateral deal, and it resumes as
+	# one, as ReplayDecoder plays back a B press recorded before the drill.
+	o.explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.NONE))
 	o.order_mode = int(d.get("order_mode", 0))
 	o.gait = int(d.get("gait", -1))
 	o.haste = bool(d.get("haste", false))

@@ -75,4 +75,3 @@ static func places(positions: PackedVector2Array, facings: PackedVector2Array,
 		var front: Vector2 = facings[i].normalized()
 		out[i] += front * (line - out[i]).dot(front)
 	return out
-
