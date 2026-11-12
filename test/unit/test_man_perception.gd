@@ -430,7 +430,7 @@ func test_the_answer_is_cached_for_the_frame() -> void:
 	assert_ne(mp.perceive(man, 0, 2)["threat"], first["threat"], "a new frame recomputes")
 
 
-func test_a_change_in_body_count_drops_the_units_cache() -> void:
+func test_a_reap_that_shrinks_the_unit_answers_for_the_man_now_at_the_index() -> void:
 	var man := _unit(1, 0, PackedVector2Array([MAN_POS, Vector2(0.0, -500.0)]))
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
 	var mp := ManPerception.new()
@@ -656,6 +656,46 @@ func test_the_hash_path_remeasures_a_host_that_gains_a_distant_body() -> void:
 	host._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 1000.0), Vector2(0.0, 250.0)])
 	host._sim_soldier_facing = PackedVector2Array([MAN_FACING, MAN_FACING])
 	assert_eq(mp.perceive(man, 1, 9)["perceived"], 1, "the newcomer at 250 is seen")
+
+
+func test_a_nearest_foe_merged_away_is_dropped_from_the_cache() -> void:
+	var man := _observer()
+	var near := _unit(2, 1, PackedVector2Array([Vector2(0.0, 50.0)]))
+	var far := _unit(3, 1, PackedVector2Array([Vector2(0.0, 200.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, near, far], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["nearest_unit"], near)
+	# Merged away this tick: its bodies stay in the arrays, but it is DEAD.
+	near.state = Unit.State.DEAD
+	var r: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(r["nearest_unit"], far, "a DEAD unit is not a foe, as a fresh scan would find")
+	assert_eq(r["perceived"], 1)
+
+
+func test_changing_a_parameter_drops_the_cached_answers() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, -100.0)]))   # behind him
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	var full: float = (mp.perceive(man, 0, 1)["threat"] as Vector2).length()
+	mp.rear_weight = 0.25
+	var light: float = (mp.perceive(man, 0, 1)["threat"] as Vector2).length()
+	assert_almost_eq(light, full / 2.0, EPS, "the new rear weight applies in the same frame")
+	mp.visual_field_half_angle = PI
+	assert_almost_eq((mp.perceive(man, 0, 1)["threat"] as Vector2).length(), full * 2.0, EPS,
+		"a full circle counts the foe behind him in full")
+	mp.sight_radius = 50.0
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "a shorter sight radius applies too")
+
+
+func test_nan_parameters_are_refused() -> void:
+	var mp := ManPerception.new()
+	mp.rear_weight = NAN
+	assert_push_error("rear_weight")
+	assert_eq(mp.rear_weight, ManWeights.REAR_WEIGHT)
+	mp.visual_field_half_angle = NAN
+	assert_push_error("visual_field_half_angle")
+	assert_eq(mp.visual_field_half_angle, ManWeights.VISUAL_FIELD_HALF_ANGLE)
 
 
 func test_out_of_range_parameters_are_reported_and_refused() -> void:

@@ -19,9 +19,10 @@ static func none() -> Dictionary:
 
 
 ## Whether a cached answer still describes man `index` of `unit`: his own body is where it
-## was (an out-of-range index stays so), and the nearest foe unit keeps its body count with
-## that body where it was. A reap or a merge re-packs the arrays, so a count or an index
-## can outlive the body it named.
+## was (an out-of-range index stays so), and the nearest foe unit is still alive, keeps its
+## body count and has that body where it was. A reap or a merge re-packs the arrays, so an
+## index can outlive the body it named, and a unit merged away keeps its bodies but is DEAD,
+## which a fresh scan skips.
 static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 	var own := Vector2(INF, INF)
 	if index >= 0 and index < unit._sim_soldier_pos.size():
@@ -31,14 +32,18 @@ static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 	var foe: Variant = cached["nearest_unit"]
 	if foe == null:
 		return true
+	if (foe as Unit).state == Unit.State.DEAD:
+		return false
 	var bodies: PackedVector2Array = (foe as Unit)._sim_soldier_pos
 	var i: int = cached["nearest_index"]
 	return bodies.size() == int(cached["nearest_count"]) and bodies[i] == cached["nearest_pos"]
 
 
-## Returns the dictionary ManPerception.perceive documents, plus "nearest_count" (the nearest
-## foe unit's body count, which the cache uses to notice a reap). `rule` is ManSight.compile's
-## answer for the frame, `foes` the frame's ManFoes, `radius` his sight in world units.
+## Returns the dictionary ManPerception.perceive documents, plus three keys that still_valid
+## reads to notice that a cached answer went stale: "own_pos" (his own body's position, INF
+## for an out-of-range index), "nearest_count" (the nearest foe unit's body count) and
+## "nearest_pos" (that nearest body's position). `rule` is ManSight.compile's answer for the
+## frame, `foes` the frame's ManFoes, `radius` his sight in world units.
 static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: RefCounted,
 		half_angle: float, rear: float) -> Dictionary:
 	var out: Dictionary = none()

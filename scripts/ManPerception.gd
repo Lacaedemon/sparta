@@ -19,21 +19,26 @@ const Scan = preload("res://scripts/ManScan.gd")
 
 ## The sight radius every queried man uses, in world units. Zero or negative (the
 ## default) means each man uses his own unit's `sight_range`.
-var sight_radius: float = -1.0
+var sight_radius: float = -1.0:
+	set(value):
+		sight_radius = value
+		_results.clear()
 ## Half-angle of the visual field, radians. Must lie in [0, PI]; else reported and refused.
 var visual_field_half_angle: float = Weights.VISUAL_FIELD_HALF_ANGLE:
 	set(value):
-		if value < 0.0 or value > PI:
+		if not (value >= 0.0 and value <= PI):
 			push_error("ManPerception: visual_field_half_angle %f outside [0, PI]" % value)
 			return
 		visual_field_half_angle = value
+		_results.clear()
 ## Weight of a foe directly behind a man. Must lie in (0, 1]; else reported and refused.
 var rear_weight: float = Weights.REAR_WEIGHT:
 	set(value):
-		if value <= 0.0 or value > 1.0:
+		if not (value > 0.0 and value <= 1.0):
 			push_error("ManPerception: rear_weight %f outside (0, 1]" % value)
 			return
 		rear_weight = value
+		_results.clear()
 
 var _frame: int = -1
 var _sight: Dictionary = {}
