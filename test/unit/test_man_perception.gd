@@ -720,7 +720,7 @@ func test_a_second_prepare_with_different_inputs_rebinds() -> void:
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "the new path field applies")
 
 
-func test_a_man_with_no_sight_is_answered_from_the_cache() -> void:
+func test_a_man_with_no_sight_still_stores_his_facing() -> void:
 	var man := _observer()
 	man.sight_range = 0.0
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))

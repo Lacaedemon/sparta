@@ -22,8 +22,8 @@ const REAR_WEIGHT: float = 0.5
 ## Weight of a foe in direction `to_foe` from a man facing `facing`: 1 inside the visual
 ## field (|angle| <= half_angle), falling linearly to `rear` directly behind him. Pure.
 ## A zero facing reads as facing the foe (full weight). A half-angle of PI is a full
-## circle; it is tested apart because the measured angle directly behind a man can exceed
-## the double PI by a float's rounding, which would divide by zero below.
+## circle; it is tested apart because angle_to computes in 32-bit floats, so the angle
+## directly behind a man can exceed the double-precision PI constant and divide by zero below.
 static func arc_weight(facing: Vector2, to_foe: Vector2, half_angle: float, rear: float) -> float:
 	var ang: float = absf(facing.angle_to(to_foe))
 	if ang <= half_angle or half_angle >= PI:
