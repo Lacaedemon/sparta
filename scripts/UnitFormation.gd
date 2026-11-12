@@ -1225,8 +1225,9 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 # - HALF_FILE, the default. Each file's rear half marches up the interval beside it, led by the
 #   half-file leader, the hemilochites (Asclepiodotus 2.2). Bingham's note on Aelian 29.3 (1616)
 #   gives this drill: "these middle men with the hinder halfe file march vp to the front".
-# - ALTERNATE_RANK. Every second man of each file, the epistates behind each file leader and
-#   every second man after him, steps into the interval beside the man ahead of him. Polyaenus,
+# - ALTERNATE_RANK. Every second man of each file, counting the file leader as the first, steps
+#   into the interval beside the man ahead of him: every epistates, as Asclepiodotus 2.3 names
+#   them, the front-rank and rear-rank men alternating down the file. Polyaenus,
 #   Stratagems 2.10.4: Cleandridas ordered the epistatai to pass over into the place of a
 #   parastates, a side-man (the sim's rendering of the Greek), and so made his line much longer;
 #   Bingham's note on Aelian 29.3 reads it as inserting "the euen ranks man by man into the odde".
@@ -1253,10 +1254,12 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 # beside the leader of the file it opened from as the interval opens; and each file leader who
 # stays keeps his distance from the next file leader toward the file that stands, dressing his
 # depth on the guide, who holds his ground.
+# TODO(#1969): no key or order deals ALTERNATE_RANK yet; only Battle.enqueue_file_double's
+# caller can name it.
 enum ExplicatioDrill { NONE = 0, HALF_FILE = 1, ALTERNATE_RANK = 2 }
 ## Roles a man takes in an explicatio's new file: the man who leads a column up an interval.
-## HEMILOCHITES leads a half-file (HALF_FILE); EPISTATES, the man behind the file leader, leads
-## the column of every second man (ALTERNATE_RANK). NONE for everyone else. The follow plan
+## HEMILOCHITES leads a half-file (HALF_FILE); EPISTATES, the first epistates, the man behind the
+## file leader, leads the column of every epistates of the file (ALTERNATE_RANK). NONE for everyone else. The follow plan
 ## reads it: only a man with a role leads a column (explicatio_follow_plan).
 enum SoldierRole { NONE = 0, HEMILOCHITES = 1, EPISTATES = 2 }
 
@@ -1307,7 +1310,7 @@ static func explicatio_file_stays(f: int, lane_split: int) -> bool:
 ## h - 1, at the same ranks; the man at rank h + r takes rank r of the interval, so the
 ## hemilochites at rank h leads it. ALTERNATE_RANK: the man at rank 2m stays in the file's line
 ## at rank m, and the man at rank 2m + 1 takes rank m of the interval, beside the man who stood
-## ahead of him, so the epistates at rank 1 leads it. Each file is split by its own length, so
+## ahead of him, so the first epistates, at rank 1, leads it. Each file is split by its own length, so
 ## a file a casualty has shortened still splits.
 ##
 ## Returns {"files", "ranks", "roles"}: the new file ids and ranks and each man's SoldierRole.
@@ -1364,16 +1367,14 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 
 
 ## Whom each man follows while an explicatio is under way, and where he stands relative to him
-## (SoldierFollow): {"leaders": PackedInt32Array, "offsets": PackedVector2Array, "flanks":
-## PackedInt32Array, "guides": PackedInt32Array}, index-aligned with `file_ids`, `ranks` and
+## (SoldierFollow): {"leaders": PackedInt32Array, "offsets": PackedVector2Array,
+## "guides": PackedInt32Array}, index-aligned with `file_ids`, `ranks` and
 ## `roles` (the dealt assignment, explicit ranks, and each man's SoldierRole). The intervals
 ## split at `lane_split` (explicatio_lane_split, explicatio_file_stays). An offset is (to the
-## follower's right, behind him), in world units. `flanks` names, for the man leading a column
-## up an interval, the leader of the file on the far side of that interval, so he can see how
-## far it has opened (SoldierFollowSteer.room_between); -1 for every other man, and for one whose
-## interval is on the block's flank. `guides` names the guide each file leader dresses his depth
+## follower's right, behind him), in world units. `guides` names the guide each file leader dresses his depth
 ## on (SoldierFollow): the leader of `stand_file`, so the front rank's line is his (STAND, his
-## ground, only for himself or when he has fallen and nobody has closed up); NOT_FOLLOWING for
+## ground, for himself; a stand_file with no leader also reads STAND, so the caller re-picks the
+## guide before it gets here, as Unit._take_up_explicatio_guide does); NOT_FOLLOWING for
 ## every man behind the head of his file.
 ##
 ## - The man with a role (SoldierRole) in an interval leads its column: he comes up beside the
@@ -1396,14 +1397,11 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 	var n: int = file_ids.size()
 	var leaders := PackedInt32Array()
 	var offsets := PackedVector2Array()
-	var flanks := PackedInt32Array()
 	var guides := PackedInt32Array()
 	if ranks.size() != n or roles.size() != n or n == 0:
-		return {"leaders": leaders, "offsets": offsets, "flanks": flanks, "guides": guides}
+		return {"leaders": leaders, "offsets": offsets, "guides": guides}
 	leaders.resize(n)
 	offsets.resize(n)
-	flanks.resize(n)
-	flanks.fill(-1)
 	guides.resize(n)
 	guides.fill(SoldierFollow.NOT_FOLLOWING)
 	var at: Dictionary = {}
@@ -1438,7 +1436,6 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 		var g: int
 		if leads_column:
 			g = f + 1 if f / 2 < lane_split else f - 1
-			flanks[i] = int(at.get(Vector2i(2 * f - g, 0), -1))
 			var j: int = int(at.get(Vector2i(g, 0), -1))
 			if j >= 0:
 				leaders[i] = j
@@ -1456,7 +1453,7 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 			if g == stand_file:
 				break
 			g += step
-	return {"leaders": leaders, "offsets": offsets, "flanks": flanks, "guides": guides}
+	return {"leaders": leaders, "offsets": offsets, "guides": guides}
 
 
 ## The man who takes a fallen man's place in his file: the one at the dead man's `rank` in

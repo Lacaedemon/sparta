@@ -43,6 +43,8 @@ static func _decode_order(o: Dictionary) -> Dictionary:
 	# back as the plain resize they were recorded as.
 	if o.has("explicatio"):
 		entry["explicatio"] = int(o["explicatio"])
+	if o.has("explicatio_held"):
+		entry["explicatio_held"] = int(o["explicatio_held"])
 	return entry
 
 

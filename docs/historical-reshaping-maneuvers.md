@@ -79,7 +79,9 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
 
 - **The names.**
   Asclepiodotus names the half of a file the half-file (*hemilochion*) and its leader the half-file leader (*hemilochites*),
-  and the man behind each file leader the rear-rank man (*epistates*)
+  and calls the file leader a front-rank man (*protostates*) and the man behind him a rear-rank man (*epistates*),
+  "so that in the whole file there comes first a front-rank-man, then a rear-rank-man, then successively a front-rank-man and a rear-rank-man, and so on":
+  every second man of a file is an epistates
   (Tactics 2.2-2.3, [LacusCurtius](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Asclepiodotus/2*.html)).
 
 - **Xenophon**, Cyropaedia 2.3.21 (translated by Henry Graham Dakyns, [Project Gutenberg](https://www.gutenberg.org/ebooks/2085)),
@@ -93,13 +95,15 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
 
 The sim models two drills, chosen on the frontage-doubling order (`UnitFormation.ExplicatioDrill`).
 The B key gives the half-file drill.
+No key or order gives the alternate-rank drill yet ([#1969](https://github.com/Lacaedemon/sparta/issues/1969)).
 
 - **Half-file** (the default, Bingham's note on Aelian 29.3).
   Each file's rear half marches up the interval beside its own file, led by its hemilochites, the man who headed the rear half.
   The front half keeps its ranks and stays on the line it stood on, opening out sideways.
 
 - **Alternate rank** (every second man, Polyaenus 2.10.4).
-  Each epistates, and every second man after him, steps into the interval beside the man who stood ahead of him.
+  Every epistates, every second man of the file counting the file leader as the first, steps into the interval beside the man who stood ahead of him,
+  led by the first of them, the man behind the file leader.
   Polyaenus does not say on which side.
   The sim uses the same side as the half-file drill.
 
@@ -111,9 +115,9 @@ on Polyaenus, whose line grew "much longer",
 and on Xenophon's company, whose line grows as each part comes up beside the part ahead of it.
 
 Which files stand follows Aelian 33.
-Widened about the middle (B), the files next to the middle stand and each wing opens outward:
-the two middle files of an even number of files, and of an odd number the middle file and the file on its left.
-every interval of the left wing opens on the left of its file, and every interval of the right wing on the right.
+Widened about the middle (B), the files next to the middle stand and each wing opens outward.
+Of an even number of files the two middle files stand, and of an odd number the middle file and the file on its left.
+Every interval of the left wing opens on the left of its file, and every interval of the right wing on the right.
 With an even number of files the two flanks step out alike.
 With an odd number the middle file belongs to the right wing, which gains one file more, so its flank steps out one file pitch farther:
 9 files doubled to 18 move the left flank out 4 file pitches and the right 5.
@@ -128,14 +132,16 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
 
 - The leader of each file that stays dresses on the next file leader toward the file that stands,
   and takes his depth from the guide, who holds the ground he stood on.
+  If the guide falls and nobody closes up into his place,
+  the leader of the nearest file that stays becomes the guide where he stands.
   So the front rank stays on the line it stood on while it opens out sideways.
 
-- The man whose role it is to lead a new file up an interval (the hemilochites, or the epistates) comes up beside the leader of the file he opened from.
+- The man whose role it is to lead a new file up an interval (the hemilochites, or the first epistates, behind the file leader) comes up beside the leader of the file he opened from.
   He steps out of his file before he comes up,
-  and comes up only as far as the interval has opened where he is,
-  between the men of the files on either side who stand level with him:
-  not at all while the man across the interval stands within a body's radius of his line (the two stand a file and a half apart or less),
-  and freely once they stand two files apart.
+  and comes up only while nobody of another file stands in his lane,
+  from level with him to a rank ahead,
+  within a body's width of his place's line (or within a file pitch, where the files stand closer than a body's width).
+  The men of his column behind him do the same.
   Only a man with the role leads: the head of an interval without it stays where he is.
 
 - If a leader falls, the man behind him takes his place and his role.
@@ -144,7 +150,8 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
 - Each man stops following once he has taken his place and the man he follows has taken his:
   when he stands within the reform settle distance of his place,
   or when a man of another regiment presses on him so he can come no nearer
-  (a man coming up an interval, only once the interval has opened fully where he is).
+  (a man in an interval, only once his lane is empty),
+  or, for a man in an interval, when every man standing in his lane has stopped following, so it will open no further.
   From then on he keeps to his place as he would to his slot.
 
 The block's position is read off its men while the drill runs.
@@ -154,7 +161,8 @@ The drill is for a block standing still, from wherever its men stand, settled on
 A block on the march widens with the lateral deal ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)),
 and so does any other change of width that happens to double the files (a drag or [ ] resize, a form-up),
 and so does a block whose grid stands turned from its men's facing, as an about-face leaves it,
-since its file leaders stand behind its men and its files would cross.
+since its file leaders stand behind its men and its files would cross
+([#1968](https://github.com/Lacaedemon/sparta/issues/1968)).
 The turn-and-unfold combo's widen doubles the turned block's files against the width it had before the turn,
 so it is the drill only for a block as deep as it was wide (#1967).
 A man held off his place by terrain, rather than by another regiment, keeps the drill running (#1967).

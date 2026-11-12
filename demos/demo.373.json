@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/file-doubling.json",
-  "caption": "File-doubling maneuvers (#373). With the Spearmen selected, N issues DUPLICATIO -- alternate files tuck in behind their neighbours, halving the frontage and doubling the depth into a deeper, narrower column. Then B issues EXPLICATIO -- each file splits and the rear half steps out laterally, doubling the frontage and halving the depth back toward the wide line. The soldier bodies ease into the reshaped slots at jog speed; nobody teleports.",
+  "caption": "File-doubling maneuvers (#373). With the Spearmen selected, N issues DUPLICATIO -- alternate files tuck in behind their neighbours, halving the frontage and doubling the depth into a deeper, narrower column. Then B issues EXPLICATIO, the half-file drill: the files next to the middle stand, and the rear half of each file steps sideways into the interval on its wing's outer side and comes up it behind its half-file leader, each man following a man he can see, doubling the frontage and halving the depth back toward the wide line. In the duplicatio the soldiers walk to their new slots; nobody teleports.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

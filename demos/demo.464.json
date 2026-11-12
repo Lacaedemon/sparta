@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/file-doubling-asymmetric.json",
-  "caption": "Asymmetric (anchored) explicatio (#464). With the Spearmen selected, Shift+B widens the frontage the same way the plain B does, but holds the RIGHT flank fixed and lands the whole widen off the LEFT flank instead of growing symmetrically about the unit's own centre. Ctrl+B is the mirror (holds the left flank fixed). Soldier bodies ease into the reshaped slots at jog speed; nobody teleports.",
+  "caption": "Asymmetric (anchored) explicatio (#464). With the Spearmen selected, Shift+B widens the frontage the same way the plain B does, but holds the RIGHT flank: its corner file stands and every rear half-file steps into the interval on its file's left, so the whole widen lands off the LEFT flank, where the plain B stands the files next to the middle and opens each wing outward. Ctrl+B is the mirror (holds the left flank). Each man follows a man he can see; nobody teleports.",
   "fixed_fps": 30,
   "max_frames": 150,
   "fps": 12,

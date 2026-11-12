@@ -1188,7 +1188,11 @@ only, the west flank's edge holding its ground while the new files form up.
 width one file at a time, these two drill maneuvers reshape it by a whole factor at once.
 Press <kbd>B</kbd> for **explicatio**: the frontage doubles and the depth halves --- a column
 unfolds into a broad line that brings more men to the front, good for overlapping a flank.
-The men do it as the drill manuals describe, each following a man he can see.
+The men do it after the drill manuals, each following a man he can see.
+The manuals' doubling keeps the line's length and fills the spaces of an open order.
+Here the files also open out, so the line grows as long as its files are many,
+as Asclepiodotus's opening out (Tactics 10.18) and Polyaenus's Cleandridas (Stratagems 2.10.4) have it,
+and which files stand is taken from Aelian's chapter on closing and opening a phalanx (Tactics 33).
 The front rank stays on the line it stood on while its files open out sideways.
 The files next to the middle stand, and each wing opens outward:
 the rear half of each file in the left wing steps sideways into the interval on its left,
@@ -1203,13 +1207,15 @@ so the right flank steps out one file further than the left:
 a block of 9 files widening to 18 moves its left flank out 4 files and its right flank 5.
 The drill is for a block standing still, whether or not its men have settled into place,
 and facing the way its formation does.
-A block on the march widens as it always has, and so does a block that has about-faced,
+A block on the march widens as it always has, and so does a block that has about-faced
+([#1968](https://github.com/Lacaedemon/sparta/issues/1968)),
 and the turn-and-unfold combo unless the block it turns is as deep as it is wide.
 Press <kbd>N</kbd> for
 **duplicatio**: alternate files tuck in behind their neighbours, so the frontage halves and
 the depth doubles --- a wide line folds into a deep, narrow column, good for punching through
-or squeezing down a lane. Nobody teleports: the soldiers walk to their new slots, so the
-reshape takes a moment to settle. Explicatio can't widen past a single rank, and duplicatio
+or squeezing down a lane. Nobody teleports: in a duplicatio the soldiers walk to their new
+slots, and in an explicatio each follows the man he can see, so either reshape takes a
+moment to settle. Explicatio can't widen past a single rank, and duplicatio
 bottoms out at one file.
 
 ::: {#fig-file-doubling .demo}

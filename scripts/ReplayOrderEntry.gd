@@ -7,7 +7,8 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		group_attack: int = 0, anchor_offset: float = 0.0,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
-		line_index: int = -1, reinforce: int = 0, explicatio: int = 0) -> Dictionary:
+		line_index: int = -1, reinforce: int = 0, explicatio: int = 0,
+		explicatio_held: int = 0) -> Dictionary:
 	var entry := {
 		"tick": tick,
 		"units": uids.duplicate(),
@@ -63,4 +64,7 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# other order so old replays stay valid and byte-identical on re-save.
 	if explicatio != 0:
 		entry["explicatio"] = explicatio
+	# The flank that drill holds (UnitFormation.Anchor); omitted when 0 = CENTRE.
+	if explicatio_held != 0:
+		entry["explicatio_held"] = explicatio_held
 	return entry

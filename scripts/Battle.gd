@@ -1962,7 +1962,8 @@ func _physics_process(delta: float) -> void:
 					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
 					int(o.get("line", LINE_INDEX_UNCHANGED)),
 					int(o.get("reinforce", ReinforceAxis.NONE)),
-					int(o.get("explicatio", UnitFormation.ExplicatioDrill.NONE)))
+					int(o.get("explicatio", UnitFormation.ExplicatioDrill.NONE)),
+					int(o.get("explicatio_held", UnitFormation.Anchor.CENTRE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -2666,8 +2667,12 @@ func enqueue_file_double(uids: Array, direction: int,
 			"anchor_offset": anchor_offset,
 		}
 		# A widen is an explicatio drill (Unit.set_frontage), not a plain resize to that width.
+		# It carries the flank it holds (UnitFormation.Anchor), the order's own choice, not one read
+		# off the offset, which a held widen before it leaves standing.
 		if direction > 0 and drill != UnitFormation.ExplicatioDrill.NONE:
 			cmd["explicatio"] = drill
+			if anchor != UnitFormation.Anchor.CENTRE:
+				cmd["explicatio_held"] = anchor
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
 
@@ -2981,10 +2986,11 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		if files > 0:
 			var anchor_offset: float = float(cmd.get("anchor_offset", 0.0))
 			var drill: int = int(cmd.get("explicatio", UnitFormation.ExplicatioDrill.NONE))
+			var held: int = int(cmd.get("explicatio_held", UnitFormation.Anchor.CENTRE))
 			for uid in cmd["units"]:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
-					u.set_frontage(files, anchor_offset, drill)
+					u.set_frontage(files, anchor_offset, drill, held)
 					# Same idle-only queue write as the formation branch above.
 					if u.current_order == null:
 						u.set_current_order(Order.new_frontage(files, anchor_offset))

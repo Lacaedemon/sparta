@@ -427,7 +427,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_shield_id.remove_at(i)
 			if i < unit._sim_soldier_shield_hold_angle.size():
 				unit._sim_soldier_shield_hold_angle.remove_at(i)   # and the hold-angle state
-			# A man who led a column (Unit.soldier_role) hands the lead to the man who closes up into
+			# A man who led a column (Unit._sim_soldier_role) hands the lead to the man who closes up into
 			# his place in his file, read once the file has closed up below.
 			var fallen_role: int = UnitFormation.SoldierRole.NONE
 			if i < unit._sim_soldier_role.size():

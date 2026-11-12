@@ -43,6 +43,7 @@ const EXCLUDED := {
 	"_explicatio_places": "this tick's follow places of an explicatio under way, read afresh each tick from the men and the restored drill state (_refresh_explicatio_follow)",
 	"_explicatio_rooms": "this tick's room each man of an explicatio under way has to step into his place, read afresh each tick from the men (_refresh_explicatio_follow)",
 	"_explicatio_follow_frame": "the tick _explicatio_leaders and _explicatio_places were read on; the restore clears it so they are read afresh",
+	"_explicatio_shut": "this tick's whether each man's lane is held by men who have stopped following, read afresh each tick from the men (_refresh_explicatio_follow)",
 	"_explicatio_follow_count": "the man count _explicatio_leaders and _explicatio_places were read for, keyed with _explicatio_follow_frame, which the restore clears",
 	"_live_rank_count_gen": CACHE,
 	"_live_rank_count_soldiers": CACHE,
