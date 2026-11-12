@@ -673,6 +673,21 @@ func test_a_nearest_foe_merged_away_is_dropped_from_the_cache() -> void:
 	assert_eq(r["perceived"], 1)
 
 
+func test_a_contributing_foe_that_dies_drops_the_cached_answer() -> void:
+	var man := _observer()
+	var near := _unit(2, 1, PackedVector2Array([Vector2(0.0, 50.0)]))
+	var far := _unit(3, 1, PackedVector2Array([Vector2(0.0, 200.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, near, far], [], null)
+	var both: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(both["perceived"], 2)
+	# The farther foe is merged away or killed; it is not the nearest.
+	far.state = Unit.State.DEAD
+	var r: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(r["perceived"], 1, "a fresh scan skips the DEAD unit")
+	assert_ne(r["threat"], both["threat"], "and so does the threat")
+
+
 func test_changing_a_parameter_drops_the_cached_answers() -> void:
 	var man := _observer()
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, -100.0)]))   # behind him

@@ -1,12 +1,9 @@
 extends RefCounted
 ## One man's look at the enemy bodies around him: the work behind ManPerception.perceive,
-## with no cache and no state of its own.
-##
-## He visits the bodies of every enemy unit whose bounding circle reaches his sight disc,
+## with no cache and no state of its own. He visits the bodies of every enemy unit whose bounding circle reaches his sight disc,
 ## keeps those inside the disc that pass his own line of sight (ManSight), and sums the unit
 ## directions to them, each weighted by distance and by his front arc (ManWeights). The
-## nearest one is tracked without the arc weighting: a man knows the foe at his elbow
-## whichever way he faces.
+## nearest is tracked without the arc weighting: a man knows the foe at his elbow.
 const Sight = preload("res://scripts/ManSight.gd")
 const Weights = preload("res://scripts/ManWeights.gd")
 
@@ -14,16 +11,15 @@ const Weights = preload("res://scripts/ManWeights.gd")
 ## The answer for a man who perceives nothing.
 static func none() -> Dictionary:
 	return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
-		"nearest_distance": INF, "perceived": 0, "nearest_count": 0,
-		"nearest_pos": Vector2.ZERO, "own_pos": Vector2(INF, INF),
-		"own_facing": Vector2(INF, INF)}
+		"nearest_distance": INF, "perceived": 0, "nearest_count": 0, "nearest_pos": Vector2.ZERO,
+		"own_pos": Vector2(INF, INF), "own_facing": Vector2(INF, INF), "contributors": []}
 
 
 ## Whether a cached answer still describes man `index` of `unit`: his own body is where it
-## was and faces as it did (an out-of-range index stays so), and the nearest foe unit is
-## still alive, keeps its body count and has that body where it was. A reap or a merge
-## re-packs the arrays, so an index can outlive the body it named, and a unit merged away
-## keeps its bodies but is DEAD, which a fresh scan skips.
+## was and faces as it did (an out-of-range index stays so), no foe unit that contributed
+## has died, and the nearest keeps its body count with that body where it was. A reap or a
+## merge re-packs the arrays, so an index can outlive the body it named, and a unit merged
+## away keeps its bodies but is DEAD, which a fresh scan skips.
 static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 	var own := Vector2(INF, INF)
 	var facing := Vector2(INF, INF)
@@ -32,11 +28,12 @@ static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 		facing = unit.soldier_facing(index)
 	if own != cached["own_pos"] or facing != cached["own_facing"]:
 		return false
+	for c in cached["contributors"]:
+		if (c as Unit).state == Unit.State.DEAD:
+			return false
 	var foe: Variant = cached["nearest_unit"]
 	if foe == null:
 		return true
-	if (foe as Unit).state == Unit.State.DEAD:
-		return false
 	var bodies: PackedVector2Array = (foe as Unit)._sim_soldier_pos
 	var i: int = cached["nearest_index"]
 	return bodies.size() == int(cached["nearest_count"]) and bodies[i] == cached["nearest_pos"]
@@ -44,10 +41,10 @@ static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 
 ## Returns the dictionary ManPerception.perceive documents, plus four keys that still_valid
 ## reads to notice that a cached answer went stale: "own_pos" and "own_facing" (his own
-## body's position and facing, INF for an out-of-range index), "nearest_count" (the nearest
-## foe unit's body count) and "nearest_pos" (that nearest body's position). `rule` is
-## ManSight.compile's answer for the frame, `foes` the frame's ManFoes, `radius` his sight
-## in world units.
+## body's position and facing, INF for an out-of-range index), "nearest_count" and
+## "nearest_pos" (the nearest foe unit's body count and that body's position) and
+## "contributors" (every foe unit with a perceived body). `rule` is ManSight.compile's
+## answer for the frame, `foes` the frame's ManFoes, `radius` his sight in world units.
 static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: RefCounted,
 		half_angle: float, rear: float) -> Dictionary:
 	var out: Dictionary = none()
@@ -72,6 +69,7 @@ static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: 
 		if foe.position.distance_squared_to(pos) > reach_out * reach_out:
 			continue
 		var bodies: PackedVector2Array = foe._sim_soldier_pos
+		var before: int = perceived
 		for j in range(bodies.size()):
 			var d_sq: float = pos.distance_squared_to(bodies[j])
 			if d_sq > radius_sq:
@@ -91,6 +89,8 @@ static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: 
 			var dist: float = sqrt(d_sq)
 			threat += to_foe / dist * Weights.distance_weight(dist, radius) \
 				* Weights.arc_weight(facing, to_foe, half_angle, rear)
+		if perceived > before:
+			(out["contributors"] as Array).append(foe)
 	out["threat"] = threat
 	out["perceived"] = perceived
 	if perceived > 0:
