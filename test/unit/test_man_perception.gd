@@ -688,6 +688,22 @@ func test_a_contributing_foe_that_dies_drops_the_cached_answer() -> void:
 	assert_ne(r["threat"], both["threat"], "and so does the threat")
 
 
+func test_a_contributing_foe_that_loses_a_body_drops_the_cached_answer() -> void:
+	var man := _observer()
+	var near := _unit(2, 1, PackedVector2Array([Vector2(0.0, 50.0)]))
+	var far := _unit(3, 1, PackedVector2Array([Vector2(0.0, 200.0), Vector2(0.0, 220.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, near, far], [], null)
+	var before: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(before["perceived"], 3)
+	# One of the far unit's two bodies falls; it is alive and is not the nearest.
+	far._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 220.0)])
+	far._sim_soldier_facing = PackedVector2Array([MAN_FACING])
+	var r: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(r["perceived"], 2, "a fresh scan finds the bodies that are left")
+	assert_ne(r["threat"], before["threat"])
+
+
 func test_changing_a_parameter_drops_the_cached_answers() -> void:
 	var man := _observer()
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, -100.0)]))   # behind him
