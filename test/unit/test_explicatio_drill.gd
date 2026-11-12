@@ -708,6 +708,50 @@ func test_a_man_pressed_by_another_regiment_takes_his_place_where_he_stands() ->
 	assert_eq(u._explicatio_following[free], 1, "the free man goes on following")
 
 
+## A man of another file standing in a hemilochites' lane, a little ahead of him on his line,
+## takes his room away; while that man still follows, the lane may yet clear, and once he has
+## stopped following it is shut, and the hemilochites stops following where he stands.
+func test_a_man_in_his_lane_holds_him_back_and_a_settled_one_shuts_it() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	await _run(5)
+	var h: int = -1
+	for i in range(u.soldiers):
+		if _role(u, i) == UnitFormation.SoldierRole.HEMILOCHITES and u._explicatio_following[i] == 1:
+			h = i
+			break
+	var b: int = -1
+	for j in range(u.soldiers):
+		if u._sim_soldier_file[j] != u._sim_soldier_file[h] and _stays(u, j) \
+				and u._sim_soldier_rank[j] > 0 and u._explicatio_following[j] == 1:
+			b = j
+			break
+	var front: Vector2 = u._sim_soldier_facing[h].normalized()
+	var right := Vector2(-front.y, front.x)
+	var line_off: float = (u._explicatio_places[h] - u._sim_soldier_pos[h]).dot(right)
+	u._sim_soldier_pos[b] = u._sim_soldier_pos[h] + right * line_off + front * 4.0
+	u._explicatio_following[u._explicatio_leaders[h]] = 0   # his leader has taken his place
+	u._explicatio_follow_frame = -1
+	u._refresh_explicatio_follow(u.soldiers)
+	assert_eq(u._explicatio_rooms[h], 0.0, "a man in his lane leaves him no room")
+	assert_eq(u._explicatio_shut[h], 0, "while that man still follows, the lane is not shut")
+	var own := PackedInt32Array()
+	for j in range(u.soldiers):
+		if u._sim_soldier_file[j] == u._sim_soldier_file[h]:
+			own.push_back(j)
+	var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(u._sim_soldier_pos[h], front,
+			u._explicatio_places[h], u._sim_soldier_pos, own,
+			u.follow_line_width() - Unit.REFORM_SETTLE_EPS, u.rank_pitch_wu(), u.soldier_body_radius())
+	assert_true(lane.has(b), "precondition: that man stands in his lane")
+	for j in lane:
+		u._explicatio_following[j] = 0   # every man in his lane has taken his place
+	u._explicatio_follow_frame = -1
+	u._advance_explicatio_drill()
+	assert_eq(u._explicatio_shut[h], 1, "that man settled, the lane is shut")
+	assert_eq(u._explicatio_following[h], 0, "and he stops following where he stands")
+
+
 ## A man coming up an interval that has not yet opened where he is goes on following when a man
 ## of another regiment presses on him: the man beside him, not the press, holds him back, and
 ## leaving the follow mode would walk him up the interval before it opened.
@@ -1255,6 +1299,9 @@ func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
 		assert_almost_eq(u.file_pitch_wu(), 9.0 * Unit.spacing_scale_for_mode(mode), 0.01,
 			"precondition: mode %d stands at its pitch" % mode)
 		var files: int = UnitFormation.frontage(u)
+		assert_almost_eq(u.follow_line_width(),
+				minf(u.file_pitch_wu(), 2.0 * u.soldier_body_radius()), 0.001,
+				"mode %d: a man clears his line by a body's width, or the pitch if closer" % mode)
 		_battle.enqueue_file_double([u.uid], 1)
 		assert_true(u.explicatio_drill_active(), "mode %d: the widen is the drill" % mode)
 		var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
