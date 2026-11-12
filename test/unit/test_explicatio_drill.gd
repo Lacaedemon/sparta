@@ -400,6 +400,8 @@ func test_an_absolute_resize_to_twice_the_files_is_not_the_drill() -> void:
 	u.formation_slots(u.soldiers)
 	assert_eq(u.position, position_before, "the centre stays put")
 	assert_false(u.explicatio_drill_active(), "nobody follows anybody")
+	assert_eq(u.follow_leader(0), SoldierFollow.NOT_FOLLOWING, "every man keeps to his slot")
+	assert_eq(u.follow_room(0), 1.0, "and steps into no gap")
 	assert_eq(_count_role(u, UnitFormation.SoldierRole.HEMILOCHITES), 0, "nobody leads a column")
 
 
@@ -663,6 +665,8 @@ func test_man_ahead_and_successor_read_the_file_order() -> void:
 	assert_eq(UnitFormation.successor_in_file(files, ranks, 0, 1, 0), -1, "nobody behind him")
 	assert_eq(UnitFormation.successor_in_file(PackedInt32Array([0, 1, 0]), PackedInt32Array(),
 		0, -1, 1), 2, "without ranks, the next man of his file in index order")
+	assert_eq(UnitFormation.successor_in_file(PackedInt32Array([0, 1, 0]), PackedInt32Array(),
+		1, -1, 2), -1, "without ranks, nobody of his file after him")
 
 
 # --- SoldierFollow ---------------------------------------------------------------
@@ -734,3 +738,5 @@ func test_room_between_two_men_opens_from_shoulder_to_shoulder() -> void:
 	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(13.5, 0), f, 9.0), 0.5)
 	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(-27, 0), f, 9.0), 1.0,
 		"two pitches or more apart: all the room")
+	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(1, 0), f, 0.0), 1.0,
+		"no line width: all the room")
