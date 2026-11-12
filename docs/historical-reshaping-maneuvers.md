@@ -61,12 +61,26 @@ The B key gives the half-file drill.
   Bingham's notes on Aelian, chapter 29 (1616), list this way of doubling the front.
   Its ancient source is not verified: Aelian 29 and Arrian's Tactica have not been checked.
 
-In both drills the front rank holds its ground.
-The men who change file step sideways into the interval on the spear side before they march up it:
-the right, or the side away from a held flank when the widen is anchored.
-Each column follows its leader in: no man steps into the interval before the man ahead of him, and no man overtakes him.
-If the leader falls, the man behind him takes his place and his role.
-Any other change of width that happens to double the files (a drag or [ ] resize, a form-up) is not a drill, and keeps the lateral deal.
+Nobody walks to a slot laid out from the unit's centre: each man follows a man he can see (`SoldierFollow`).
+
+- Every man behind a file leader keeps a rank's distance behind the man ahead of him in his file, so nobody passes him.
+- The leader of each file that stays dresses two file pitches from the next file leader toward the file that stands,
+  and takes his depth from the guide, the leader of that standing file, who holds the ground he stood on.
+  So the front rank holds its ground while the line opens.
+- The leader of each new file in an interval (the hemilochites, or the epistates) comes up beside the leader of the file he opened from,
+  on the spear side: the right, or the side away from a held flank when the widen is anchored.
+  He steps out of his file before he comes up, and comes up only as far as the interval has opened.
+- If a leader falls, the man behind him takes his place and his role.
+
+The block's position is read off its men while the drill runs.
+When every man stands in his place, the slot grid is laid on the men where they stand.
+
+The drill is for a formed block standing still.
+A block on the march, or one still reshaping, widens with the lateral deal for now,
+and so does any other change of width that happens to double the files (a drag or [ ] resize, a form-up).
+In the alternate-rank drill each epistates comes up from one rank behind his file leader while the line is still opening,
+and the front rank runs up to two thirds of a rank pitch ahead before it settles back;
+opening the files before the epistatai step in would remove that.
 
 ## Game Design and Mechanics Framework
 

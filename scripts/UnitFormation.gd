@@ -1219,8 +1219,8 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 
 # --- The explicatio drills ---------------------------------------------------
 # Doubling the front with the men the block already has (explicatio): the files double and the
-# depth halves. Who moves into the new files, and in what order, is the drill; the sources are
-# in docs/historical-reshaping-maneuvers.md ("The explicatio drills").
+# depth halves. Who moves into the new files, and whom each man follows there, is the drill; the
+# sources are in docs/historical-reshaping-maneuvers.md ("The explicatio drills").
 #
 # - HALF_FILE, the default. Each file's rear half marches up the interval beside it, led by the
 #   half-file leader, the hemilochites (Asclepiodotus 2.2), as Xenophon's company unfolds into
@@ -1231,9 +1231,12 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 #   ahead of him. Bingham's notes on Aelian ch. 29 (1616) list it among the ways to double the
 #   front; its ancient source is not yet verified (Aelian 29 and Arrian's Tactica are unchecked).
 #
-# In both the front rank keeps its ground, and the men who change file step sideways into the
-# interval first and then march straight up it in column, the man ahead leading
-# (apply_lane_first_waypoints).
+# Nobody walks to a slot. Each man follows a man he can see (explicatio_follow_plan,
+# SoldierFollow): every man behind a file leader keeps a rank's distance behind the man ahead of
+# him; the leader of each new file in an interval comes up beside the leader of the file it
+# opened from as the interval opens; and each file leader who stays keeps his distance from the
+# next file leader toward the file that stands, dressing his depth on that file's leader, the
+# guide, who holds his ground.
 enum ExplicatioDrill { NONE = 0, HALF_FILE = 1, ALTERNATE_RANK = 2 }
 ## Roles a man takes in an explicatio's new file: the man who leads a column up an interval.
 ## HEMILOCHITES leads a half-file (HALF_FILE); EPISTATES, the man behind the file leader, leads
@@ -1243,9 +1246,6 @@ enum SoldierRole { NONE = 0, HEMILOCHITES = 1, EPISTATES = 2 }
 ## Default for Unit.explicatio_lane_right: the men who change file go up the interval on the
 ## right of their own files (the slot frame's +x, the files' spear side).
 const EXPLICATIO_LANE_RIGHT := true
-## Default for Unit.explicatio_lane_tolerance_frac: how near, as a fraction of the file pitch,
-## a man must stand to the line of his interval before he counts as in it and turns to march up.
-const EXPLICATIO_LANE_TOLERANCE_FRAC := 0.1
 
 
 ## The explicatio deal of a file-major block on `old_files` files into twice as many, by
@@ -1262,15 +1262,14 @@ const EXPLICATIO_LANE_TOLERANCE_FRAC := 0.1
 ## ahead of him, so the epistates at rank 1 leads it. Each file is split by its own length, so
 ## a file a casualty has shortened still splits.
 ##
-## Returns {"files", "ranks", "walkers", "roles"}: the new file ids and ranks, a flag for each
-## man who changes file, and each man's SoldierRole. Empty arrays when the inputs do not line
-## up (a file id outside 0..old_files - 1, no men, or no drill), for the caller to deal some
-## other way.
+## Returns {"files", "ranks", "roles"}: the new file ids and ranks and each man's SoldierRole.
+## Empty arrays when the inputs do not line up (a file id outside 0..old_files - 1, no men, or
+## no drill), for the caller to deal some other way.
 static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array,
 		old_files: int, lane_right: bool = EXPLICATIO_LANE_RIGHT,
 		drill: int = ExplicatioDrill.HALF_FILE) -> Dictionary:
 	var empty := {"files": PackedInt32Array(), "ranks": PackedInt32Array(),
-			"walkers": PackedByteArray(), "roles": PackedByteArray()}
+			"roles": PackedByteArray()}
 	var n: int = file_ids.size()
 	if n <= 0 or old_files <= 0 \
 			or (drill != ExplicatioDrill.HALF_FILE and drill != ExplicatioDrill.ALTERNATE_RANK):
@@ -1288,11 +1287,9 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 		lengths[k] += 1
 	var out_files := PackedInt32Array()
 	var out_ranks := PackedInt32Array()
-	var walkers := PackedByteArray()
 	var roles := PackedByteArray()
 	out_files.resize(n)
 	out_ranks.resize(n)
-	walkers.resize(n)
 	roles.resize(n)
 	var lane: int = 1 if lane_right else 0
 	for i in range(n):
@@ -1314,31 +1311,93 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 				role = SoldierRole.EPISTATES
 		out_files[i] = 2 * k + (lane if moves else 1 - lane)
 		out_ranks[i] = new_rank
-		walkers[i] = 1 if moves else 0
 		roles[i] = role
-	return {"files": out_files, "ranks": out_ranks, "walkers": walkers, "roles": roles}
+	return {"files": out_files, "ranks": out_ranks, "roles": roles}
 
 
-## How many ranks deep the deepest file of a file-major assignment stands: the largest rank plus
-## one with explicit `ranks` (index-aligned with `file_ids`), or else the most men in one file.
-## That is the depth file_major_block_slots centres the block on. 0 for no men.
-static func max_rank_count(file_ids: PackedInt32Array, ranks: PackedInt32Array) -> int:
+## Whom each man follows while an explicatio is under way, and where he stands relative to him
+## (SoldierFollow): {"leaders": PackedInt32Array, "offsets": PackedVector2Array, "flanks":
+## PackedInt32Array}, index-aligned with `file_ids` and `ranks` (the dealt assignment, explicit
+## ranks). An offset is (to the follower's right, behind him), in world units. `flanks` names,
+## for the leader of a new file in an interval, the leader of the file on the far side of that
+## interval, so he can see how far it has opened (SoldierFollow.room_between); -1 for every
+## other man, and for one whose interval is on the block's flank. `guides` names the guide each
+## file leader dresses his depth on (SoldierFollow): the ground the standing file's leader holds
+## (SoldierFollow.STAND), so the front rank's line is his; NOT_FOLLOWING for every man behind a
+## file leader.
+##
+## - A man behind a file leader follows the man ahead of him in his file, a rank pitch behind.
+## - The leader of a new file in an interval (a file whose id is not of `stay_parity`) comes up
+##   beside the leader of the file he opened from, the file next to his on the side of
+##   `stay_parity` ids: (file id difference) file pitches to his right, level with him.
+## - The leader of a file that stays follows the leader of the next file that stays toward
+##   `stand_file`, (file id difference) file pitches to his right, level with him.
+## - The leader of `stand_file` holds his ground: SoldierFollow.STAND.
+## A man whose man to follow has fallen follows the next one along the same chain, at the
+## matching distance; one with nobody left to follow holds where he is (SoldierFollow.HOLD).
+## A file id grows to the right (file_major_block_slots lays file 0 out on the left). Empty
+## arrays when the ranks do not line up with the files.
+static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		stay_parity: int, stand_file: int, file_pitch: float, rank_pitch: float) -> Dictionary:
 	var n: int = file_ids.size()
-	var deepest: int = 0
-	if ranks.size() == n:
-		for r in ranks:
-			deepest = maxi(deepest, r + 1)
-		return deepest
-	var counts: Dictionary = {}
-	for f in file_ids:
-		counts[f] = int(counts.get(f, 0)) + 1
-		deepest = maxi(deepest, int(counts[f]))
-	return deepest
+	var leaders := PackedInt32Array()
+	var offsets := PackedVector2Array()
+	var flanks := PackedInt32Array()
+	var guides := PackedInt32Array()
+	if ranks.size() != n or n == 0:
+		return {"leaders": leaders, "offsets": offsets, "flanks": flanks, "guides": guides}
+	leaders.resize(n)
+	offsets.resize(n)
+	flanks.resize(n)
+	flanks.fill(-1)
+	guides.resize(n)
+	guides.fill(SoldierFollow.NOT_FOLLOWING)
+	var at: Dictionary = {}
+	for i in range(n):
+		at[Vector2i(file_ids[i], ranks[i])] = i
+	for i in range(n):
+		var f: int = file_ids[i]
+		var r: int = ranks[i]
+		leaders[i] = SoldierFollow.HOLD
+		if r > 0:
+			# The nearest man ahead of him in his file; ranks close up after a casualty, so that
+			# is the man directly ahead unless the arrays are mid-update.
+			for back in range(1, r + 1):
+				var j: int = int(at.get(Vector2i(f, r - back), -1))
+				if j >= 0:
+					leaders[i] = j
+					offsets[i] = Vector2(0.0, back * rank_pitch)
+					break
+			continue
+		guides[i] = SoldierFollow.STAND
+		if f == stand_file:
+			leaders[i] = SoldierFollow.STAND
+			continue
+		# A file leader: the leader of the file he dresses on, then on along the chain of files
+		# that stay toward the file that stands.
+		# A file in an interval opened from the file that stays beside it: on its left when the
+		# files that stay take the even ids (explicatio_assignment's lane_right), else on its right.
+		var g: int
+		if posmod(f, 2) != stay_parity:
+			g = f - 1 if stay_parity == 0 else f + 1
+			flanks[i] = int(at.get(Vector2i(2 * f - g, 0), -1))
+		else:
+			g = f + (2 if stand_file > f else -2)
+		for _hop in range(absi(g - stand_file) / 2 + 1):
+			var j: int = int(at.get(Vector2i(g, 0), -1))
+			if j >= 0:
+				leaders[i] = j
+				offsets[i] = Vector2((f - g) * file_pitch, 0.0)
+				break
+			if g == stand_file:
+				break
+			g += 2 if stand_file > g else -2
+	return {"leaders": leaders, "offsets": offsets, "flanks": flanks, "guides": guides}
 
 
 ## For each man, the index of the man directly ahead of him in his own file (rank one less), or
 ## -1 for a file leader or when the arrays do not line up. Index-aligned with `file_ids` and
-## `ranks`. The column an explicatio sends up an interval follows this order.
+## `ranks`.
 static func man_ahead_in_file(file_ids: PackedInt32Array, ranks: PackedInt32Array) -> PackedInt32Array:
 	var n: int = file_ids.size()
 	var out := PackedInt32Array()
@@ -1373,45 +1432,6 @@ static func successor_in_file(file_ids: PackedInt32Array, ranks: PackedInt32Arra
 		if file_ids[j] == file:
 			return j
 	return -1
-
-
-## `slots` with each man still on his way into an interval (`walkers`) sent there first, in
-## column behind the man ahead of him. While he stands more than `tolerance` off the line of
-## his interval, his target is the point on it level with him, so he steps sideways without
-## gaining ground; and he steps no nearer to it than the man ahead of him in the column
-## (`ahead`, man_ahead_in_file of the new assignment) has got, while that man is still stepping
-## in himself. So the column's leader steps into the interval first and each man follows him
-## in, then marches straight up it to his slot, rather than taking a diagonal through his own
-## file. While the man ahead is still stepping in, a follower also stands at least `follow_gap`
-## behind him (the slot frame's +y), so a man who started abreast of his leader falls in behind
-## him rather than onto him, and one already on the interval's line waits there for him.
-## `local_bodies` are the men in the slot frame (Unit.to_slot_frame), index-aligned with
-## `slots`, `walkers` and `ahead`; anything else returns `slots` unchanged.
-static func apply_lane_first_waypoints(slots: PackedVector2Array,
-		local_bodies: PackedVector2Array, walkers: PackedByteArray, tolerance: float,
-		ahead: PackedInt32Array = PackedInt32Array(), follow_gap: float = 0.0) -> PackedVector2Array:
-	var n: int = slots.size()
-	if n == 0 or local_bodies.size() != n or walkers.size() != n:
-		return slots
-	var gated: bool = ahead.size() == n
-	var out: PackedVector2Array = slots.duplicate()   # packed arrays share storage: leave the caller's alone
-	for i in range(n):
-		if walkers[i] == 0:
-			continue
-		var off: float = local_bodies[i].x - slots[i].x
-		var j: int = ahead[i] if gated else -1
-		var leader_walking: bool = j >= 0 and walkers[j] != 0
-		if absf(off) <= tolerance and not leader_walking:
-			continue
-		var target := Vector2(slots[i].x, local_bodies[i].y)
-		if leader_walking:
-			# The man ahead is still stepping in: come no nearer the interval than he has, and
-			# no nearer the front than a man's place behind him.
-			var lead_off: float = absf(local_bodies[j].x - slots[j].x)
-			target.x = slots[i].x + signf(off) * minf(absf(off), lead_off)
-			target.y = maxf(target.y, local_bodies[j].y + follow_gap)
-		out[i] = target
-	return out
 
 
 ## `ranks` with the entry for the soldier at `index` removed and every SAME-FILE survivor

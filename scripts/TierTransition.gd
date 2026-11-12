@@ -117,6 +117,8 @@ static func demote(u: Unit) -> void:
 	# the bodies left off, and promotion re-seeds them from it. Read BEFORE the tier
 	# flips, since mean_soldier_stamina reads the aggregate once the unit is far-tier.
 	u.far_stamina = u.mean_soldier_stamina()
+	# An explicatio under way ends with the grid laid on the men, while there are men to lay it on.
+	u._end_explicatio_drill()
 	u.tier = FormationTier.FAR
 	u._sim_soldier_pos = PackedVector2Array()
 	u._sim_body_vel = PackedVector2Array()
