@@ -1225,7 +1225,7 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 # - HALF_FILE, the default. Each file's rear half marches up the interval beside it, led by the
 #   half-file leader, the hemilochites (Asclepiodotus 2.2), as Xenophon's company unfolds into
 #   line with each captain-of-ten leading his part of the file up beside the part ahead of it
-#   (Cyropaedia 2.3.21). The front half keeps its ground.
+#   (Cyropaedia 2.3.21). The front half stays on the line it stood on, opening out sideways.
 # - ALTERNATE_RANK. Every second man of each file, the epistates behind each file-leader and
 #   front-rank pair (ranks 2, 4, 6, ... counting from 1), steps into the interval beside the man
 #   ahead of him. Bingham's notes on Aelian ch. 29 (1616) list it among the ways to double the
@@ -1322,9 +1322,9 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 ## for the leader of a new file in an interval, the leader of the file on the far side of that
 ## interval, so he can see how far it has opened (SoldierFollow.room_between); -1 for every
 ## other man, and for one whose interval is on the block's flank. `guides` names the guide each
-## file leader dresses his depth on (SoldierFollow): the ground the standing file's leader holds
-## (SoldierFollow.STAND), so the front rank's line is his; NOT_FOLLOWING for every man behind a
-## file leader.
+## file leader dresses his depth on (SoldierFollow): the leader of `stand_file`, so the front
+## rank's line is his (STAND, his ground, only for himself or when he has fallen and nobody has
+## closed up); NOT_FOLLOWING for every man behind a file leader.
 ##
 ## - A man behind a file leader follows the man ahead of him in his file, a rank pitch behind.
 ## - The leader of a new file in an interval (a file whose id is not of `stay_parity`) comes up
@@ -1355,6 +1355,7 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 	var at: Dictionary = {}
 	for i in range(n):
 		at[Vector2i(file_ids[i], ranks[i])] = i
+	var guide: int = int(at.get(Vector2i(stand_file, 0), SoldierFollow.STAND))
 	for i in range(n):
 		var f: int = file_ids[i]
 		var r: int = ranks[i]
@@ -1369,7 +1370,7 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 					offsets[i] = Vector2(0.0, back * rank_pitch)
 					break
 			continue
-		guides[i] = SoldierFollow.STAND
+		guides[i] = guide if guide != i else SoldierFollow.STAND
 		if f == stand_file:
 			leaders[i] = SoldierFollow.STAND
 			continue

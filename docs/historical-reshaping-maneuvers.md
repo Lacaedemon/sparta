@@ -54,7 +54,7 @@ The B key gives the half-file drill.
 
 - **Half-file** (the default, after Xenophon's drill and Asclepiodotus's half-file).
   Each file's rear half marches up the interval beside its own file, led by its hemilochites, the man who headed the rear half.
-  The front half keeps its ground and its ranks.
+  The front half keeps its ranks and stays on the line it stood on, opening out sideways.
 
 - **Alternate rank** (every second man).
   Each epistates, and every second man after him, steps into the interval beside the man who stood ahead of him.
@@ -66,7 +66,7 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
 - Every man behind a file leader keeps a rank's distance behind the man ahead of him in his file, so nobody passes him.
 - The leader of each file that stays dresses two file pitches from the next file leader toward the file that stands,
   and takes his depth from the guide, the leader of that standing file, who holds the ground he stood on.
-  So the front rank holds its ground while the line opens.
+  So the front rank stays on the line it stood on while it opens out sideways.
 - The leader of each new file in an interval (the hemilochites, or the epistates) comes up beside the leader of the file he opened from,
   on the spear side: the right, or the side away from a held flank when the widen is anchored.
   He steps out of his file before he comes up, and comes up only as far as the interval has opened.
@@ -76,7 +76,7 @@ The block's position is read off its men while the drill runs.
 When every man stands in his place, the slot grid is laid on the men where they stand.
 
 The drill is for a formed block standing still.
-A block on the march, or one still reshaping, widens with the lateral deal for now,
+A block on the march, one still reshaping, and the turn-and-unfold combo's widen widen with the lateral deal for now,
 and so does any other change of width that happens to double the files (a drag or [ ] resize, a form-up).
 In the alternate-rank drill each epistates comes up from one rank behind his file leader while the line is still opening,
 and the front rank runs up to two thirds of a rank pitch ahead before it settles back;

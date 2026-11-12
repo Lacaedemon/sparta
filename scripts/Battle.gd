@@ -1818,7 +1818,7 @@ const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
 	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
 	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
 	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
-	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken",
+	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken", "sim_soldier_role",
 ]
 
 
@@ -1857,6 +1857,8 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	ud["engaged_target_pairing_canonical"] = PackedInt32Array()
 	ud["engaged_target_soldier_count"] = -1
 	ud["engaged_target_pairing_age_ticks"] = -1
+	# An explicatio under way is the whole block's: the men left behind form up afresh.
+	ud["explicatio_drill"] = UnitFormation.ExplicatioDrill.NONE
 	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
 	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
 	# retreating main body.

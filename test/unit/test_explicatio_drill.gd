@@ -82,14 +82,18 @@ func _count_role(u: Unit, role: int) -> int:
 
 
 ## Walk the drill for up to `ticks` ticks and measure it: the farthest the front stood ahead of
-## and behind where it began ("ahead", "behind"), the closest two men came ("closest"), the
-## farthest any man stood ahead of the man ahead of him in his file along the facing
-## ("overtake", negative when every man stayed behind), and the tick it ended ("ended", -1 if
-## it did not). `kill_tick` >= 0 kills man `kill_index` on that tick through SoldierMelee.reap.
+## and behind where it began ("ahead", "behind"); the farthest any leader of a file that stays
+## stood off the line the front stood on, either way, while the drill ran ("line"), and the
+## farthest any man of the front rank stood off it when the drill ended ("end_line"); the closest
+## two men came ("closest"); the farthest any man stood ahead of the man ahead of him in his file
+## along the facing ("overtake", negative when every man stayed behind); and the tick it ended
+## ("ended", -1 if it did not). `kill_tick` >= 0 kills man `kill_index` on that tick through
+## SoldierMelee.reap.
 func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
-	var out := {"ahead": -INF, "behind": INF, "closest": INF, "overtake": -INF, "ended": -1}
+	var out := {"ahead": -INF, "behind": INF, "line": 0.0, "end_line": INF, "closest": INF,
+			"overtake": -INF, "ended": -1}
 	for t in range(ticks):
 		if t == kill_tick:
 			u._sim_soldier_hp[kill_index] = 0.0
@@ -99,8 +103,18 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		out["ahead"] = maxf(out["ahead"], front)
 		out["behind"] = minf(out["behind"], front)
 		out["closest"] = minf(out["closest"], _nearest_pair(u._sim_soldier_pos))
+		var parity: int = u._explicatio_stay_parity
+		var end_line: float = 0.0
+		for i in range(u.soldiers):
+			if u._sim_soldier_rank[i] != 0:
+				continue
+			var off: float = absf(u._sim_soldier_pos[i].dot(forward) - front0)
+			end_line = maxf(end_line, off)
+			if posmod(u._sim_soldier_file[i], 2) == parity:
+				out["line"] = maxf(out["line"], off)
 		if not u.explicatio_drill_active():
 			out["ended"] = t
+			out["end_line"] = end_line
 			break
 		var ahead_of: PackedInt32Array = UnitFormation.man_ahead_in_file(u._sim_soldier_file,
 				u._sim_soldier_rank)
@@ -115,7 +129,7 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 # --- The half-file drill, live ---------------------------------------------------
 
 
-## The front rank stands where it stood, and the block stands doubled. On main the shallower block
+## The front rank stays on the line it stood on, and the block stands doubled. On main the shallower block
 ## re-centred on the old centre and the front walked back half the depth the block lost: four
 ## rank pitches (36 wu) for 140 Spearmen going from 16 ranks to 8. The bound is a quarter of a
 ## rank pitch.
@@ -131,6 +145,10 @@ func test_the_front_rank_holds_its_ground() -> void:
 		"the front went %.2f wu ahead of where it stood" % walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(),
 		"the front fell %.2f wu back from where it stood" % -walk["behind"])
+	assert_lt(walk["line"], 0.25 * u.rank_pitch_wu(),
+		"a file leader stood %.2f wu off the front's line while it opened" % walk["line"])
+	assert_lt(walk["end_line"], 0.25 * u.rank_pitch_wu(),
+		"a man of the front rank ended %.2f wu off the line the front stood on" % walk["end_line"])
 
 
 ## When the drill ends the slot grid is laid on the men where they stand: every man is within the
@@ -239,6 +257,8 @@ func test_no_two_men_come_onto_each_other() -> void:
 			"anchor %d: the nearest two men came within %.2f wu" % [anchor, walk["closest"]])
 		assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
 			"anchor %d: the front went %.2f wu ahead" % [anchor, walk["ahead"]])
+		assert_lt(walk["end_line"], 0.25 * u.rank_pitch_wu(),
+			"anchor %d: a man of the front rank ended %.2f wu off its line" % [anchor, walk["end_line"]])
 		_battle.free()
 		_battle = null
 		await get_tree().physics_frame
@@ -318,8 +338,11 @@ func test_the_lanes_open_on_the_units_right() -> void:
 			var u: Unit = units[0]
 			u.formation_slots(u.soldiers)
 			if mirrored:
+				# A standing mirror, and the men re-formed on it, as an about-face leaves them.
 				u._formation_mirror_x = true
+				await _run(DRILL_TICKS)
 			_battle.enqueue_file_double([u.uid], 1)
+			assert_true(u.explicatio_drill_active(), "precondition: the widen is the drill")
 			assert_false(u._formation_mirror_x, "the mirror is baked before the deal")
 			var right := Vector2(-u.facing.y, u.facing.x)
 			var local: PackedVector2Array = u.formation_slots(u.soldiers, false, false)
@@ -350,6 +373,7 @@ func test_an_explicatio_held_on_the_right_opens_its_lanes_on_the_left() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
 	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.RIGHT)
+	assert_true(u.explicatio_drill_active(), "precondition: the widen is the drill")
 	var rear: int = 0
 	var left_of_partner: int = 0
 	var local: PackedVector2Array = u.formation_slots(u.soldiers, false, false)
@@ -504,8 +528,10 @@ func test_the_alternate_rank_drill_keeps_its_columns() -> void:
 				% anchor + "got ahead of the man ahead of him is %.2f wu" % walk["overtake"])
 		assert_gte(walk["closest"], floor_wu,
 			"anchor %d: the nearest two men came within %.2f wu" % [anchor, walk["closest"]])
-		assert_lt(walk["ahead"], 6.0, "anchor %d: the front went %.2f wu ahead"
-				% [anchor, walk["ahead"]])
+		assert_lt(walk["ahead"], 2.0 / 3.0 * u.rank_pitch_wu(),
+			"anchor %d: the front went %.2f wu ahead" % [anchor, walk["ahead"]])
+		assert_lt(walk["end_line"], 0.25 * u.rank_pitch_wu(),
+			"anchor %d: a man of the front rank ended %.2f wu off its line" % [anchor, walk["end_line"]])
 		assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(),
 			"anchor %d: the front fell %.2f wu back" % [anchor, -walk["behind"]])
 		_battle.free()
@@ -522,8 +548,8 @@ func test_the_drill_rides_the_order_and_the_replay() -> void:
 	var plain: Dictionary = Replay.ReplayOrderEntryRef.build(5, [1], Vector2.ZERO, -4, 0, 0, 18)
 	assert_false(plain.has("explicatio"), "a plain resize records no drill")
 	var decoder := preload("res://scripts/ReplayDecoder.gd")
-	assert_eq(decoder._decode_order({"units": [1], "explicatio": true})["explicatio"], HALF_FILE,
-		"an entry recorded as a flag plays back as the half-file drill")
+	assert_eq(decoder._decode_order({"units": [1], "explicatio": ALTERNATE_RANK})["explicatio"],
+		ALTERNATE_RANK, "playback reads the drill back")
 	var step := Order.new_file_double(1, ALTERNATE_RANK)
 	assert_eq(Order.from_dict(step.to_dict()).explicatio_drill, ALTERNATE_RANK,
 		"a combo step keeps its drill through a snapshot")
@@ -672,6 +698,8 @@ func test_a_man_steps_onto_the_line_before_closing_along_it() -> void:
 		Vector2(0, 5), "a quarter of the gap open: a quarter of the step along")
 	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(9, 20), 0.0), Vector2(9, 20),
 		"no line width: straight for it")
+	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(9, -20), 9.0, 0.0),
+		Vector2(9, -20), "falling back: straight for it, gap or no gap")
 
 
 func test_room_between_two_men_opens_from_shoulder_to_shoulder() -> void:

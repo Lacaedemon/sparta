@@ -3,8 +3,9 @@ extends GutTest
 ## scene, spawn the armies, and drive the maneuver through the recorded order path
 ## (Battle.enqueue_file_double) exactly as the hotkey does. Steps the full simulation tick
 ## by tick and asserts the resulting frontage AND that the soldier bodies ease into the
-## reshaped slots at velocity -- no body teleports, and the regiment centre stays put (the
-## reshape changes the formation, not the unit position).
+## reshaped slots at velocity -- no body teleports. A duplicatio keeps the regiment centre
+## where it was; an explicatio is a drill (Unit._begin_explicatio) whose front rank stays on its
+## line, and whose centre is read off the men as the block grows shallower.
 
 # The regiment centre couples toward its soldiers' body centroid (SoldierBodies.couple),
 # so reshaping the block shifts the centre by the small amount the centroid moves as the
@@ -200,7 +201,7 @@ func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 		"bodies ease into the anchored slots at velocity, no teleport (worst %.3f px)" % worst_step)
 
 
-func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_body_centroid_shifted() -> void:
+func test_explicatio_right_anchored_settles_with_the_front_held_and_body_centroid_shifted() -> void:
 	# Regression test: SoldierBodies.couple() slides `position` toward the soldier bodies'
 	# own centroid each tick to correct genuine off-formation drift (friendly-avoidance,
 	# knockback). An anchored explicatio/duplicatio makes the TARGET slot centroid itself
@@ -211,10 +212,11 @@ func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_bo
 	# pulled tens of world units off, and the render's selection ring (drawn at `position`)
 	# visibly no longer centred on the widened block, even though the immediately-read slot
 	# geometry (the sibling test above) looked correct the instant the order was issued.
-	# This test steps the FULL sim long enough for the bodies to actually settle and checks
-	# both ends of the same regression: `position` stays put, AND the body centroid ends up
-	# genuinely off-centre (proving the widen is actually asymmetric in the live render, not
-	# just in the instantaneous target math).
+	# The explicatio is now a drill in which `position` is read off the men rather than coupled
+	# to them. This test steps the FULL sim and checks that the front rank stays on its line,
+	# that `position` is the men's, and that the body centroid ends up off-centre across the
+	# front (proving the widen is actually asymmetric in the live render, not just in the
+	# instantaneous target math).
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(battle)
 	for _k in range(40):                      # spawn the armies and let the bodies settle
@@ -255,11 +257,12 @@ func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_bo
 	# The widened block is measurably wider than it started (more files).
 	assert_gt(end_bbox.x, start_bbox.x + CENTRE_SETTLE_TOLERANCE_PX,
 		"the anchored widen genuinely broadens the block's world footprint")
-	# An anchored widen is NOT a plain centred widen: the body centroid must shift by a
-	# real amount (half the width gained, landing on the un-anchored flank) rather than
-	# staying near the pre-widen centroid the way test_explicatio_widens_the_line_... does.
-	assert_gt(start_centroid.distance_to(end_centroid), CENTRE_SETTLE_TOLERANCE_PX,
-		"the anchored widen visibly shifts the soldiers' own centroid off the old centre " +
+	# An anchored widen is NOT a plain centred widen: the body centroid must shift ACROSS the
+	# front by a real amount (half the width gained, landing on the un-anchored flank). Any
+	# explicatio moves the centroid forward as the block grows shallower with its front held,
+	# so only the shift across the front tells the anchor's asymmetry apart.
+	var across := Vector2(-forward.y, forward.x)
+	assert_gt(absf((end_centroid - start_centroid).dot(across)), CENTRE_SETTLE_TOLERANCE_PX,
+		"the anchored widen visibly shifts the soldiers' own centroid across the front " +
 		"(a plain centred widen would not) -- this is the render-visible asymmetry the " +
-		"anchor is FOR; a regiment-centre-drags-to-cancel-it bug would collapse this back " +
-		"toward zero")
+		"anchor is FOR")

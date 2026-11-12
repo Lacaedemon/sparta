@@ -6291,10 +6291,12 @@ func _reset_shield_hold_angles() -> void:
 ##
 ## `explicatio_drill` (UnitFormation.ExplicatioDrill) names the drill a widen is (the B key, the
 ## turn-and-unfold combo), as against any other change of width that happens to double the
-## files (NONE). A standing file-major block doubled by a drill does the drill
+## files (NONE). A standing, formed file-major block doubled by a drill does the drill
 ## (_begin_explicatio): each man follows a man he can see until the block stands doubled. Any
-## other change, a drill that cannot double the files, and a block on the march, re-deal the
-## files from the bodies as before (_ensure_file_assignment).
+## other change, a drill that cannot double the files, a block on the march or still reshaping,
+## and the combo's widen after its quarter-turn (whose grid has been laid anew across the old
+## files, so the men stand in no files of it yet), re-deal the files from the bodies as before
+## (_ensure_file_assignment).
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE) -> void:
 	_bake_formation_mirror()
