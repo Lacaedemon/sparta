@@ -713,24 +713,24 @@ func test_a_file_leader_dresses_on_the_guide_where_he_stands() -> void:
 
 func test_a_man_steps_onto_the_line_before_closing_along_it() -> void:
 	var f := Vector2(0, 1)   # facing south; along = +y, across = x
-	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(9, 20), 9.0), Vector2(9, 0),
+	assert_eq(SoldierFollowSteer.steer_point(Vector2(0, 0), f, Vector2(9, 20), 9.0), Vector2(9, 0),
 		"a file pitch off the line: across only")
-	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(4.5, 20), 9.0), Vector2(4.5, 10),
+	assert_eq(SoldierFollowSteer.steer_point(Vector2(0, 0), f, Vector2(4.5, 20), 9.0), Vector2(4.5, 10),
 		"half a pitch off: half the step along")
-	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(0, 20), 9.0), Vector2(0, 20),
+	assert_eq(SoldierFollowSteer.steer_point(Vector2(0, 0), f, Vector2(0, 20), 9.0), Vector2(0, 20),
 		"on the line: all of it")
-	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(0, 20), 9.0, 0.25),
+	assert_eq(SoldierFollowSteer.steer_point(Vector2(0, 0), f, Vector2(0, 20), 9.0, 0.25),
 		Vector2(0, 5), "a quarter of the gap open: a quarter of the step along")
-	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(9, 20), 0.0), Vector2(9, 20),
+	assert_eq(SoldierFollowSteer.steer_point(Vector2(0, 0), f, Vector2(9, 20), 0.0), Vector2(9, 20),
 		"no line width: straight for it")
-	assert_eq(SoldierFollow.steer_point(Vector2(0, 0), f, Vector2(9, -20), 9.0, 0.0),
+	assert_eq(SoldierFollowSteer.steer_point(Vector2(0, 0), f, Vector2(9, -20), 9.0, 0.0),
 		Vector2(9, -20), "falling back: straight for it, gap or no gap")
 
 
 func test_room_between_two_men_opens_from_shoulder_to_shoulder() -> void:
 	var f := Vector2(0, 1)
-	assert_eq(SoldierFollow.room_between(Vector2(0, 0), Vector2(9, 3), f, 9.0), 0.0,
+	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(9, 3), f, 9.0), 0.0,
 		"shoulder to shoulder: no room")
-	assert_eq(SoldierFollow.room_between(Vector2(0, 0), Vector2(13.5, 0), f, 9.0), 0.5)
-	assert_eq(SoldierFollow.room_between(Vector2(0, 0), Vector2(-27, 0), f, 9.0), 1.0,
+	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(13.5, 0), f, 9.0), 0.5)
+	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(-27, 0), f, 9.0), 1.0,
 		"two pitches or more apart: all the room")

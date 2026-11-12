@@ -487,7 +487,7 @@ static func step(unit: Unit, delta: float) -> void:
 	var routing_near_terrain: bool = routing and not terrain_guard.is_empty()
 	# A man in the follow mode (Unit.follows, SoldierFollow) steers on another man: his slot this
 	# tick is his place beside or behind that man, and he heads for it the way a man in a file
-	# does (SoldierFollow.steer_point), not along the slot grid's corridors.
+	# does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
 	var follow_width: float = unit.follow_line_width()
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
@@ -527,7 +527,7 @@ static func step(unit: Unit, delta: float) -> void:
 			if leader != SoldierFollow.NOT_FOLLOWING:
 				var man_facing: Vector2 = unit._sim_soldier_facing[i] \
 						if i < unit._sim_soldier_facing.size() else unit.facing
-				to_slot = SoldierFollow.steer_point(unit._sim_soldier_pos[i], man_facing, own_slot,
+				to_slot = SoldierFollowSteer.steer_point(unit._sim_soldier_pos[i], man_facing, own_slot,
 						follow_width, unit.follow_room(i)) - unit._sim_soldier_pos[i]
 			else:
 				to_slot = arrival_target(unit, i, own_slot, n, march_frac, straight_march)

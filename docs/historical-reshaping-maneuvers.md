@@ -64,12 +64,15 @@ The B key gives the half-file drill.
 Nobody walks to a slot laid out from the unit's centre: each man follows a man he can see (`SoldierFollow`).
 
 - Every man behind a file leader keeps a rank's distance behind the man ahead of him in his file, so nobody passes him.
+
 - The leader of each file that stays dresses two file pitches from the next file leader toward the file that stands,
   and takes his depth from the guide, the leader of that standing file, who holds the ground he stood on.
   So the front rank stays on the line it stood on while it opens out sideways.
+
 - The leader of each new file in an interval (the hemilochites, or the epistates) comes up beside the leader of the file he opened from,
   on the spear side: the right, or the side away from a held flank when the widen is anchored.
   He steps out of his file before he comes up, and comes up only as far as the interval has opened.
+
 - If a leader falls, the man behind him takes his place and his role.
 
 The block's position is read off its men while the drill runs.

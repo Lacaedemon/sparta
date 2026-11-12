@@ -1320,7 +1320,7 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 ## PackedInt32Array}, index-aligned with `file_ids` and `ranks` (the dealt assignment, explicit
 ## ranks). An offset is (to the follower's right, behind him), in world units. `flanks` names,
 ## for the leader of a new file in an interval, the leader of the file on the far side of that
-## interval, so he can see how far it has opened (SoldierFollow.room_between); -1 for every
+## interval, so he can see how far it has opened (SoldierFollowSteer.room_between); -1 for every
 ## other man, and for one whose interval is on the block's flank. `guides` names the guide each
 ## file leader dresses his depth on (SoldierFollow): the leader of `stand_file`, so the front
 ## rank's line is his (STAND, his ground, only for himself or when he has fallen and nobody has

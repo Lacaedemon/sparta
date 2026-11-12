@@ -6400,7 +6400,7 @@ func explicatio_drill_active() -> bool:
 
 ## The follow plan of the explicatio under way, for this physics tick: {"leaders", "places",
 ## "rooms"} (UnitFormation.explicatio_follow_plan, SoldierFollow.places,
-## SoldierFollow.room_between), index-aligned with the bodies, read from where the men stand when
+## SoldierFollowSteer.room_between), index-aligned with the bodies, read from where the men stand when
 ## it is first asked for in the tick. A man stepping into an interval sees how far it has opened
 ## between his own file leader and the one beyond it; every other man has all the room he needs.
 ## Empty arrays when no drill is under way or the arrays do not line up with `count` men.
@@ -6438,7 +6438,7 @@ func _explicatio_follow(count: int) -> Dictionary:
 		var b: int = flanks[i]
 		var a: int = leaders[i]
 		if b >= 0 and a >= 0:
-			_explicatio_rooms[i] = SoldierFollow.room_between(_sim_soldier_pos[a],
+			_explicatio_rooms[i] = SoldierFollowSteer.room_between(_sim_soldier_pos[a],
 					_sim_soldier_pos[b], _sim_soldier_facing[i], file_pitch_wu())
 	return {"leaders": _explicatio_leaders, "places": _explicatio_places,
 			"rooms": _explicatio_rooms}
@@ -6454,7 +6454,7 @@ func follow_leader(i: int) -> int:
 	return leaders[i] if i >= 0 and i < leaders.size() else SoldierFollow.NOT_FOLLOWING
 
 
-## How much of the gap he is stepping into has opened for man `i` (SoldierFollow.steer_point's
+## How much of the gap he is stepping into has opened for man `i` (SoldierFollowSteer.steer_point's
 ## `room`): 1 for a man not stepping into one.
 func follow_room(i: int) -> float:
 	if not explicatio_drill_active():
@@ -6464,7 +6464,7 @@ func follow_room(i: int) -> float:
 
 
 ## How far off his place's line a following man still gains no ground along it
-## (SoldierFollow.steer_point): one file pitch, the width of the file he steps out of.
+## (SoldierFollowSteer.steer_point): one file pitch, the width of the file he steps out of.
 func follow_line_width() -> float:
 	return file_pitch_wu()
 
