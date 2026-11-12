@@ -5,7 +5,9 @@
 #   2. an unrelated workflow edit skips it; the coverage workflow and setup action do not
 #   3. scripts/*.gd, test/*, scenes, project.godot, an unknown new top-level path need it
 #   4. one relevant file among skippable ones needs it
-#   5. an empty diff skips; an unresolvable base fails open (needed=true)
+#   5. benchmarks, a .qmd outside website/, scripts/README.md skip; demos/ needs it
+#   6. a rename from scripts/ into docs/ needs it
+#   7. an empty diff skips; an unresolvable base fails open (needed=true)
 #
 # No network. Run by tools/check.sh's shell_tests check.
 set -euo pipefail
@@ -62,12 +64,31 @@ expect "check.sh" true tools/check.sh
 expect "unknown new top-level path" true newdir/thing.dat
 expect "docs plus one script" true docs/a.md scripts/a.gd
 expect "empty diff" false
+expect "benchmarks" false benchmarks/x.txt
+expect "qmd outside website" false notes/a.qmd
+expect "scripts README" false scripts/README.md
+expect "demos inputs" true demos/inputs/a.json
+expect "other .github file" false .github/ISSUE_TEMPLATE/a.yml
+
+# A rename from a relevant path into a skippable one lists both paths.
+git checkout -q -B topic main
+mkdir -p scripts
+echo 1 > scripts/moved.gd
+git add -A && git commit -qm base
+git checkout -q -B topic2 topic
+mkdir -p docs
+git mv scripts/moved.gd docs/moved.md
+git commit -qm rename
+got="$("$NEEDED" topic 2>/dev/null)"
+if [ "$got" = "needed=true" ]; then echo "ok: rename out of scripts/"; else echo "FAIL: rename: '$got'"; FAILURES=$((FAILURES + 1)); fi
 
 git checkout -q -B topic main
 got="$("$NEEDED" no-such-ref 2>/dev/null)"
 if [ "$got" = "needed=true" ]; then echo "ok: bad base fails open"; else echo "FAIL: bad base: '$got'"; FAILURES=$((FAILURES + 1)); fi
 
-if [ "$("$NEEDED" 2>/dev/null; echo $?)" != "2" ]; then echo "FAIL: usage exit"; FAILURES=$((FAILURES + 1)); else echo "ok: usage exit"; fi
+rc=0
+"$NEEDED" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = "2" ]; then echo "ok: usage exit"; else echo "FAIL: usage exit: $rc"; FAILURES=$((FAILURES + 1)); fi
 
 if [ "$FAILURES" -ne 0 ]; then echo "$FAILURES failure(s)"; exit 1; fi
 echo "all passed"

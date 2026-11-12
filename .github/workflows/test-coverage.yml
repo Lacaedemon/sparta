@@ -24,9 +24,9 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
-    # Above the 5400 s coverage budget plus setup, so check.sh's own kill message
-    # fires before the runner cancels the job.
-    timeout-minutes: 100
+    # Above setup, the import (900 s budget) and the 5400 s coverage budget, so
+    # check.sh's own kill message fires before the runner cancels the job.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,8 +42,8 @@ jobs:
 
       - name: Decide whether the coverage run is needed
         # The run takes 30 to 45+ minutes. A pull request that changes only docs,
-        # the website, agent notes or unrelated workflows cannot change a test result
-        # or the patch-coverage verdict, so every step below is skipped for it (#1963).
+        # the website, benchmarks, agent notes or unrelated workflows changes no file
+        # the suite reads, so every step below is skipped for it (#1963).
         # Pushes to main and manual runs always run. tools/ci/coverage-needed.sh
         # fails open: an undecidable diff runs the coverage.
         id: needed
