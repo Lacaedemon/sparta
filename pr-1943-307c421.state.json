@@ -118,7 +118,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.1 m/s\nAccel: +1.4 m/s²",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.1 m/s\nAccel: +0.9 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -174,7 +174,7 @@
             "broken_count": 0,
             "centroid": [
               719.99,
-              420.0
+              420.01
             ],
             "count": 96,
             "prone_count": 0
@@ -222,7 +222,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.3 m/s\nAccel: +1.3 m/s²",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.2 m/s\nAccel: +1.0 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -278,7 +278,7 @@
             "broken_count": 0,
             "centroid": [
               719.92,
-              420.0
+              420.05
             ],
             "count": 96,
             "prone_count": 0
@@ -290,7 +290,7 @@
             ],
             "centroid_m": [
               35.996,
-              21.0
+              21.003
             ]
           },
           "soldiers": 96,
@@ -326,7 +326,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.6 m/s\nAccel: -0.3 m/s²",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.5 m/s\nAccel: -0.2 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -381,8 +381,8 @@
             ],
             "broken_count": 0,
             "centroid": [
-              717.4,
-              419.99
+              718.04,
+              420.97
             ],
             "count": 96,
             "prone_count": 0
@@ -393,8 +393,8 @@
               4.314
             ],
             "centroid_m": [
-              35.87,
-              21.0
+              35.902,
+              21.049
             ]
           },
           "soldiers": 96,
@@ -430,7 +430,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.8 m/s\nAccel: +0.1 m/s²",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.5 m/s\nAccel: +0.1 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -466,12 +466,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            683.95,
-            420.0
+            683.99,
+            419.94
           ],
           "position_m": [
-            34.198,
-            21.0
+            34.199,
+            20.997
           ],
           "queue_tail": [],
           "rally_halting": false,
@@ -480,25 +480,25 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              127.4,
-              103.41
+              135.01,
+              101.42
             ],
             "broken_count": 0,
             "centroid": [
-              706.57,
-              419.69
+              712.68,
+              420.49
             ],
             "count": 96,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              6.37,
-              5.171
+              6.751,
+              5.071
             ],
             "centroid_m": [
-              35.328,
-              20.985
+              35.634,
+              21.025
             ]
           },
           "soldiers": 96,
@@ -534,7 +534,7 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.6 m/s\nAccel: -0.3 m/s²",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.6 m/s\nAccel: +0.1 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
@@ -570,12 +570,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            683.99,
-            420.0
+            684.04,
+            419.94
           ],
           "position_m": [
-            34.199,
-            21.0
+            34.202,
+            20.997
           ],
           "queue_tail": [],
           "rally_halting": false,
@@ -584,24 +584,128 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              96.3,
-              101.87
+              134.96,
+              102.4
             ],
             "broken_count": 0,
             "centroid": [
-              691.58,
-              419.76
+              702.61,
+              419.86
             ],
             "count": 96,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              4.815,
-              5.093
+              6.748,
+              5.12
             ],
             "centroid_m": [
-              34.579,
+              35.13,
+              20.993
+            ]
+          },
+          "soldiers": 96,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.5 m/s\nAccel: -0.7 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 47,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            684.08,
+            419.94
+          ],
+          "position_m": [
+            34.204,
+            20.997
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              126.72,
+              102.11
+            ],
+            "broken_count": 0,
+            "centroid": [
+              691.27,
+              419.77
+            ],
+            "count": 96,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              6.336,
+              5.105
+            ],
+            "centroid_m": [
+              34.563,
               20.988
             ]
           },
@@ -638,13 +742,13 @@
       "hud": {
         "ctrl_bar_visible": true,
         "formation_text": "0.45 m locked",
-        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.1 m/s\nAccel: +0.7 m/s²",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.2 m/s\nAccel: -0.1 m/s²",
         "order_mode_text": "",
         "paused": false,
         "shown_unit_uid": 0,
         "stance_text": "Normal"
       },
-      "tick": 300,
+      "tick": 360,
       "units": [
         {
           "anchor_held": false,
@@ -674,12 +778,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            684.14,
-            420.0
+            684.22,
+            419.94
           ],
           "position_m": [
-            34.207,
-            21.0
+            34.211,
+            20.997
           ],
           "queue_tail": [],
           "rally_halting": false,
@@ -688,25 +792,129 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              66.96,
-              99.35
+              94.67,
+              100.94
             ],
             "broken_count": 0,
             "centroid": [
-              684.52,
-              419.97
+              685.51,
+              419.88
             ],
             "count": 96,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              3.348,
-              4.967
+              4.734,
+              5.047
             ],
             "centroid_m": [
-              34.226,
-              20.999
+              34.275,
+              20.994
+            ]
+          },
+          "soldiers": 96,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Centurion\nSoldiers: 96 / 96\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 12 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 420,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "facing": [
+            -1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 12,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 47,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            684.27,
+            419.94
+          ],
+          "position_m": [
+            34.214,
+            20.997
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              66.33,
+              99.2
+            ],
+            "broken_count": 0,
+            "centroid": [
+              684.32,
+              419.94
+            ],
+            "count": 96,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.317,
+              4.96
+            ],
+            "centroid_m": [
+              34.216,
+              20.997
             ]
           },
           "soldiers": 96,
