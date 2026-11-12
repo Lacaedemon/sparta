@@ -688,6 +688,51 @@ func test_changing_a_parameter_drops_the_cached_answers() -> void:
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "a shorter sight radius applies too")
 
 
+func test_an_about_face_with_no_move_drops_the_cached_answer() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, -100.0)]))   # behind him
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	var behind: Vector2 = mp.perceive(man, 0, 1)["threat"]
+	man._sim_soldier_facing = PackedVector2Array([-MAN_FACING])   # he turns about, in place
+	var ahead: Vector2 = mp.perceive(man, 0, 1)["threat"]
+	assert_gt(ahead.length(), behind.length(), "the foe now in his front arc weighs in full")
+
+
+func test_a_second_prepare_with_different_inputs_rebinds() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1)
+	foe.state = Unit.State.DEAD   # restored snapshots remove units without marking them
+	mp.prepare(1, [man], [], null)   # same frame, a different list
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "the unit left out of the list is gone")
+	var wall := {"rect": Rect2(-50.0, 40.0, 100.0, 20.0), "kind": "block"}
+	foe.state = Unit.State.IDLE
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1)
+	mp.prepare(1, [man, foe], [wall], null)   # same frame, different terrain
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "the new terrain hides him")
+	mp.prepare(1, [man, foe], [wall], null)   # identical inputs keep the cache
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0)
+	var field := PathField.new(Rect2(-1000.0, -1000.0, 2000.0, 2000.0))
+	mp.prepare(1, [man, foe], [wall], field)   # a sight field replaces the terrain's blocks
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "the new path field applies")
+
+
+func test_a_non_finite_sight_radius_is_refused() -> void:
+	var mp := ManPerception.new()
+	mp.sight_radius = NAN
+	assert_push_error("sight_radius")
+	assert_eq(mp.sight_radius, -1.0)
+	mp.sight_radius = INF
+	assert_push_error("sight_radius")
+	assert_eq(mp.sight_radius, -1.0)
+	mp.sight_radius = 120.0
+	assert_eq(mp.sight_radius, 120.0, "a finite value passes through")
+
+
 func test_nan_parameters_are_refused() -> void:
 	var mp := ManPerception.new()
 	mp.rear_weight = NAN

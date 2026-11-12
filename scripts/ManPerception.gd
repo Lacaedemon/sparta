@@ -17,10 +17,13 @@ const Weights = preload("res://scripts/ManWeights.gd")
 const Foes = preload("res://scripts/ManFoes.gd")
 const Scan = preload("res://scripts/ManScan.gd")
 
-## The sight radius every queried man uses, in world units. Zero or negative (the
-## default) means each man uses his own unit's `sight_range`.
+## The sight radius every queried man uses, in world units. Zero or negative (the default)
+## means each man uses his own unit's `sight_range`. A non-finite value is refused.
 var sight_radius: float = -1.0:
 	set(value):
+		if not is_finite(value):
+			push_error("ManPerception: sight_radius %f is not finite" % value)
+			return
 		sight_radius = value
 		_results.clear()
 ## Half-angle of the visual field, radians. Must lie in [0, PI]; else reported and refused.
@@ -41,6 +44,9 @@ var rear_weight: float = Weights.REAR_WEIGHT:
 		_results.clear()
 
 var _frame: int = -1
+var _units: Array = []
+var _terrain: Array = []
+var _path_field: Object = null
 var _sight: Dictionary = {}
 var _foes := Foes.new()
 # unit -> {index -> result}; Scan.still_valid says whether a result still holds.
@@ -48,12 +54,15 @@ var _results: Dictionary = {}
 
 
 ## Bind this frame's inputs: the physics-frame counter SpatialHash is built with, every unit
-## in play ("units" and "routers"), and Perception.perceives' sight inputs. A second call
-## for the same frame keeps the first call's inputs and cache.
+## in play ("units" and "routers"), and Perception.perceives' sight inputs. A repeat call
+## with the same frame and inputs keeps the cache; different inputs re-bind and clear it.
 func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> void:
-	if frame == _frame:
+	if frame == _frame and units == _units and terrain == _terrain and path_field == _path_field:
 		return
 	_frame = frame
+	_units = units.duplicate()
+	_terrain = terrain.duplicate(true)
+	_path_field = path_field
 	_sight = Sight.compile(terrain, path_field)
 	_foes.bind(frame, units)
 	_results.clear()
