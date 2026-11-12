@@ -14,7 +14,8 @@ const Weights = preload("res://scripts/ManWeights.gd")
 ## The answer for a man who perceives nothing.
 static func none() -> Dictionary:
 	return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
-		"nearest_distance": INF, "perceived": 0, "nearest_count": 0}
+		"nearest_distance": INF, "perceived": 0, "nearest_count": 0,
+		"nearest_pos": Vector2.ZERO}
 
 
 ## Returns the dictionary ManPerception.perceive documents, plus "nearest_count" (the nearest
@@ -54,6 +55,7 @@ static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: 
 				out["nearest_unit"] = foe
 				out["nearest_index"] = j
 				out["nearest_count"] = bodies.size()
+				out["nearest_pos"] = bodies[j]
 			if d_sq <= 0.0:
 				continue
 			var to_foe: Vector2 = bodies[j] - pos

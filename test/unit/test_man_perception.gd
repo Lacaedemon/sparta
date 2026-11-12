@@ -418,15 +418,16 @@ func test_a_foe_that_drifted_since_it_was_measured_is_still_seen() -> void:
 
 func test_the_answer_is_cached_for_the_frame() -> void:
 	var man := _observer()
-	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0), Vector2(0.0, 250.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
 	var first: Dictionary = mp.perceive(man, 0, 1)
-	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, -100.0)])
+	# The far body steps behind him; the nearest, and the body count, are unchanged.
+	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 100.0), Vector2(0.0, -50.0)])
 	mp.prepare(1, [man, foe], [], null)   # same frame: a no-op
 	assert_eq(mp.perceive(man, 0, 1), first, "same frame: the cached answer")
 	mp.prepare(2, [man, foe], [], null)
-	assert_lt((mp.perceive(man, 0, 2)["threat"] as Vector2).y, 0.0, "a new frame recomputes")
+	assert_ne(mp.perceive(man, 0, 2)["threat"], first["threat"], "a new frame recomputes")
 
 
 func test_a_change_in_body_count_drops_the_units_cache() -> void:
@@ -473,6 +474,46 @@ func test_the_hash_path_returns_candidates_in_uid_order() -> void:
 	var mp := ManPerception.new()
 	mp.prepare(4, [high, mid, low], [], null)
 	assert_eq(mp._foes.candidates(Vector2(1000.0, 1000.0), SIGHT), [low, mid, high])
+
+
+func test_a_unit_listed_twice_counts_once_on_either_path() -> void:
+	var man := _tree_unit(1, 0, PackedVector2Array([Vector2(1000.0, 1000.0)]))
+	var foe := _tree_unit(2, 1, PackedVector2Array([Vector2(1000.0, 1100.0)]))
+	var listed := ManPerception.new()
+	listed.prepare(10, [man, foe, foe, man], [], null)
+	assert_eq(listed.perceive(man, 0, 10)["perceived"], 1, "list path: once")
+	SpatialHash.rebuild(get_tree(), 11)
+	assert_true(SpatialHash.is_current(11), "precondition: the hash path runs")
+	var hashed := ManPerception.new()
+	hashed.prepare(11, [man, foe, foe, man], [], null)
+	assert_eq(hashed.perceive(man, 0, 11)["perceived"], 1, "hash path: once")
+
+
+func test_a_reap_plus_a_merge_that_keeps_the_count_drops_the_cached_nearest() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 30.0), Vector2(0.0, 60.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	var first: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(first["nearest_index"], 0)
+	assert_almost_eq(float(first["nearest_distance"]), 30.0, EPS)
+	# The nearest falls and a newcomer joins in the same frame: two bodies again, and
+	# index 0 now names the man at 80.
+	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 80.0), Vector2(0.0, 60.0)])
+	var r: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(r["nearest_index"], 1, "the man at 60 is now the nearest")
+	assert_almost_eq(float(r["nearest_distance"]), 60.0, EPS)
+
+
+func test_a_nearer_newcomer_drops_the_cached_nearest_though_its_body_has_not_moved() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 30.0), Vector2(0.0, 60.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["nearest_index"], 0)
+	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 30.0), Vector2(0.0, 60.0), Vector2(0.0, 10.0)])
+	foe._sim_soldier_facing = PackedVector2Array([MAN_FACING, MAN_FACING, MAN_FACING])
+	assert_eq(mp.perceive(man, 0, 1)["nearest_index"], 2, "the newcomer at 10 is nearer")
 
 
 func test_the_hash_path_ignores_a_unit_the_caller_did_not_list() -> void:
@@ -550,7 +591,7 @@ func test_the_hash_path_finds_a_unit_that_moved_since_the_rebuild() -> void:
 
 func test_a_reaped_foe_drops_a_cached_nearest_index() -> void:
 	var man := _observer()
-	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 300.0) * 0.1, Vector2(0.0, 60.0)]))
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 30.0), Vector2(0.0, 60.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
 	assert_eq(mp.perceive(man, 0, 1)["nearest_index"], 0, "the foe at 30 is nearest")

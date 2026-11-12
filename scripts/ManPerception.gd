@@ -3,17 +3,16 @@ extends RefCounted
 ## Perception.gd answers which enemy UNITS a team sees, from unit centres. This answers it
 ## one level down, for a single man: which enemy bodies he himself can see (ManScan, from
 ## his own position under the fog's sight rule, ManSight), how strongly each presses on him
-## (ManWeights: nearer and in front weighs more), and which is nearest. The threat
-## vector is the weighted sum of the unit directions from him to each foe he perceives, so it
-## points TOWARD the threat (a man fleeing it runs the other way).
-## His sight radius is by default his unit's base `sight_range`, the fog model's radius
-## for that unit's observers. The cut the fog applies while a unit routs is dropped, and
-## nothing replaces it yet.
+## (ManWeights: nearer and in front weighs more), and which is nearest. The threat vector
+## is the weighted sum of the unit directions from him to each foe he perceives, so it points
+## TOWARD the threat (a man fleeing it runs the other way). His sight radius is by default his
+## unit's base `sight_range`, the fog model's radius for that unit's observers; the cut the
+## fog applies while a unit routs is dropped, and nothing replaces it yet.
 ## Read-only: it reads unit and body state, the SpatialHash grid, and PathField.active.
 ## Cached per tick: the first query for a man in a frame fixes his answer for that frame,
-## unless his unit's or his nearest foe's body arrays change size (a casualty reap or a
-## merge re-packs them). A reap and a merge in one frame that leave a unit's size unchanged
-## are not detected. A far-tier unit carries no bodies, so its men are not perceived.
+## unless his unit's body count changes or his nearest foe's body at the cached index has
+## moved or gone (a reap or a merge re-packs the arrays). A reap plus a merge that keeps
+## his own unit's count goes undetected. A far-tier unit has no bodies.
 const Sight = preload("res://scripts/ManSight.gd")
 const Weights = preload("res://scripts/ManWeights.gd")
 const Foes = preload("res://scripts/ManFoes.gd")
@@ -71,7 +70,7 @@ func perceive(unit: Unit, index: int, frame: int) -> Dictionary:
 		return _public(Scan.none())
 	var count: int = unit._sim_soldier_pos.size()
 	var entry: Dictionary = _results.get(unit, {})
-	# A reap or a merge re-packs the body arrays: drop the unit's cache when its count changes.
+	# A reap or a merge re-packs the arrays: drop the unit's cache when its count changes.
 	if entry.is_empty() or int(entry["count"]) != count:
 		entry = {"count": count, "by_index": {}}
 		_results[unit] = entry
@@ -85,13 +84,14 @@ func perceive(unit: Unit, index: int, frame: int) -> Dictionary:
 	return _public(result)
 
 
-# A cached nearest index stays valid while the foe unit's body arrays keep the size they
-# had when it was computed; a reap or a merge re-packs them.
+# The cached nearest holds while its unit keeps its body count and that body has not moved.
 func _nearest_still_valid(cached: Dictionary) -> bool:
 	var foe: Variant = cached["nearest_unit"]
 	if foe == null:
 		return true
-	return (foe as Unit)._sim_soldier_pos.size() == int(cached["nearest_count"])
+	var bodies: PackedVector2Array = (foe as Unit)._sim_soldier_pos
+	var i: int = cached["nearest_index"]
+	return bodies.size() == int(cached["nearest_count"]) and bodies[i] == cached["nearest_pos"]
 
 
 func _public(r: Dictionary) -> Dictionary:

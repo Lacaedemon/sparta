@@ -22,7 +22,10 @@ var _max_reach: float = 0.0
 ## once per frame.
 func bind(frame: int, units: Array) -> void:
 	_frame = frame
-	_ordered = units.duplicate()
+	var unique := {}   # a unit listed twice counts once
+	for u in units:
+		unique[u] = true
+	_ordered = unique.keys()
 	_ordered.sort_custom(func(a, b): return a.uid < b.uid)
 	_rank.clear()
 	_reach.clear()
