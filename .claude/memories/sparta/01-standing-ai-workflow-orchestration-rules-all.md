@@ -105,6 +105,17 @@ modifier or an instant state switch that ignores it. Concretely:
   and flees from threats.
   A drill is a sequence of what particular men do (who moves, whom he follows, where he goes),
   not a re-laid slot grid.
+- **No slots as world-space targets.**
+  The owner (2026-11-12) agreed that slots belong to the same banned family as snaps and anchors.
+  A man's place in the formation is historical and stays, as identity:
+  his file, his rank, his file leader, and the men beside him that he dresses on.
+  What is banned is a slot as a world-space point
+  that the formation computes for each man and steers him onto.
+  A man's target comes from the men he can see
+  (the man ahead in his file, his file leader, his neighbours),
+  not from a grid laid down by the unit.
+  Code that still steers men onto computed slot points is a defect to replace,
+  tracked under the bottom-up plan (#1950) and routing (#1949).
   Worked instances:
   PR #1945 (#1938) chose a router's anchor men by a lead rule,
   and the rule flickered, so it would have needed hysteresis margins;
