@@ -20,10 +20,10 @@ static func none() -> Dictionary:
 
 
 ## Whether a cached answer still describes man `index` of `unit`: his own body is where it
-## was and faces as it did (an out-of-range index stays so), and the nearest foe unit is still alive, keeps its
-## body count and has that body where it was. A reap or a merge re-packs the arrays, so an
-## index can outlive the body it named, and a unit merged away keeps its bodies but is DEAD,
-## which a fresh scan skips.
+## was and faces as it did (an out-of-range index stays so), and the nearest foe unit is
+## still alive, keeps its body count and has that body where it was. A reap or a merge
+## re-packs the arrays, so an index can outlive the body it named, and a unit merged away
+## keeps its bodies but is DEAD, which a fresh scan skips.
 static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 	var own := Vector2(INF, INF)
 	var facing := Vector2(INF, INF)
@@ -42,22 +42,23 @@ static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 	return bodies.size() == int(cached["nearest_count"]) and bodies[i] == cached["nearest_pos"]
 
 
-## Returns the dictionary ManPerception.perceive documents, plus three keys that still_valid
-## reads to notice that a cached answer went stale: "own_pos" and "own_facing" (his own body's
-## position and facing, INF for an out-of-range index), "nearest_count" (the nearest foe unit's body count) and
-## "nearest_pos" (that nearest body's position). `rule` is ManSight.compile's answer for the
-## frame, `foes` the frame's ManFoes, `radius` his sight in world units.
+## Returns the dictionary ManPerception.perceive documents, plus four keys that still_valid
+## reads to notice that a cached answer went stale: "own_pos" and "own_facing" (his own
+## body's position and facing, INF for an out-of-range index), "nearest_count" (the nearest
+## foe unit's body count) and "nearest_pos" (that nearest body's position). `rule` is
+## ManSight.compile's answer for the frame, `foes` the frame's ManFoes, `radius` his sight
+## in world units.
 static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: RefCounted,
 		half_angle: float, rear: float) -> Dictionary:
 	var out: Dictionary = none()
 	if index < 0 or index >= unit._sim_soldier_pos.size():
 		return out
 	var pos: Vector2 = unit._sim_soldier_pos[index]
+	var facing: Vector2 = unit.soldier_facing(index)
 	out["own_pos"] = pos
+	out["own_facing"] = facing
 	if radius <= 0.0:
 		return out
-	var facing: Vector2 = unit.soldier_facing(index)
-	out["own_facing"] = facing
 	var local: Dictionary = Sight.near(rule, pos, radius)
 	var open_ground: bool = (local["screens"] as Array).is_empty() and (local["blocks"] as Array).is_empty()
 	var radius_sq: float = radius * radius

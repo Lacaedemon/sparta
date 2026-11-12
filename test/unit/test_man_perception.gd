@@ -5,6 +5,7 @@ extends GutTest
 
 const ManPerception = preload("res://scripts/ManPerception.gd")
 const ManSight = preload("res://scripts/ManSight.gd")
+const Scan = preload("res://scripts/ManScan.gd")
 const ManWeights = preload("res://scripts/ManWeights.gd")
 const PathField = preload("res://scripts/PathField.gd")
 const Perception = preload("res://scripts/Perception.gd")
@@ -705,11 +706,9 @@ func test_a_second_prepare_with_different_inputs_rebinds() -> void:
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1)
-	foe.state = Unit.State.DEAD   # restored snapshots remove units without marking them
-	mp.prepare(1, [man], [], null)   # same frame, a different list
+	mp.prepare(1, [man], [], null)   # same frame, a different list: a restored snapshot
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "the unit left out of the list is gone")
 	var wall := {"rect": Rect2(-50.0, 40.0, 100.0, 20.0), "kind": "block"}
-	foe.state = Unit.State.IDLE
 	mp.prepare(1, [man, foe], [], null)
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1)
 	mp.prepare(1, [man, foe], [wall], null)   # same frame, different terrain
@@ -719,6 +718,20 @@ func test_a_second_prepare_with_different_inputs_rebinds() -> void:
 	var field := PathField.new(Rect2(-1000.0, -1000.0, 2000.0, 2000.0))
 	mp.prepare(1, [man, foe], [wall], field)   # a sight field replaces the terrain's blocks
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "the new path field applies")
+
+
+func test_a_man_with_no_sight_is_answered_from_the_cache() -> void:
+	var man := _observer()
+	man.sight_range = 0.0
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	var first: Dictionary = mp.perceive(man, 0, 1)
+	var cached: Dictionary = mp._results[man][0]
+	assert_true(Scan.still_valid(man, 0, cached), "his facing is stored even when he sees nothing")
+	man._sim_soldier_facing = PackedVector2Array([-MAN_FACING])
+	assert_false(Scan.still_valid(man, 0, cached), "and a turn in place still drops the answer")
+	assert_eq(first["perceived"], 0)
 
 
 func test_a_non_finite_sight_radius_is_refused() -> void:

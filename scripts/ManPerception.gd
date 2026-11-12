@@ -10,8 +10,9 @@ extends RefCounted
 ## fog applies while a unit routs is dropped, and nothing replaces it yet.
 ## Read-only: it reads unit and body state, the SpatialHash grid, and PathField.active.
 ## Cached per tick: the first query for a man in a frame fixes his answer for that frame,
-## unless his own body or his nearest foe's body at the cached index has moved or gone (a
-## reap or a merge re-packs the arrays). A far-tier unit has no bodies.
+## unless his own body has moved or turned in place, or his nearest foe's body at the cached
+## index has moved or gone (a reap or a merge re-packs the arrays). A far-tier unit has no
+## bodies.
 const Sight = preload("res://scripts/ManSight.gd")
 const Weights = preload("res://scripts/ManWeights.gd")
 const Foes = preload("res://scripts/ManFoes.gd")
