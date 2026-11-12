@@ -1190,7 +1190,7 @@ Press <kbd>B</kbd> for **explicatio**: the frontage doubles and the depth halves
 unfolds into a broad line that brings more men to the front, good for overlapping a flank.
 The men do it as the drill manuals describe, each following a man he can see.
 The front rank stays on the line it stood on while its files open out sideways.
-The two files next to the middle stand, and each wing opens outward:
+The files next to the middle stand, and each wing opens outward:
 the rear half of each file in the left wing steps sideways into the interval on its left,
 and in the right wing into the interval on its right.
 Each rear half then comes up its interval in column behind its half-file leader (the *hemilochites*),
@@ -1198,12 +1198,13 @@ who comes up into line beside his own file leader as the interval opens.
 Nobody passes the man in front of him,
 and if the leader falls, the man behind him takes the lead.
 With an even number of files both flanks step out by the same amount.
-With an odd number the middle file counts with the right wing,
+With an odd number the middle file and the one on its left stand, the middle file counting with the right wing,
 so the right flank steps out one file further than the left:
 a block of 9 files widening to 18 moves its left flank out 4 files and its right flank 5.
-The drill is for a block standing still, whether or not its men have settled into place;
-a block on the march widens as it always has, and so does the turn-and-unfold combo
-unless its turned block's files number half the new width.
+The drill is for a block standing still, whether or not its men have settled into place,
+and facing the way its formation does.
+A block on the march widens as it always has, and so does a block that has about-faced,
+and the turn-and-unfold combo unless the block it turns is as deep as it is wide.
 Press <kbd>N</kbd> for
 **duplicatio**: alternate files tuck in behind their neighbours, so the frontage halves and
 the depth doubles --- a wide line folds into a deep, narrow column, good for punching through
@@ -1248,7 +1249,7 @@ where men shoulder to shoulder stand 0.45 m apart.
 :::
 
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
-about the middle of the block, its two middle files standing, so both flanks step
+about the middle of the block, the files next to the middle standing, so both flanks step
 outward (by the same amount when the files are even). Press <kbd>Shift+B</kbd> to
 widen instead while holding the **right** flank fixed, or <kbd>Ctrl+B</kbd> to hold the **left** flank fixed:
 the whole widen lands on the opposite side, so the unit's position on the

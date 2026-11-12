@@ -42,7 +42,8 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   by inserting in the spaces betwixt file and file, some of the followers, that stood in the depth."
   Bingham's note on 29.3 says it "must be done in open order",
   and gives the drill: "These middle men with the hinder halfe file march vp to the front, & so doubling the front in number leaue yet the same measure of length."
-  To undo it, "we shall command the men who have changed their position to counter-march to their original stations" (Asclepiodotus 10.20; Aelian 29.3).
+  To undo it, "we shall command the men who have changed their position to counter-march to their original stations" (Asclepiodotus 10.20);
+  Aelian has "command those, that were inserted, to countermarch to the place, they had before" (29.3).
   (Asclepiodotus in the Loeb Classical Library text, as reproduced on [LacusCurtius](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Asclepiodotus/10*.html).)
 
 - **Doubling "of place".**
@@ -51,13 +52,14 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   to outflank the enemy or to avoid being outflanked.
   The interpolated passage Bingham prints in his note on 29.2 does it by "commanding some to turne to the Pike, some to the Target,
   till the Phalange be stretched out to a convenient length, as from 5 furlongs to 10".
-  Bingham's note on 29.3 gives two ways of doubling "both number, and place" from close order,
+  Bingham's note on 29.3 gives "two other waies, when the Phalange standeth in close order", "both which double the number, and place",
   in which the middlemen and their followers march out round one flank or both and come up level with the file leaders,
   but says "I finde them not expressed in Aelian".
 
 - **Every second man.**
-  Polyaenus (Stratagems 2.10.4) tells how Cleandridas, his phalanx drawn up deep, "ordered the epistatai to pass over into parastatai"
-  (παρήγγειλε τοὺς ἐπιστάτας μεταβαίνειν εἰς παραστάτην),
+  Polyaenus (Stratagems 2.10.4) tells how Cleandridas, his phalanx drawn up deep,
+  ordered the epistatai to pass over into the place of a parastates, a side-man
+  (παρήγγειλε τοὺς ἐπιστάτας μεταβαίνειν εἰς παραστάτην; this rendering is the sim's own),
   each rear-rank man stepping up beside the man ahead of him,
   and so made his line "much longer" (πολλῷ ... ὑπερμηκεστέραν) and outflanked the Lucanians
   (Greek text of Woelfflin and Melber, 1887, on [attalus.org](https://www.attalus.org/greek/polyaenus2.html);
@@ -70,7 +72,9 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   "a contrarie course" for the left wing;
   and closed to the middle, "the right Diphalange turning to the Pike, and the left Diphalange to the Target",
   each wing moving out away from the middle.
-  Bingham's note on chapter 33 adds that "the files next the middle section stand fast".
+  Bingham's note on chapter 33 has "The files next the middle section stand fast",
+  but its word of command then turns "the right wing ... to the Target, the left to the Pike", each wing inward,
+  against Aelian's text; the sim follows the text.
 
 - **The names.**
   Asclepiodotus names the half of a file the half-file (*hemilochion*) and its leader the half-file leader (*hemilochites*),
@@ -78,7 +82,8 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   (Tactics 2.2-2.3, [LacusCurtius](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Asclepiodotus/2*.html)).
 
 - **Xenophon**, Cyropaedia 2.3.21 (translated by Henry Graham Dakyns, [Project Gutenberg](https://www.gutenberg.org/ebooks/2085)),
-  describes a company marching to its quarters in single file and unfolding into line as it goes.
+  describes a brigadier "marching his regiment up from the river back to their quarters",
+  its companies in single file, and unfolding them into line as they go.
   At the word "Companies in twos" "the captains-of-ten came into line",
   and at "Companies in fours" the captains of five.
   It is a drill done on the march (#1967).
@@ -104,7 +109,8 @@ on Polyaenus, whose line grew "much longer",
 and on Xenophon's company, whose line grows as each part comes up beside the part ahead of it.
 
 Which files stand follows Aelian 33.
-Widened about the middle (B), the two files next to the middle stand and each wing opens outward:
+Widened about the middle (B), the files next to the middle stand and each wing opens outward:
+the two middle files of an even number of files, and of an odd number the middle file and the file on its left.
 every interval of the left wing opens on the left of its file, and every interval of the right wing on the right.
 With an even number of files the two flanks step out alike.
 With an odd number the middle file belongs to the right wing, which gains one file more, so its flank steps out one file pitch farther:
@@ -126,7 +132,8 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   He steps out of his file before he comes up,
   and comes up only as far as the interval has opened where he is,
   between the men of the files on either side who stand level with him:
-  not at all while they stand a file and a half apart or less, and freely once they stand two files apart.
+  not at all while the man across the interval stands within a body's radius of his line (the two stand a file and a half apart or less),
+  and freely once they stand two files apart.
   Only a man with the role leads: the head of an interval without it stays where he is.
 
 - If a leader falls, the man behind him takes his place and his role.
@@ -134,7 +141,8 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
 
 - Each man stops following once he has taken his place and the man he follows has taken his:
   when he stands within the reform settle distance of his place,
-  or when a man of another regiment presses on him so he can come no nearer.
+  or when a man of another regiment presses on him so he can come no nearer
+  (a man coming up an interval, only once the interval has opened fully where he is).
   From then on he keeps to his place as he would to his slot.
 
 The block's position is read off its men while the drill runs.
@@ -143,7 +151,10 @@ When no man is still following, the drill ends, and the slot grid is laid on the
 The drill is for a block standing still, from wherever its men stand, settled on their slots or not.
 A block on the march widens with the lateral deal ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)),
 and so does any other change of width that happens to double the files (a drag or [ ] resize, a form-up),
-and the turn-and-unfold combo's widen whenever its turned block's files do not number half the new width.
+and so does a block whose grid stands turned from its men's facing, as an about-face leaves it,
+since its file leaders stand behind its men and its files would cross.
+The turn-and-unfold combo's widen doubles the turned block's files against the width it had before the turn,
+so it is the drill only for a block as deep as it was wide (#1967).
 A man held off his place by terrain, rather than by another regiment, keeps the drill running (#1967).
 
 ## Game Design and Mechanics Framework

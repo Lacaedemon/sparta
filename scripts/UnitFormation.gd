@@ -1227,9 +1227,9 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 #   gives this drill: "these middle men with the hinder halfe file march vp to the front".
 # - ALTERNATE_RANK. Every second man of each file, the epistates behind each file leader and
 #   every second man after him, steps into the interval beside the man ahead of him. Polyaenus,
-#   Stratagems 2.10.4: Cleandridas "ordered the epistatai to pass over into parastatai" and so
-#   made his line much longer; Bingham's note on Aelian 29.3 reads it as inserting "the euen
-#   ranks man by man into the odde".
+#   Stratagems 2.10.4: Cleandridas ordered the epistatai to pass over into the place of a
+#   parastates, a side-man (the sim's rendering of the Greek), and so made his line much longer;
+#   Bingham's note on Aelian 29.3 reads it as inserting "the euen ranks man by man into the odde".
 #
 # Both double the number of men in front. Aelian's doubling in number keeps the length (29.3, as
 # Asclepiodotus 10.17). The sim keeps the file pitch, so its length doubles too: the insertion
@@ -1240,10 +1240,12 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 # the right flank, "the rightwing-corner-file to stand ... and the rest proceeding on to the
 # Target", the intervals opening on each file's left; held on the left, the mirror; and widened
 # about the middle, "the right Diphalange turning to the Pike, and the left Diphalange to the
-# Target", each wing opening outward, while "the files next the middle section stand fast"
-# (Bingham's note). So the intervals of the left wing open on the left of its files and those of
-# the right wing on the right. The leader of the standing file is the guide the front rank
-# dresses on.
+# Target", each wing opening outward. (Bingham's note on the chapter has "The files next the
+# middle section stand fast" but then turns each wing inward, against Aelian's text; the sim
+# follows the text.) So the intervals of the left wing open on the left of its files and those
+# of the right wing on the right, and the files next to the middle stand: the two middle files
+# of an even count, the middle file and the one on its left of an odd count. The leader of the
+# standing file is the guide the front rank dresses on.
 #
 # Nobody walks to a slot. Each man follows a man he can see (explicatio_follow_plan,
 # SoldierFollow): every man behind the head of his file keeps a rank's distance behind the man
@@ -1275,8 +1277,9 @@ static func explicatio_lane_split(old_files: int, held_flank: int) -> int:
 
 ## The old file whose leader stands in an explicatio of `old_files` files held on `held_flank`
 ## (as explicatio_lane_split): the left corner file, the right corner file, or about the middle
-## the file next to the middle on the right (old_files / 2), which with the file on its left
-## keeps its ground as the wings open outward (Aelian 33, above).
+## old file old_files / 2, the right-hand of the two middle files of an even count or the middle
+## file of an odd one, which with the file on its left keeps its ground as the wings open outward
+## (Aelian 33, above).
 static func explicatio_stand_old_file(old_files: int, held_flank: int) -> int:
 	if held_flank < 0:
 		return 0

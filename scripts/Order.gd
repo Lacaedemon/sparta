@@ -304,8 +304,8 @@ var frontage_anchor_offset: float = 0.0
 var dir: int = 0
 ## On a relative FRONTAGE step that widens (dir > 0), the explicatio drill it asks for
 ## (UnitFormation.ExplicatioDrill): who moves into the new files, and in what order.
-## Unit.set_frontage deals it only to a block that can do it; the turn-and-unfold combo's widen,
-## after its quarter-turn, cannot yet.
+## Unit.set_frontage deals it only to a block that can do it; the turn-and-unfold combo's widen is
+## the drill only for a block as deep as it was wide (Unit.set_frontage).
 var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0

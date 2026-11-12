@@ -552,6 +552,42 @@ func test_a_deal_with_no_file_leader_to_stand_says_so() -> void:
 	assert_false(u.explicatio_drill_active(), "no drill starts")
 
 
+## A block whose grid stands a half-turn from its facing, as an about-face leaves it, has its
+## file leaders behind its men and its file ids growing to their left: dealt the drill, each file
+## leader would dress on the far side of the file he dresses on and the files would cross. It
+## widens with the lateral deal.
+func test_a_block_about_faced_on_its_grid_is_not_dealt_the_drill() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	u.facing = u.facing.rotated(PI)
+	u._formation_angle = wrapf(u._formation_angle - PI, -PI, PI)
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		u._sim_soldier_pos[i] = slots[i]
+	assert_almost_eq(absf(u.grid_fold()), PI, 1e-4, "precondition: a half-turn fold")
+	_battle.enqueue_file_double([u.uid], 1)
+	assert_eq(UnitFormation.frontage(u), 18, "the files still double")
+	assert_false(u.explicatio_drill_active(), "no drill on a grid turned from the men")
+
+
+## The turn-and-unfold combo's widen doubles the turned block's files against the width it had
+## before the turn, so a block deeper than it is wide widens with the lateral deal; the turn's
+## transposed grid leaves the files to be dealt afresh from where the men stand.
+func test_the_combo_widen_of_a_deep_block_keeps_the_lateral_deal() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	assert_true(u.quarter_turn_explicatio(1), "precondition: the combo starts")
+	var waited: int = 0
+	while UnitFormation.frontage(u) == 9 and waited < 600:
+		await get_tree().physics_frame
+		waited += 1
+	assert_ne(UnitFormation.frontage(u), 9, "precondition: the combo widened")
+	assert_false(u.explicatio_drill_active(), "the combo's widen is not the drill")
+	u.formation_slots(u.soldiers)
+	assert_eq(u._file_assignment_files, UnitFormation.frontage(u),
+		"the files are dealt afresh for the new width")
+
+
 ## A file-major block widened any other way keeps main's lateral deal: a [ ] style absolute
 ## resize to twice the files is not the drill, and the centre stays where it was.
 func test_an_absolute_resize_to_twice_the_files_is_not_the_drill() -> void:
@@ -591,12 +627,15 @@ func test_each_man_stops_following_once_he_has_taken_his_place() -> void:
 	assert_eq(u._explicatio_following[behind_outer], 1,
 		"the man behind a file leader still opening out still follows")
 	var left: int = 0
+	var last_following: PackedByteArray = PackedByteArray()
 	while u.explicatio_drill_active() and left < DRILL_TICKS:
+		last_following = u._explicatio_following.duplicate()
 		await get_tree().physics_frame
 		left += 1
-		if u.explicatio_drill_active():
-			assert_true(u._explicatio_following.has(1), "the drill runs while a man follows")
-	assert_false(u.explicatio_drill_active(), "the drill ended when no man followed")
+	assert_false(u.explicatio_drill_active(), "the drill ended")
+	assert_gt(last_following.count(1), 0,
+		"the tick before it ended a man still followed: the last of them taking his place ended it")
+	assert_gt(left, 1, "and it ran past its first tick")
 
 
 ## A man pressed by a man of another regiment can come no nearer his place, so he takes it where
@@ -1077,7 +1116,7 @@ func test_room_between_two_men_opens_from_shoulder_to_shoulder() -> void:
 	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(9, 3), f, 9.0), 0.0,
 		"shoulder to shoulder: no room")
 	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(13.5, 0), f, 9.0), 0.0,
-		"a pitch and a half apart: a man between them would stand a body's radius from one")
+		"a pitch and a half apart: the man across the interval stands a body's radius from his line")
 	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(15.75, 0), f, 9.0), 0.5)
 	assert_eq(SoldierFollowSteer.room_between(Vector2(0, 0), Vector2(-27, 0), f, 9.0), 1.0,
 		"two pitches or more apart: all the room")

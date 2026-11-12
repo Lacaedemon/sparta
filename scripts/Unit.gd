@@ -6293,9 +6293,11 @@ func _reset_shield_hold_angles() -> void:
 ## turn-and-unfold combo), as against any other change of width that happens to double the
 ## files (NONE). A standing file-major block doubled by a drill does the drill
 ## (_begin_explicatio), from wherever its men stand: each man follows a man he can see until
-## every man has taken his place. Any other change, a drill that cannot double the files, a
-## block on the march (#1967), and the combo's widen when its turned grid's files no longer number
-## half the new width, re-deal the files from the bodies as before (_ensure_file_assignment).
+## every man has taken his place (_can_deal_explicatio says which blocks can). Any other change,
+## a drill that cannot double the files, a block on the march (#1967), a block whose grid stands
+## turned from its facing, and the combo's widen, which doubles the turned block's files against
+## the width it had before the turn and so is the drill only for a block as deep as it was wide,
+## re-deal the files from the bodies as before (_ensure_file_assignment).
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE) -> void:
 	_bake_formation_mirror()
@@ -6342,13 +6344,19 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 ## Whether a change from `old_files` to `new_files` can be done as an explicatio drill, from what
 ## the men are doing: a file-major line (not a square) doubling its files, standing (the drill
 ## on the march is #1967), not fighting, with an assignment on the old files for the drill to
-## split. The men need not stand on their slots or face square to the grid: the drill reads each
-## man's file, rank and body where he is. Brings the assignment up to date first, as a slot query
-## would, which deals the files from where the men stand when the width has changed under them.
+## split, whose files run the way its men face. The men need not stand on their slots: the drill
+## reads each man's file, rank and body where he is. But each man follows the man ahead of him in
+## his file and dresses to his own right, so the grid's front must be the men's front: a block
+## whose grid stands turned from its facing (the half-turn fold an about-face leaves, or a lag the
+## grid still trails) has its file leaders behind its men and its file ids growing to their left,
+## and a drill dealt on it would send each file through the file beside it. Brings the assignment
+## up to date first, as a slot query would, which deals the files from where the men stand when
+## the width has changed under them.
 func _can_deal_explicatio(old_files: int, new_files: int) -> bool:
 	if new_files != old_files * 2 or soldiers <= 0 or in_square() \
 			or not _effective_file_major_reform() or _sim_soldier_pos.size() < soldiers \
-			or state != State.IDLE or has_move_target or is_engaged():
+			or state != State.IDLE or has_move_target or is_engaged() \
+			or cos(grid_fold()) < 1.0 - 1e-6:   # square to the facing, to float rounding
 		return false
 	_ensure_file_assignment(soldiers, old_files)
 	return _sim_soldier_file.size() == soldiers and _file_assignment_files == old_files
@@ -6409,16 +6417,19 @@ func explicatio_drill_active() -> bool:
 ## stand (UnitFormation.explicatio_follow_plan, SoldierFollow.places,
 ## SoldierFollowSteer.room_between). A man leading a column up an interval sees how far it has
 ## opened where he is, between the men of the files on either side of it who stand level with him
-## (_nearest_in_depth); every other man has all the room he needs. True when the caches hold a plan for `count` men; false, with them empty, when no drill
-## is under way or the arrays do not line up.
+## (_nearest_in_depth); every other man has all the room he needs. Read afresh when the tick or
+## `count` changes, so a casualty during the tick is read anew. True when the caches hold a plan
+## for `count` men; false, with them empty, when no drill is under way or the arrays do not line
+## up.
 func _refresh_explicatio_follow(count: int) -> bool:
 	var frame: int = Engine.get_physics_frames()
-	if _explicatio_follow_frame == frame:
+	if _explicatio_follow_frame == frame and _explicatio_follow_count == count:
 		return _explicatio_places.size() == count
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_places = PackedVector2Array()
 	_explicatio_rooms = PackedFloat32Array()
 	_explicatio_follow_frame = frame
+	_explicatio_follow_count = count
 	if not explicatio_drill_active() or _sim_soldier_pos.size() < count \
 			or _sim_soldier_file.size() != count or _sim_soldier_rank.size() != count \
 			or _sim_soldier_role.size() != count or _sim_soldier_facing.size() < count:
@@ -6479,7 +6490,7 @@ func _nearest_in_depth(indices: PackedInt32Array, depth: float, front: Vector2) 
 ## has taken his place (_advance_explicatio_drill).
 func follow_leader(i: int) -> int:
 	if not _refresh_explicatio_follow(soldiers) or i < 0 or i >= soldiers \
-			or _explicatio_following[i] == 0:
+			or _explicatio_following.size() != soldiers or _explicatio_following[i] == 0:
 		return SoldierFollow.NOT_FOLLOWING
 	return _explicatio_leaders[i]
 
@@ -6502,7 +6513,10 @@ func follow_line_width() -> float:
 ## following takes his place, and stops following, once the man he follows has taken his (or he
 ## follows nobody) and he stands within REFORM_SETTLE_EPS of his place, or a man of another
 ## regiment presses on him (SoldierSteering's push, this tick's `_sim_steer`), so he can come no
-## nearer. After that he keeps to his place as a man keeps to his slot. The drill ends when no
+## nearer. A man coming up an interval stops for a press only once the interval has opened fully
+## where he is (follow_room 1): until then the man beside him, not the press, is what holds him
+## back, and leaving the follow mode would walk him up the interval before it opened. After he
+## stops following he keeps to his place as a man keeps to his slot. The drill ends when no
 ## man is still following, and at once when the block marches, fights, routs, squares, changes
 ## width, loses its file-major grid, or its men no longer line up with the roles the drill dealt
 ## them (a reinforcement re-deals the block). Either way the slot grid takes over from where the
@@ -6524,7 +6538,8 @@ func _advance_explicatio_drill() -> void:
 		var a: int = _explicatio_leaders[i]
 		var placed: bool = _sim_soldier_pos[i].distance_to(_explicatio_places[i]) \
 				<= REFORM_SETTLE_EPS
-		var pressed: bool = i < _sim_steer.size() and _sim_steer[i] != Vector2.ZERO
+		var pressed: bool = i < _sim_steer.size() and _sim_steer[i] != Vector2.ZERO \
+				and _explicatio_rooms[i] >= 1.0
 		if (a < 0 or _explicatio_following[a] == 0) and (placed or pressed):
 			_explicatio_following[i] = 0
 		else:
@@ -7106,6 +7121,7 @@ var _explicatio_leaders: PackedInt32Array = PackedInt32Array()
 var _explicatio_places: PackedVector2Array = PackedVector2Array()
 var _explicatio_rooms: PackedFloat32Array = PackedFloat32Array()
 var _explicatio_follow_frame: int = -1
+var _explicatio_follow_count: int = -1
 
 # Persistent per-soldier SQUARE slot assignment, index-aligned with _sim_soldier_pos:
 # _sim_soldier_square_slot[i] is the index, within the square grid UnitFormation.block_slots

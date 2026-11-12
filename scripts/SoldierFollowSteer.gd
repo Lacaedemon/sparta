@@ -32,10 +32,11 @@ static func steer_point(pos: Vector2, facing: Vector2, target: Vector2, line_wid
 
 
 ## How much of the gap between two men at `a` and `b` has opened for a third to step into, seen
-## across the front of a man facing `facing`: none while they stand one and a half `line_width`s
-## or less apart across it, since a man of that width between them would stand within half a
-## width, a body's radius, of one of them; all of it once they stand twice that width apart, a
-## full width each side of him.
+## across the front of a man facing `facing`, where `a` is the man of the file he opened from:
+## he comes up on his place's line, a full `line_width` from `a`'s, so `b` stands (apart -
+## line_width) from it. None while that is half a width, a body's radius, or less (they stand one
+## and a half widths apart or less); all of it once it is a full width, a man shoulder to
+## shoulder each side of him (two widths apart).
 static func room_between(a: Vector2, b: Vector2, facing: Vector2, line_width: float) -> float:
 	if line_width <= 0.0:
 		return 1.0
