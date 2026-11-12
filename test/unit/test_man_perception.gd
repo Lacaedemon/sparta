@@ -329,8 +329,8 @@ func test_a_unit_with_no_sight_perceives_nothing_even_at_point_blank() -> void:
 
 
 func test_a_full_circle_field_weighs_a_foe_directly_behind_in_full() -> void:
-	# Directly behind, the measured angle is PI as a 32-bit float: a hair above the double PI,
-	# where the falloff's denominator is zero.
+	# Directly behind, the measured angle is PI as a 32-bit float: a hair above the
+	# double-precision PI constant, where the falloff's denominator is zero.
 	var w: float = ManWeights.arc_weight(MAN_FACING, -MAN_FACING, PI, ManWeights.REAR_WEIGHT)
 	assert_eq(w, 1.0, "a half-angle of PI is a full circle: every foe counts in full")
 
