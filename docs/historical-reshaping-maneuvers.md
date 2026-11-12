@@ -36,22 +36,34 @@ What the manuals say, and what they leave open:
   Doubling "of place" (10.18) keeps the men and opens the spacing instead.
   To undo a doubling, "we shall command the men who have changed their position to counter-march to their original stations" (10.20).
   (Loeb Classical Library text, as reproduced on [LacusCurtius](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Asclepiodotus/10*.html).)
-- Asclepiodotus also names the half of a file the half-file (*hemilochion*) and its leader the half-file leader (*hemilochites*), and the man behind each file leader the rear-rank man (*epistates*) (Tactics 2.2-2.3, [LacusCurtius](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Asclepiodotus/2*.html)).
-- Xenophon describes the drill itself (Cyropaedia 2.3.21, trans. H. G. Dakyns, [Project Gutenberg](https://www.gutenberg.org/ebooks/2085)).
-  A company marching in single file unfolds into line: at the word "Companies in twos" "the captains-of-ten came into line", each leading his part of the file up beside the part ahead of it, and at "Companies in fours" the captains of five do the same.
+
+- Asclepiodotus also names the half of a file the half-file (*hemilochion*) and its leader the half-file leader (*hemilochites*),
+  and the man behind each file leader the rear-rank man (*epistates*)
+  (Tactics 2.2-2.3, [LacusCurtius](https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Asclepiodotus/2*.html)).
+
+- Xenophon describes the drill itself
+  (Cyropaedia 2.3.21, translated by Henry Graham Dakyns, [Project Gutenberg](https://www.gutenberg.org/ebooks/2085)).
+  A company marching in single file unfolds into line.
+  At the word "Companies in twos" "the captains-of-ten came into line",
+  each leading his part of the file up beside the part ahead of it,
+  and at "Companies in fours" the captains of five do the same.
   The leader of each rear part brings it up, and the front stays where it is.
 
-The sim models two drills, chosen on the frontage-doubling order (`UnitFormation.ExplicatioDrill`; the B key gives the half-file drill):
+The sim models two drills, chosen on the frontage-doubling order (`UnitFormation.ExplicatioDrill`).
+The B key gives the half-file drill.
 
 - **Half-file** (the default, after Xenophon's drill and Asclepiodotus's half-file).
   Each file's rear half marches up the interval beside its own file, led by its hemilochites, the man who headed the rear half.
   The front half keeps its ground and its ranks.
+
 - **Alternate rank** (every second man).
   Each epistates, and every second man after him, steps into the interval beside the man who stood ahead of him.
   Bingham's notes on Aelian, chapter 29 (1616), list this way of doubling the front.
   Its ancient source is not verified: Aelian 29 and Arrian's Tactica have not been checked.
 
-In both drills the front rank holds its ground, and the men who change file step sideways into the interval on the spear side (the right; the side away from a held flank when the widen is anchored) before they march up it.
+In both drills the front rank holds its ground.
+The men who change file step sideways into the interval on the spear side before they march up it:
+the right, or the side away from a held flank when the widen is anchored.
 Each column follows its leader in: no man steps into the interval before the man ahead of him, and no man overtakes him.
 If the leader falls, the man behind him takes his place and his role.
 Any other change of width that happens to double the files (a drag or [ ] resize, a form-up) is not a drill, and keeps the lateral deal.
