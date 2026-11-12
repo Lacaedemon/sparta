@@ -556,19 +556,41 @@ func test_live_anchored_resize_on_a_mirrored_block_holds_its_edge() -> void:
 ## ORDER_FRONTAGE_ONLY command, so it reaches set_frontage the same way the grip resize above
 ## does, with a different file count and the other flank held. The widening applies at once,
 ## so the slots are read straight after the command.
+## The explicatio is a drill the men walk (Unit._begin_explicatio), so its edges are read off the
+## men where they stand once it ends, along the file axis from a fixed point, not off the slots
+## at the instant of the order.
 func test_live_anchored_explicatio_on_a_mirrored_block_holds_its_edge() -> void:
 	var u: Unit = await _live_idle_mirrored_block()
 	if u == null:
 		return
 	var files_before: int = UnitFormation.frontage(u)
-	var before: Vector2 = _file_extent(u)
+	var origin: Vector2 = u.position
+	var before: Vector2 = _body_extent(u, origin)
 	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.RIGHT)
-	var after: Vector2 = _file_extent(u)
 	assert_gt(UnitFormation.frontage(u), files_before, "precondition: the explicatio widened it")
-	assert_almost_eq(after.y, before.y, 0.01,
+	var waited: int = 0
+	while u.explicatio_drill_active() and waited < 1200:
+		await get_tree().physics_frame
+		waited += 1
+	assert_false(u.explicatio_drill_active(), "precondition: the drill ended")
+	var after: Vector2 = _body_extent(u, origin)
+	assert_almost_eq(after.y, before.y, 0.25 * u.file_pitch_wu(),
 		"the held right edge stays put (%.2f -> %.2f)" % [before.y, after.y])
 	assert_lt(after.x, before.x - u.file_pitch_wu(),
 		"the left edge moves out (%.2f -> %.2f)" % [before.x, after.x])
+
+
+## The extent of the men's bodies along the block's file axis (the facing's right-hand side is
+## +), measured from `origin`.
+func _body_extent(u: Unit, origin: Vector2) -> Vector2:
+	var axis: Vector2 = Vector2.RIGHT.rotated(u.facing.angle() + PI * 0.5)
+	var lo: float = INF
+	var hi: float = -INF
+	for b in u._sim_soldier_pos:
+		var d: float = (b - origin).dot(axis)
+		lo = minf(lo, d)
+		hi = maxf(hi, d)
+	return Vector2(lo, hi)
 
 
 ## The full-scene version, through the real order pipeline: a drilled rear move about-faces a
