@@ -302,6 +302,9 @@ var frontage_anchor_offset: float = 0.0
 ## for a combo step whose starting width isn't known at issue time; 0 keeps `frontage` as the
 ## absolute file count Battle's ORDER_FRONTAGE_ONLY command carries.
 var dir: int = 0
+## On a relative FRONTAGE step that widens (dir > 0), the explicatio drill it is
+## (UnitFormation.ExplicatioDrill): who moves into the new files, and in what order.
+var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
 ## The gait (Battle.Gait: WALK/JOG/RUN/SPRINT) for MOVE orders. When >= 0, overrides
@@ -506,6 +509,7 @@ func to_dict() -> Dictionary:
 		"frontage": frontage,
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"dir": dir,
+		"explicatio_drill": explicatio_drill,
 		"order_mode": order_mode,
 		"gait": gait,
 		"haste": haste,
@@ -552,6 +556,7 @@ static func from_dict(d: Dictionary) -> Order:
 	o.frontage = int(d.get("frontage", -1))
 	o.frontage_anchor_offset = float(d.get("frontage_anchor_offset", 0.0))
 	o.dir = int(d.get("dir", 0))
+	o.explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.HALF_FILE))
 	o.order_mode = int(d.get("order_mode", 0))
 	o.gait = int(d.get("gait", -1))
 	o.haste = bool(d.get("haste", false))
@@ -718,7 +723,9 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 ## coerced to an explicatio (+1) rather than left at 0, so a caller that slips through this
 ## contract violation still gets a well-formed step instead of a corrupted one. Callers
 ## wanting an absolute file count belong on `new_frontage` instead.
-static func new_file_double(direction: int) -> Order:
+## `drill` (UnitFormation.ExplicatioDrill) is the explicatio a widen is dealt as; the
+## half-file drill unless the order names another.
+static func new_file_double(direction: int, drill: int = UnitFormation.ExplicatioDrill.HALF_FILE) -> Order:
 	if direction == 0:
 		push_error("Order.new_file_double: direction must be nonzero (0 has no relative " +
 				"widen/narrow meaning); defaulting to an explicatio. Use new_frontage for " +
@@ -727,6 +734,7 @@ static func new_file_double(direction: int) -> Order:
 	var o := Order.new()
 	o.type = Type.FRONTAGE
 	o.dir = signi(direction)
+	o.explicatio_drill = drill
 	return o
 
 

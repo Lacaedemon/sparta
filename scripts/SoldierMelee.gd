@@ -427,7 +427,16 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_shield_id.remove_at(i)
 			if i < unit._sim_soldier_shield_hold_angle.size():
 				unit._sim_soldier_shield_hold_angle.remove_at(i)   # and the hold-angle state
+			# A man who led a column (Unit.soldier_role) hands the lead to the man who closes up into
+			# his place in his file, read once the file has closed up below.
+			var fallen_role: int = UnitFormation.SoldierRole.NONE
+			if i < unit._sim_soldier_role.size():
+				fallen_role = unit._sim_soldier_role[i]
+				unit._sim_soldier_role.remove_at(i)
 			if i < unit._sim_soldier_file.size():
+				var fallen_file: int = unit._sim_soldier_file[i]
+				var fallen_rank: int = unit._sim_soldier_rank[i] \
+						if i < unit._sim_soldier_rank.size() else -1
 				# Keep file_major_reform's persistent file assignment index-aligned: trimming
 				# at the dead soldier's own index (not recomputing) is what makes a casualty
 				# preserve every OTHER survivor's file identity -- see Unit._ensure_file_assignment.
@@ -445,6 +454,12 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				if lanes_live:
 					unit._sim_soldier_lane_walker.remove_at(i)
 					unit._lane_walker_gen = unit._file_assignment_gen
+				if fallen_role != UnitFormation.SoldierRole.NONE \
+						and unit._sim_soldier_role.size() == unit._sim_soldier_file.size():
+					var heir: int = UnitFormation.successor_in_file(unit._sim_soldier_file,
+							unit._sim_soldier_rank, fallen_file, fallen_rank, i)
+					if heir >= 0:
+						unit._sim_soldier_role[heir] = fallen_role
 			if i < unit._sim_soldier_broken.size():
 				unit._sim_soldier_broken.remove_at(i)   # and the encirclement-broken flag
 			if i < unit._sim_soldier_reflect_walker.size():

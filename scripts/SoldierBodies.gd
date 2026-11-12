@@ -1357,7 +1357,10 @@ static func couple(unit: Unit, delta: float) -> void:
 		var walking: int = 0
 		for i in range(n):
 			if transit and unit._couple_transit[i] != 0:
-				if unit._sim_soldier_pos[i].distance_squared_to(slots[i]) > eps_sq:
+				# An explicatio's lane walker stands on his waypoint, not his slot, once he has
+				# stepped into his lane: he is still walking until he reaches the slot itself.
+				if unit._sim_soldier_pos[i].distance_squared_to(slots[i]) > eps_sq \
+						or unit.is_lane_walker(i):
 					walking += 1
 					continue
 				unit._couple_transit[i] = 0

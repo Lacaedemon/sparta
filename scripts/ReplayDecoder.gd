@@ -42,7 +42,7 @@ static func _decode_order(o: Dictionary) -> Dictionary:
 	# Absent in a replay recorded before the explicatio drill, which then plays its B presses
 	# back as the plain resize they were recorded as.
 	if o.has("explicatio"):
-		entry["explicatio"] = bool(o["explicatio"])
+		entry["explicatio"] = int(o["explicatio"])
 	return entry
 
 
