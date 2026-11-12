@@ -1337,6 +1337,11 @@ func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
 		assert_almost_eq(u.follow_line_width(),
 				minf(u.file_pitch_wu(), 2.0 * u.soldier_body_radius()), 0.001,
 				"mode %d: a man clears his line by a body's width, or the pitch if closer" % mode)
+		var lane_clear: float = 2.0 * u.soldier_body_radius() if mode == Unit.FORMATION_NORMAL \
+				else u.file_pitch_wu() - Unit.REFORM_SETTLE_EPS
+		assert_almost_eq(u.explicatio_lane_clear(), lane_clear, 0.001,
+			"mode %d: the lane is a body's width wide in open order, the pitch less the settle " % mode
+			+ "distance in a shield wall")
 		_battle.enqueue_file_double([u.uid], 1)
 		assert_true(u.explicatio_drill_active(), "mode %d: the widen is the drill" % mode)
 		var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
