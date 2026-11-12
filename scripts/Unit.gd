@@ -7510,7 +7510,7 @@ func append_soldier_bodies(other: Unit) -> void:
 	_sim_soldier_facing.append_array(other._sim_soldier_facing)
 	# Roles too, each side padded to its own men so the host's stay on the host's men.
 	if not _sim_soldier_role.is_empty() or not other._sim_soldier_role.is_empty():
-		var host_roles: PackedByteArray = _sim_soldier_role
+		var host_roles: PackedByteArray = _sim_soldier_role.duplicate()
 		var reserve_roles: PackedByteArray = other._sim_soldier_role.duplicate()
 		host_roles.resize(_sim_soldier_pos.size() - other._sim_soldier_pos.size())
 		reserve_roles.resize(other._sim_soldier_pos.size())
