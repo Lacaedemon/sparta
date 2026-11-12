@@ -303,10 +303,11 @@ func test_the_rear_men_step_out_of_the_file_before_coming_up() -> void:
 ## Nobody passes through anybody: no two men of the block come closer than the overlap floor the
 ## demo defect scan judges a reshape by, a quarter of two touching bodies
 ## (DemoDefects.OVERLAP_BODY_FRAC of twice the body radius, 2.25 wu), centred or held on either
-## flank, since a man comes up an interval only while nobody stands in his lane. Held on the
-## right flank, main's deal brought two men to 1.68 wu. This build measured 4.44 wu centred and
-## 4.33 wu held, a man waiting beside his lane while the rear man of a file beside it slides
-## across it to open out.
+## flank, since a man in an interval comes up only while nobody of another file stands in his
+## lane. Held on the right flank, main's deal brought two men to 1.68 wu. The bound is not yet a
+## body radius (4.5 wu): this build measured 4.44 wu centred and 4.33 wu held, a man stepping
+## sideways toward his lane while the rear man of a file beside it slides across to open out,
+## and gating that sideways step on the space beside him left held drills that never ended.
 func test_no_two_men_come_onto_each_other() -> void:
 	for anchor in [UnitFormation.Anchor.CENTRE, UnitFormation.Anchor.RIGHT,
 			UnitFormation.Anchor.LEFT]:
@@ -736,13 +737,11 @@ func test_a_man_in_his_lane_holds_him_back_and_a_settled_one_shuts_it() -> void:
 	u._refresh_explicatio_follow(u.soldiers)
 	assert_eq(u._explicatio_rooms[h], 0.0, "a man in his lane leaves him no room")
 	assert_eq(u._explicatio_shut[h], 0, "while that man still follows, the lane is not shut")
-	var own := PackedInt32Array()
-	for j in range(u.soldiers):
-		if u._sim_soldier_file[j] == u._sim_soldier_file[h]:
-			own.push_back(j)
+	var everyone := PackedInt32Array(range(u.soldiers))
 	var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(u._sim_soldier_pos[h], front,
-			u._explicatio_places[h], u._sim_soldier_pos, own,
-			u.follow_line_width() - Unit.REFORM_SETTLE_EPS, u.rank_pitch_wu(), u.soldier_body_radius())
+			u._explicatio_places[h], u._sim_soldier_pos, everyone, u._sim_soldier_file,
+			u._sim_soldier_file[h], u.explicatio_lane_clear(), u.rank_pitch_wu(),
+			u.soldier_body_radius())
 	assert_true(lane.has(b), "precondition: that man stands in his lane")
 	for j in lane:
 		u._explicatio_following[j] = 0   # every man in his lane has taken his place
@@ -993,9 +992,9 @@ func test_a_duplicatio_after_the_drill_takes_the_roles_away() -> void:
 
 ## The alternate-rank drill, chosen on the order: every second man steps into the interval beside
 ## the man who stood ahead of him, led by the epistates, without anyone passing the man ahead of
-## him or two men coming onto each other, and the drill ends with the files
+## him or two men coming within a body radius of each other, and the drill ends with the files
 ## doubled. Its front holds as the half-file drill's does, to a quarter of a rank pitch: each
-## epistates comes up only as far as the interval has opened where he is. Measuring the interval
+## epistates comes up only while nobody of another file stands in his lane. Measuring the interval
 ## between the file leaders instead let each one come up from one rank behind his file leader
 ## while the line was still opening, overshoot, and step back, the front running up to 5.0 wu
 ## ahead.
@@ -1003,7 +1002,7 @@ func test_the_alternate_rank_drill_keeps_its_columns() -> void:
 	for anchor in [UnitFormation.Anchor.CENTRE, UnitFormation.Anchor.RIGHT]:
 		var units: Array = await _stage([_spearmen()])
 		var u: Unit = units[0]
-		var floor_wu: float = 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
+		var floor_wu: float = u.soldier_body_radius()
 		_battle.enqueue_file_double([u.uid], 1, anchor, ALTERNATE_RANK)
 		assert_eq(_count_role(u, UnitFormation.SoldierRole.EPISTATES), 9,
 			"one epistates for each old file")
@@ -1264,32 +1263,68 @@ func test_a_man_steps_onto_the_line_before_closing_along_it() -> void:
 		Vector2(9, -20), "falling back: straight for it, gap or no gap")
 
 
-## A man at (0, 0) facing south comes up the line x = 0 to (0, 40): the men in his lane are those
-## of other files less than `clear` off it, from a body radius behind him to a rank pitch (9)
-## ahead. `clear` is a body's width (9) at a 9 wu pitch or in a loose order, the pitch (6.75) in a
-## shield wall.
+## A man at (0, 0) of file 0, facing south, comes up the line x = 0 to (0, 40): the men in his
+## lane are those of other files less than `clear` off it, from a body radius behind him to a rank
+## pitch (9) ahead. `clear` is a body's width (9) at a 9 wu pitch or in a loose order, the pitch
+## less the settle distance (5.75) in a 6.75 wu shield wall.
 func test_lane_blockers_are_the_men_in_his_lane() -> void:
 	var f := Vector2(0, 1)
 	var line := Vector2(0, 40)
 	var men := PackedVector2Array([Vector2(0, 0), Vector2(0, -9), Vector2(8.9, 5),
-			Vector2(-9, 5), Vector2(3, 20), Vector2(2, -6), Vector2(-27, 4), Vector2(6, 3)])
-	var own := PackedInt32Array([0, 1])   # himself and the man behind him in his column
-	var out: PackedInt32Array = SoldierFollowSteer.lane_blockers(men[0], f, line, men, own, 9.0,
-			9.0, 4.5)
+			Vector2(-9, 5), Vector2(3, 20), Vector2(2, -6), Vector2(-27, 4), Vector2(5, 3)])
+	var files := PackedInt32Array([0, 0, 1, 1, 1, 1, 1, 1])   # men 0 and 1: his own column
+	var all := PackedInt32Array(range(men.size()))
+	var out: PackedInt32Array = SoldierFollowSteer.lane_blockers(men[0], f, line, men, all, files,
+			0, 9.0, 9.0, 4.5)
 	assert_eq(out, PackedInt32Array([2, 7]),
-		"8.9 and 6 off the line level with him block; 9 and 27 off do not, nor a man 20 ahead "
+		"8.9 and 5 off the line level with him block; 9 and 27 off do not, nor a man 20 ahead "
 		+ "or 6 behind, nor his own column")
-	out = SoldierFollowSteer.lane_blockers(men[0], f, line, men, own, 6.75, 9.0, 4.5)
-	assert_eq(out, PackedInt32Array([7]), "shield wall: only the man 6 off, inside its pitch")
-	assert_true(SoldierFollowSteer.lane_blockers(men[0], f, line, men, own, 0.0, 9.0,
-			4.5).is_empty(), "no clearance asked: nobody blocks")
+	out = SoldierFollowSteer.lane_blockers(men[0], f, line, men, all, files, 0, 5.75, 9.0, 4.5)
+	assert_eq(out, PackedInt32Array([7]), "shield wall: only the man 5 off, inside its clearance")
+	assert_eq(SoldierFollowSteer.lane_blockers(men[0], f, line, men, PackedInt32Array([2, 3]),
+			files, 0, 9.0, 9.0, 4.5), PackedInt32Array([2]), "only the candidates he is handed")
+
+
+## Of the files that stay and have a leader, the guide's is the nearest the file that stood, the
+## lower of a tie; the file that stood while it still has a leader; none when no file that stays
+## has one. Split at 0, so the even files stay.
+func test_the_guide_passes_to_the_nearest_staying_file_the_lower_of_a_tie() -> void:
+	assert_eq(UnitFormation.explicatio_guide_file({4: 1, 2: 1, 10: 1}, 4, 0), 4,
+		"the file that stood, while it has a leader")
+	assert_eq(UnitFormation.explicatio_guide_file({2: 1, 10: 1, 7: 1}, 4, 0), 2,
+		"the nearest, not the farthest, and an interval's leader is no guide")
+	assert_eq(UnitFormation.explicatio_guide_file({6: 1, 2: 1}, 4, 0), 2, "the lower of a tie")
+	assert_eq(UnitFormation.explicatio_guide_file({2: 1, 6: 1}, 4, 0), 2,
+		"the lower of a tie, whichever is listed first")
+	assert_eq(UnitFormation.explicatio_guide_file({1: 1, 3: 1}, 4, 0), -1,
+		"no file that stays has a leader")
+
+
+## With no file that stays left a leader to be the guide, the drill says so and ends, with the
+## grid laid on the men where they stand: the front rank does not dress on ground no man holds.
+func test_a_drill_with_no_guide_left_says_so_and_ends() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	await get_tree().physics_frame
+	for i in range(u.soldiers):
+		if _stays(u, i) and u._sim_soldier_rank[i] == 0:
+			u._sim_soldier_rank[i] = 99   # no file that stays has a man at its head
+	u._explicatio_follow_frame = -1
+	var reading: Vector2 = u.explicatio_grid_position()
+	u._advance_explicatio_drill()
+	assert_push_error("no file that stays has a leader", "the missing guide is reported")
+	assert_false(u.explicatio_drill_active(), "the drill ended")
+	assert_almost_eq(u.position.x, reading.x, 0.01, "the grid is laid on the men")
+	assert_almost_eq(u.position.y, reading.y, 0.01, "the grid is laid on the men")
 
 
 ## The drill reads the room off the men's bodies, not the pitch, so it plays out in a looser and
 ## a closer order than the 9 wu pitch the other tests stand at: it ends, the files doubled, with
-## no two men closer than the demo scan's overlap floor (2.25 wu). Normal order stands the
-## Spearmen at an 18 wu pitch, a shield wall at 6.75 wu, closer than two bodies' radii; this
-## build measured the closest pair at 3.75 wu in the shield wall.
+## no two men within a body radius of each other in normal order, which stands the Spearmen at
+## an 18 wu pitch. In a shield wall, at 6.75 wu, closer than two bodies' radii, the bound is the
+## demo scan's overlap floor (2.25 wu): this build measured 3.75 wu there, for the reason
+## test_no_two_men_come_onto_each_other gives.
 func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
 	for mode in [Unit.FORMATION_NORMAL, Unit.FORMATION_SHIELD_WALL]:
 		var units: Array = await _stage([_spearmen()])
@@ -1307,6 +1342,8 @@ func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
 		var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "mode %d: the drill ended" % mode)
 		assert_eq(UnitFormation.frontage(u), 2 * files, "mode %d: the files doubled" % mode)
-		assert_gte(walk["closest"], 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC,
+		var floor_wu: float = u.soldier_body_radius() if mode == Unit.FORMATION_NORMAL \
+				else 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
+		assert_gte(walk["closest"], floor_wu,
 			"mode %d: the nearest two men came within %.2f wu" % [mode, walk["closest"]])
 		await _free_battle()

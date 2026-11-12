@@ -1299,6 +1299,23 @@ static func explicatio_file_stays(f: int, lane_split: int) -> bool:
 	return posmod(f, 2) == (0 if f / 2 >= lane_split else 1)
 
 
+## The file whose leader becomes the guide when the leader of `stand_file` has fallen and nobody
+## has closed up into his place: of the files that stay (explicatio_file_stays) and have a leader
+## (`led`, a set of file ids keyed in a Dictionary), the one nearest `stand_file`, the lower of a
+## tie. `stand_file` itself while it has a leader; -1 when no file that stays has one.
+static func explicatio_guide_file(led: Dictionary, stand_file: int, lane_split: int) -> int:
+	if led.has(stand_file):
+		return stand_file
+	var best: int = -1
+	for f in led:
+		if not explicatio_file_stays(f, lane_split):
+			continue
+		var d: int = absi(f - stand_file)
+		if best < 0 or d < absi(best - stand_file) or (d == absi(best - stand_file) and f < best):
+			best = f
+	return best
+
+
 ## The explicatio deal of a file-major block on `old_files` files into twice as many, by
 ## `drill` (ExplicatioDrill), with the intervals split at `lane_split`
 ## (explicatio_lane_split). `file_ids` and `ranks` are the block's held assignment,

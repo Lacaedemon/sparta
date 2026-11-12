@@ -32,20 +32,20 @@ static func steer_point(pos: Vector2, facing: Vector2, target: Vector2, line_wid
 
 
 ## The men standing in the lane a man at `pos`, facing `facing`, comes up to his place along the
-## line through `line`: of the men at `positions` (indices into it; `skip` lists his own file,
-## himself among them, who follow him in column), those less than `clear` off that line across
-## his front, from level with him (`behind` back) to `reach` ahead of him along it. `clear` is
-## what he needs: a body's width, so that two bodies pass side by side without touching, or the
-## file pitch where the files stand closer than that, as near as the line will ever let them.
-## He comes up only while the lane is empty.
+## line through `line`: of the men `candidates` (indices into `positions`), those of a file other
+## than `own_file` (`files`, index-aligned with `positions`; his own file follows him in column)
+## less than `clear` off that line across his front, from level with him (`behind` back) to
+## `reach` ahead of him along it. `clear` is what he needs: a body's width, so that two bodies
+## pass side by side without touching, or the file pitch where the files stand closer than that,
+## as near as the line will ever let them. He comes up only while the lane is empty.
 static func lane_blockers(pos: Vector2, facing: Vector2, line: Vector2,
-		positions: PackedVector2Array, skip: PackedInt32Array, clear: float, reach: float,
-		behind: float) -> PackedInt32Array:
+		positions: PackedVector2Array, candidates: PackedInt32Array, files: PackedInt32Array,
+		own_file: int, clear: float, reach: float, behind: float) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	var front: Vector2 = facing.normalized()
 	var right: Vector2 = SoldierFollow.right_of(front)
-	for j in range(positions.size()):
-		if skip.has(j):
+	for j in candidates:
+		if files[j] == own_file:
 			continue
 		var along: float = (positions[j] - pos).dot(front)
 		if along < -behind or along > reach:
