@@ -631,6 +631,12 @@ func test_the_follow_plan_names_whom_each_man_follows() -> void:
 	assert_eq(leaders[10], 8, "file 5's leader comes up beside file 4's")
 	assert_eq(flanks[10], -1, "his interval is on the flank: nobody beyond it")
 	assert_eq(flanks[0], -1, "a file that stays steps into no gap")
+	var guides: PackedInt32Array = p["guides"]
+	for i in [0, 2, 6, 8, 10]:
+		assert_eq(guides[i], 4, "file leader %d dresses on the guide himself" % i)
+	assert_eq(guides[4], SoldierFollow.STAND, "the guide dresses on no one")
+	for i in [1, 3, 5, 7, 9, 11]:
+		assert_eq(guides[i], SoldierFollow.NOT_FOLLOWING, "man %d dresses on no guide" % i)
 
 
 func test_the_follow_plan_skips_a_fallen_link() -> void:
@@ -684,6 +690,25 @@ func test_places_read_leaders_points_and_holds() -> void:
 	assert_eq(out[3], Vector2(7, 7), "a man not following is placed where he stands")
 	assert_true(SoldierFollow.places(pos, PackedVector2Array(), leaders, offsets).is_empty(),
 		"arrays that do not line up")
+
+
+func test_a_file_leader_dresses_on_the_guide_where_he_stands() -> void:
+	# Facing south (+y). The guide (man 0) has run 3 ahead of his point; man 1 follows man 2, who
+	# stands level with the point, but dresses on the guide's body, so he takes the guide's depth.
+	var pos := PackedVector2Array([Vector2(0, 3), Vector2(20, 0), Vector2(30, 0)])
+	var face := PackedVector2Array([Vector2(0, 1), Vector2(0, 1), Vector2(0, 1)])
+	var leaders := PackedInt32Array([SoldierFollow.STAND, 2, SoldierFollow.HOLD])
+	var offsets := PackedVector2Array([Vector2.ZERO, Vector2(-9, 0), Vector2.ZERO])
+	var points := PackedVector2Array([Vector2(0, 0), Vector2.ZERO, Vector2.ZERO])
+	var guides := PackedInt32Array([SoldierFollow.STAND, 0, SoldierFollow.NOT_FOLLOWING])
+	var out: PackedVector2Array = SoldierFollow.places(pos, face, leaders, offsets, points, guides)
+	assert_eq(out[1], Vector2(39, 3), "level with the guide's body")
+	guides[1] = SoldierFollow.STAND
+	out = SoldierFollow.places(pos, face, leaders, offsets, points, guides)
+	assert_eq(out[1], Vector2(39, 0), "dressing on the guide's old point, not on him")
+	guides[1] = SoldierFollow.NOT_FOLLOWING
+	out = SoldierFollow.places(pos, face, leaders, offsets, points, guides)
+	assert_eq(out[1], Vector2(39, 0), "no guide: level with his own leader")
 
 
 func test_a_man_steps_onto_the_line_before_closing_along_it() -> void:
