@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/orderly-frontage.json",
+  "caption": "Orderly frontage (#1930): the Spearmen widen their formation six times with the ] key. This clip used to carry blob, shape_residual and path_crossing defect exemptions for uid 0; none of them fires any more, so they were deleted and the clip now passes the defect scan with no exemptions.",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 15,
+  "width": 720
+}

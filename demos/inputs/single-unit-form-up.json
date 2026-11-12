@@ -33,17 +33,11 @@
   ],
   "spawn_fingerprint": "162bed3a3bdaf3f7ac00045254efa6d9",
   "defect_exemptions": {
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: residual 77.4 wu while the block marches onto the dragged line."
-    },
     "path_crossing": {
       "uids": [
         0
       ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: 0.48 crossing fraction during the form-up."
+      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; the block marches onto the dragged line and its men's routes cross while the grid re-deals. Measured 2026-11-10 on aef5b476 on seeds 0 to 4 (the sim has no RNG draw here, so all five seeds read alike): on the clip's own declared ticks path_crossing reads 0.343 against the 0.15 threshold, so the exemption is live there; on dense 2-tick FULL dumps over ticks 2 to 700 it reads 0 on every seed, so it reads STALE there. Kept because the own-tick scan, which is what CI and tools/check.sh demo_defects run, still fires."
     }
   }
 }
