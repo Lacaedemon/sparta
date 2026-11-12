@@ -485,9 +485,9 @@ static func step(unit: Unit, delta: float) -> void:
 	# the flight's feed-forward otherwise carries a man still closing on his slot after a turn
 	# of the flight straight onto the rock. Only on a map with block terrain, and only routers.
 	var routing_near_terrain: bool = routing and not terrain_guard.is_empty()
-	# A man in the follow mode (Unit.follows, SoldierFollow) steers on another man: his slot this
-	# tick is his place beside or behind that man, and he heads for it the way a man in a file
-	# does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
+	# A man in the follow mode (Unit.follow_leader, SoldierFollow) steers on another man: his
+	# slot this tick is his place beside or behind that man, and he heads for it the way a man in
+	# a file does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
 	var follow_width: float = unit.follow_line_width()
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
