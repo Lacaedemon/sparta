@@ -10,9 +10,8 @@ extends RefCounted
 ## fog applies while a unit routs is dropped, and nothing replaces it yet.
 ## Read-only: it reads unit and body state, the SpatialHash grid, and PathField.active.
 ## Cached per tick: the first query for a man in a frame fixes his answer for that frame,
-## unless his unit's body count changes or his nearest foe's body at the cached index has
-## moved or gone (a reap or a merge re-packs the arrays). A reap plus a merge that keeps
-## his own unit's count goes undetected. A far-tier unit has no bodies.
+## unless his own body or his nearest foe's body at the cached index has moved or gone (a
+## reap or a merge re-packs the arrays). A far-tier unit has no bodies.
 const Sight = preload("res://scripts/ManSight.gd")
 const Weights = preload("res://scripts/ManWeights.gd")
 const Foes = preload("res://scripts/ManFoes.gd")
@@ -39,7 +38,7 @@ var rear_weight: float = Weights.REAR_WEIGHT:
 var _frame: int = -1
 var _sight: Dictionary = {}
 var _foes := Foes.new()
-# unit -> {"count": body count when cached, "by_index": {index -> result}}.
+# unit -> {index -> result}; Scan.still_valid says whether a result still holds.
 var _results: Dictionary = {}
 
 
@@ -68,30 +67,15 @@ func perceive(unit: Unit, index: int, frame: int) -> Dictionary:
 	if frame != _frame:
 		push_error("ManPerception: perceive() for frame %d, prepared for %d" % [frame, _frame])
 		return _public(Scan.none())
-	var count: int = unit._sim_soldier_pos.size()
-	var entry: Dictionary = _results.get(unit, {})
-	# A reap or a merge re-packs the arrays: drop the unit's cache when its count changes.
-	if entry.is_empty() or int(entry["count"]) != count:
-		entry = {"count": count, "by_index": {}}
-		_results[unit] = entry
-	var by_index: Dictionary = entry["by_index"]
-	if by_index.has(index) and _nearest_still_valid(by_index[index]):
+	var by_index: Dictionary = _results.get(unit, {})
+	_results[unit] = by_index
+	if by_index.has(index) and Scan.still_valid(unit, index, by_index[index]):
 		return _public(by_index[index])
 	var radius: float = sight_radius if sight_radius > 0.0 else unit.sight_range
 	var result: Dictionary = Scan.scan(unit, index, radius, _sight, _foes,
 		visual_field_half_angle, rear_weight)
 	by_index[index] = result
 	return _public(result)
-
-
-# The cached nearest holds while its unit keeps its body count and that body has not moved.
-func _nearest_still_valid(cached: Dictionary) -> bool:
-	var foe: Variant = cached["nearest_unit"]
-	if foe == null:
-		return true
-	var bodies: PackedVector2Array = (foe as Unit)._sim_soldier_pos
-	var i: int = cached["nearest_index"]
-	return bodies.size() == int(cached["nearest_count"]) and bodies[i] == cached["nearest_pos"]
 
 
 func _public(r: Dictionary) -> Dictionary:

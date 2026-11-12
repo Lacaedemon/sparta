@@ -15,7 +15,25 @@ const Weights = preload("res://scripts/ManWeights.gd")
 static func none() -> Dictionary:
 	return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
 		"nearest_distance": INF, "perceived": 0, "nearest_count": 0,
-		"nearest_pos": Vector2.ZERO}
+		"nearest_pos": Vector2.ZERO, "own_pos": Vector2(INF, INF)}
+
+
+## Whether a cached answer still describes man `index` of `unit`: his own body is where it
+## was (an out-of-range index stays so), and the nearest foe unit keeps its body count with
+## that body where it was. A reap or a merge re-packs the arrays, so a count or an index
+## can outlive the body it named.
+static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
+	var own := Vector2(INF, INF)
+	if index >= 0 and index < unit._sim_soldier_pos.size():
+		own = unit._sim_soldier_pos[index]
+	if own != cached["own_pos"]:
+		return false
+	var foe: Variant = cached["nearest_unit"]
+	if foe == null:
+		return true
+	var bodies: PackedVector2Array = (foe as Unit)._sim_soldier_pos
+	var i: int = cached["nearest_index"]
+	return bodies.size() == int(cached["nearest_count"]) and bodies[i] == cached["nearest_pos"]
 
 
 ## Returns the dictionary ManPerception.perceive documents, plus "nearest_count" (the nearest
@@ -26,9 +44,10 @@ static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: 
 	var out: Dictionary = none()
 	if index < 0 or index >= unit._sim_soldier_pos.size():
 		return out
+	var pos: Vector2 = unit._sim_soldier_pos[index]
+	out["own_pos"] = pos
 	if radius <= 0.0:
 		return out
-	var pos: Vector2 = unit._sim_soldier_pos[index]
 	var facing: Vector2 = unit.soldier_facing(index)
 	var local: Dictionary = Sight.near(rule, pos, radius)
 	var open_ground: bool = (local["screens"] as Array).is_empty() and (local["blocks"] as Array).is_empty()

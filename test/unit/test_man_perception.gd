@@ -505,6 +505,18 @@ func test_a_reap_plus_a_merge_that_keeps_the_count_drops_the_cached_nearest() ->
 	assert_almost_eq(float(r["nearest_distance"]), 60.0, EPS)
 
 
+func test_a_reap_plus_a_merge_that_keeps_the_count_drops_the_mans_own_cached_answer() -> void:
+	var man := _unit(1, 0, PackedVector2Array([Vector2.ZERO, Vector2(0.0, -400.0)]))
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "man 0 sees the foe")
+	# Man 0 falls and a newcomer joins in the same frame: two bodies again, and index 0 now
+	# names a man who stands out of sight.
+	man._sim_soldier_pos = PackedVector2Array([Vector2(0.0, -400.0), Vector2(0.0, -420.0)])
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "index 0 is answered for the man now there")
+
+
 func test_a_nearer_newcomer_drops_the_cached_nearest_though_its_body_has_not_moved() -> void:
 	var man := _observer()
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 30.0), Vector2(0.0, 60.0)]))
