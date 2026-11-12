@@ -317,6 +317,24 @@ func test_an_absolute_resize_to_twice_the_files_is_not_the_drill() -> void:
 	assert_eq(_count_role(u, UnitFormation.SoldierRole.HEMILOCHITES), 0, "nobody leads a column")
 
 
+## An explicatio ordered while a duplicatio is still walking deals files whose men may still
+## stand abreast of each other: each falls in behind the man ahead of him in his column instead
+## of onto him. Ordered 110 ticks after the duplicatio (as in the file-doubling demo), the
+## follower who stood abreast of his leader once walked onto him, 0.0 wu apart.
+func test_an_explicatio_during_a_duplicatio_brings_no_two_men_onto_each_other() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	var floor_wu: float = 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
+	_battle.enqueue_file_double([u.uid], -1)
+	await _run(110)
+	_battle.enqueue_file_double([u.uid], 1)
+	var closest: float = INF
+	for _t in range(2 * DRILL_TICKS):
+		await get_tree().physics_frame
+		closest = minf(closest, _nearest_pair(u._sim_soldier_pos))
+	assert_gte(closest, floor_wu, "the nearest two men came within %.2f wu" % closest)
+
+
 # --- The column and its leader, live ---------------------------------------------
 
 
@@ -559,3 +577,19 @@ func test_a_follower_steps_no_nearer_his_interval_than_the_man_ahead_of_him() ->
 	walkers[0] = 0
 	out = UnitFormation.apply_lane_first_waypoints(slots, bodies, walkers, 1.0, ahead)
 	assert_eq(out[1], Vector2(9, 25), "once the leader is in, the follower steps in after him")
+
+
+func test_a_follower_abreast_of_his_leader_falls_in_behind_him() -> void:
+	# Man 1 stands abreast of man 0, his leader, both 6 off the interval at x = 9.
+	var slots := PackedVector2Array([Vector2(9, -10), Vector2(9, -1)])
+	var bodies := PackedVector2Array([Vector2(3, 20), Vector2(3, 20)])
+	var walkers := PackedByteArray([1, 1])
+	var ahead := PackedInt32Array([-1, 0])
+	var out: PackedVector2Array = UnitFormation.apply_lane_first_waypoints(slots, bodies,
+			walkers, 1.0, ahead, 9.0)
+	assert_eq(out[0], Vector2(9, 20), "the leader steps into the interval")
+	assert_eq(out[1], Vector2(3, 29), "the follower falls in a man's place behind him")
+	# On the interval's line already, the follower still waits behind the man ahead.
+	bodies = PackedVector2Array([Vector2(5, 20), Vector2(9, 20)])
+	out = UnitFormation.apply_lane_first_waypoints(slots, bodies, walkers, 1.0, ahead, 9.0)
+	assert_eq(out[1], Vector2(9, 29), "a follower on the line waits behind the man still stepping in")

@@ -6455,7 +6455,7 @@ func _apply_explicatio_lanes(slots: PackedVector2Array, count: int) -> PackedVec
 		_sim_soldier_lane_walker = PackedByteArray()
 		return slots
 	return UnitFormation.apply_lane_first_waypoints(slots, local, _sim_soldier_lane_walker,
-			tolerance, ahead)
+			tolerance, ahead, rank_pitch_wu())
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to

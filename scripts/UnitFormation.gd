@@ -1382,11 +1382,14 @@ static func successor_in_file(file_ids: PackedInt32Array, ranks: PackedInt32Arra
 ## (`ahead`, man_ahead_in_file of the new assignment) has got, while that man is still stepping
 ## in himself. So the column's leader steps into the interval first and each man follows him
 ## in, then marches straight up it to his slot, rather than taking a diagonal through his own
-## file. `local_bodies` are the men in the slot frame (Unit.to_slot_frame), index-aligned with
+## file. While the man ahead is still stepping in, a follower also stands at least `follow_gap`
+## behind him (the slot frame's +y), so a man who started abreast of his leader falls in behind
+## him rather than onto him, and one already on the interval's line waits there for him.
+## `local_bodies` are the men in the slot frame (Unit.to_slot_frame), index-aligned with
 ## `slots`, `walkers` and `ahead`; anything else returns `slots` unchanged.
 static func apply_lane_first_waypoints(slots: PackedVector2Array,
 		local_bodies: PackedVector2Array, walkers: PackedByteArray, tolerance: float,
-		ahead: PackedInt32Array = PackedInt32Array()) -> PackedVector2Array:
+		ahead: PackedInt32Array = PackedInt32Array(), follow_gap: float = 0.0) -> PackedVector2Array:
 	var n: int = slots.size()
 	if n == 0 or local_bodies.size() != n or walkers.size() != n:
 		return slots
@@ -1396,15 +1399,18 @@ static func apply_lane_first_waypoints(slots: PackedVector2Array,
 		if walkers[i] == 0:
 			continue
 		var off: float = local_bodies[i].x - slots[i].x
-		if absf(off) <= tolerance:
-			continue
-		var target_x: float = slots[i].x
 		var j: int = ahead[i] if gated else -1
-		if j >= 0 and walkers[j] != 0:
-			# The man ahead is still stepping in: come no nearer the interval than he has.
+		var leader_walking: bool = j >= 0 and walkers[j] != 0
+		if absf(off) <= tolerance and not leader_walking:
+			continue
+		var target := Vector2(slots[i].x, local_bodies[i].y)
+		if leader_walking:
+			# The man ahead is still stepping in: come no nearer the interval than he has, and
+			# no nearer the front than a man's place behind him.
 			var lead_off: float = absf(local_bodies[j].x - slots[j].x)
-			target_x = slots[i].x + signf(off) * minf(absf(off), lead_off)
-		out[i] = Vector2(target_x, local_bodies[i].y)
+			target.x = slots[i].x + signf(off) * minf(absf(off), lead_off)
+			target.y = maxf(target.y, local_bodies[j].y + follow_gap)
+		out[i] = target
 	return out
 
 
