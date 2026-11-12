@@ -11,13 +11,18 @@ const Sight = preload("res://scripts/ManSight.gd")
 const Weights = preload("res://scripts/ManWeights.gd")
 
 
+## The answer for a man who perceives nothing.
+static func none() -> Dictionary:
+	return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
+		"nearest_distance": INF, "perceived": 0, "nearest_count": 0}
+
+
 ## Returns the dictionary ManPerception.perceive documents, plus "nearest_count" (the nearest
 ## foe unit's body count, which the cache uses to notice a reap). `rule` is ManSight.compile's
 ## answer for the frame, `foes` the frame's ManFoes, `radius` his sight in world units.
 static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: RefCounted,
 		half_angle: float, rear: float) -> Dictionary:
-	var out: Dictionary = {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
-		"nearest_distance": INF, "perceived": 0, "nearest_count": 0}
+	var out: Dictionary = none()
 	if index < 0 or index >= unit._sim_soldier_pos.size():
 		return out
 	if radius <= 0.0:

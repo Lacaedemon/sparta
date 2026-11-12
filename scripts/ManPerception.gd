@@ -1,17 +1,14 @@
 extends RefCounted
 ## Per-man threat perception: what one soldier can perceive of the enemy around him.
-##
 ## Perception.gd answers which enemy UNITS a team sees, from unit centres. This answers it
 ## one level down, for a single man: which enemy bodies he himself can see (ManScan, from
 ## his own position under the fog's sight rule, ManSight), how strongly each presses on him
 ## (ManWeights: nearer and in front weighs more), and which is nearest.
-##
 ## The threat vector is the weighted sum of the unit directions from him to each foe he
 ## perceives, so it points TOWARD the threat (a man fleeing it runs the other way).
-## His sight radius is by default his unit's base `sight_range`, the radius the fog model
-## gives that unit's observers, without the cut the fog applies while a unit routs (a
-## fleeing man's look is his facing, which the front arc already models).
-##
+## His sight radius is by default his unit's base `sight_range`, the fog model's radius
+## for that unit's observers, without the cut applied while a unit routs (a fleeing man's
+## look is his facing, which the front arc already models).
 ## Read-only: it reads unit and body state, the SpatialHash grid, and PathField.active.
 ## Cached per tick: the first query for a man in a frame fixes his answer for that frame,
 ## unless his unit's or his nearest foe's body arrays change size (a casualty reap or a
@@ -48,8 +45,8 @@ var _results: Dictionary = {}
 
 
 ## Bind this frame's inputs: the physics-frame counter SpatialHash is built with, every unit
-## in play ("units" and "routers" groups), and Perception.perceives' sight inputs.
-## Idempotent within a frame: a second call keeps the first call's inputs and cache.
+## in play ("units" and "routers"), and Perception.perceives' sight inputs. A second call
+## for the same frame keeps the first call's inputs and cache.
 func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> void:
 	if frame == _frame:
 		return
@@ -67,12 +64,15 @@ func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> vo
 ##   nearest_distance distance to that foe, world units (INF when none)
 ##   perceived        how many foe bodies he perceives
 ## A man with no body (an out-of-range index, or a far-tier unit) perceives nothing.
-## Call prepare() for the frame first.
-func perceive(unit: Unit, index: int) -> Dictionary:
+## `frame` must be the frame prepare() was last called with, else an error is reported and
+## nothing is perceived: a missed prepare() would answer from last frame's cache.
+func perceive(unit: Unit, index: int, frame: int) -> Dictionary:
+	if frame != _frame:
+		push_error("ManPerception: perceive() for frame %d, prepared for %d" % [frame, _frame])
+		return _public(Scan.none())
 	var count: int = unit._sim_soldier_pos.size()
 	var entry: Dictionary = _results.get(unit, {})
-	# A reap or a merge re-packs the body arrays, so an index cached before it may now name
-	# a different man: drop the unit's cache whenever its body count changes.
+	# A reap or a merge re-packs the body arrays: drop the unit's cache when its count changes.
 	if entry.is_empty() or int(entry["count"]) != count:
 		entry = {"count": count, "by_index": {}}
 		_results[unit] = entry

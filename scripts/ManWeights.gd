@@ -2,16 +2,18 @@ extends RefCounted
 ## How strongly one foe presses on a man's attention: the weight of its direction and
 ## of its distance. The two multiply.
 
-## Half-angle of a man's visual field, measured from straight ahead. The normal monocular
-## field reaches about 107 degrees temporally from the line of sight (H. M. Traquair, "An
-## Introduction to Clinical Perimetry", 1938, ch. 1), so with the eyes looking ahead a man
-## sees out to 107 degrees on either side. A closed helmet (the Corinthian type, for one)
-## narrowed this; a caller modelling one sets a smaller angle.
+## Half-angle of a man's visual field, measured from straight ahead: the temporal extent of
+## the normal monocular field, about 107 degrees from the line of sight. Published figures
+## run from about 90 to 110 degrees (the Wikipedia article "Visual field" gives about 107;
+## perimetry texts after H. M. Traquair, "An Introduction to Clinical Perimetry", give
+## 100 to 110), so 107 is one defensible value, not a measured constant. A closed helmet
+## (the Corinthian type, for one) narrowed it; a caller modelling one sets a smaller angle.
 const VISUAL_FIELD_HALF_ANGLE: float = deg_to_rad(107.0)
-## Weight of a foe directly behind a man, relative to one in his visual field. He cannot
-## see a foe there; he learns of one by sound, by a comrade's shout or by contact. No
-## source quantifies that awareness, so the default halves the weight and leaves it to the
-## caller. It must stay above 0: a man with foes only behind him still perceives them.
+## Weight of a foe directly behind a man, relative to one in his visual field. ManScan
+## applies the same sight rule behind a man as in front of him (no sound, shout or contact
+## channel exists), so this only discounts a foe the man cannot be looking at. It has no
+## source: 0.5 is a placeholder that halves the weight. It must stay above 0 so a man with
+## foes only behind him still perceives them.
 const REAR_WEIGHT: float = 0.5
 
 

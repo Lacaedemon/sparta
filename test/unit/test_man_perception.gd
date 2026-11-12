@@ -69,7 +69,7 @@ func _perceive(observer: Unit, units: Array, frame: int = 1, terrain: Array = []
 	if mp == null:
 		mp = ManPerception.new()
 	mp.prepare(frame, units, terrain, null)
-	return mp.perceive(observer, 0)
+	return mp.perceive(observer, 0, frame)
 
 
 # --- the acceptance case ----------------------------------------------------------------
@@ -303,10 +303,10 @@ func test_a_man_without_a_body_perceives_nothing() -> void:
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 50.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
-	assert_eq(mp.perceive(man, 5)["perceived"], 0, "out-of-range index")
-	assert_eq(mp.perceive(man, -1)["perceived"], 0, "negative index")
+	assert_eq(mp.perceive(man, 5, 1)["perceived"], 0, "out-of-range index")
+	assert_eq(mp.perceive(man, -1, 1)["perceived"], 0, "negative index")
 	var far_tier := _unit(3, 0, PackedVector2Array())
-	assert_eq(mp.perceive(far_tier, 0)["perceived"], 0, "a far-tier unit has no bodies")
+	assert_eq(mp.perceive(far_tier, 0, 1)["perceived"], 0, "a far-tier unit has no bodies")
 
 
 func test_a_foe_on_the_mans_own_spot_is_nearest_but_has_no_direction() -> void:
@@ -344,11 +344,50 @@ func test_equidistant_foes_resolve_to_the_first_in_unit_order() -> void:
 
 func test_a_man_with_no_foe_in_sight_answers_again_from_the_cache() -> void:
 	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, SIGHT + 200.0)]))
 	var mp := ManPerception.new()
-	mp.prepare(1, [man], [], null)
-	var first: Dictionary = mp.perceive(man, 0)
-	assert_eq(first["nearest_unit"], null)
-	assert_eq(mp.perceive(man, 0), first, "an empty answer is cached too")
+	mp.prepare(1, [man, foe], [], null)
+	var first: Dictionary = mp.perceive(man, 0, 1)
+	assert_eq(first["nearest_unit"], null, "precondition: the foe stands out of sight")
+	# The foe steps into sight (body and unit position, no change of count): a recompute
+	# would see it, so only the cache keeps the answer empty.
+	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 100.0)])
+	foe.position = Vector2(0.0, 100.0)
+	assert_eq(mp.perceive(man, 0, 1), first, "an empty answer is cached too")
+	mp.prepare(2, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 2)["perceived"], 1, "the next frame sees him")
+
+
+func test_perceive_for_a_frame_that_was_not_prepared_is_refused() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
+	var mp := ManPerception.new()
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "never prepared: nothing perceived")
+	assert_push_error("prepared for -1")
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1)
+	assert_eq(mp.perceive(man, 0, 2)["perceived"], 0, "a missed prepare() is not answered from the cache")
+	assert_push_error("frame 2, prepared for 1")
+
+
+func test_the_field_and_rear_weight_defaults_are_pinned() -> void:
+	assert_eq(ManWeights.VISUAL_FIELD_HALF_ANGLE, deg_to_rad(107.0))
+	assert_eq(ManWeights.REAR_WEIGHT, 0.5)
+
+
+func test_a_unit_that_regains_bodies_of_the_same_count_is_remeasured() -> void:
+	var man := _observer()
+	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 1000.0)]))
+	var mp := ManPerception.new()
+	mp.prepare(1, [man, foe], [], null)
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "out of sight")
+	foe._sim_soldier_pos = PackedVector2Array()
+	assert_false(mp._foes.candidates(MAN_POS, SIGHT).has(foe))
+	# Back with one body, as many as before, far from the position it keeps.
+	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 250.0)])
+	foe._sim_soldier_facing = PackedVector2Array([MAN_FACING])
+	assert_true(mp._foes.candidates(MAN_POS, SIGHT).has(foe))
+	assert_gt(mp._foes.reach_of(foe), 700.0, "its reach was measured again, not kept from before")
 
 
 func test_a_unit_that_lost_all_its_bodies_is_no_longer_a_candidate() -> void:
@@ -368,10 +407,10 @@ func test_a_foe_that_drifted_since_it_was_measured_is_still_seen() -> void:
 	var bystander := _unit(3, 0, PackedVector2Array([Vector2(900.0, 900.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe, bystander], [], null)
-	mp.perceive(bystander, 0)   # measures the foe's reach: zero, its one body is its centre
+	mp.perceive(bystander, 0, 1)   # measures the foe's reach: zero, its one body is its centre
 	# The body steps into sight while the unit's position, set at the frame's start, stays out.
 	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, SIGHT - 5.0)])
-	assert_eq(mp.perceive(man, 0)["perceived"], 1, "the one-cell pad covers the drift")
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "the one-cell pad covers the drift")
 
 
 # --- caching and read-only -------------------------------------------------------------
@@ -382,12 +421,12 @@ func test_the_answer_is_cached_for_the_frame() -> void:
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
-	var first: Dictionary = mp.perceive(man, 0)
+	var first: Dictionary = mp.perceive(man, 0, 1)
 	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, -100.0)])
 	mp.prepare(1, [man, foe], [], null)   # same frame: a no-op
-	assert_eq(mp.perceive(man, 0), first, "same frame: the cached answer")
+	assert_eq(mp.perceive(man, 0, 1), first, "same frame: the cached answer")
 	mp.prepare(2, [man, foe], [], null)
-	assert_lt((mp.perceive(man, 0)["threat"] as Vector2).y, 0.0, "a new frame recomputes")
+	assert_lt((mp.perceive(man, 0, 2)["threat"] as Vector2).y, 0.0, "a new frame recomputes")
 
 
 func test_a_change_in_body_count_drops_the_units_cache() -> void:
@@ -395,12 +434,12 @@ func test_a_change_in_body_count_drops_the_units_cache() -> void:
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 100.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
-	assert_eq(mp.perceive(man, 0)["perceived"], 1, "man 0 sees the foe")
-	assert_eq(mp.perceive(man, 1)["perceived"], 0, "man 1 stands out of sight")
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "man 0 sees the foe")
+	assert_eq(mp.perceive(man, 1, 1)["perceived"], 0, "man 1 stands out of sight")
 	# Man 0 falls and the arrays re-pack: index 0 now names the man who stood at index 1.
 	man._sim_soldier_pos = PackedVector2Array([Vector2(0.0, -500.0)])
 	man._sim_soldier_facing = PackedVector2Array([MAN_FACING])
-	assert_eq(mp.perceive(man, 0)["perceived"], 0, "index 0 is answered for the man now there")
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "index 0 is answered for the man now there")
 
 
 func test_the_query_writes_nothing_back() -> void:
@@ -424,6 +463,29 @@ func _tree_unit(uid: int, team: int, bodies: PackedVector2Array) -> Unit:
 	return u
 
 
+func test_the_hash_path_returns_candidates_in_uid_order() -> void:
+	# Created in descending uid order, so the hash cell holds them the other way round.
+	var high := _tree_unit(9, 1, PackedVector2Array([Vector2(1000.0, 1100.0)]))
+	var mid := _tree_unit(5, 1, PackedVector2Array([Vector2(1010.0, 1100.0)]))
+	var low := _tree_unit(3, 1, PackedVector2Array([Vector2(1020.0, 1100.0)]))
+	SpatialHash.rebuild(get_tree(), 4)
+	assert_true(SpatialHash.is_current(4), "precondition: the hash path runs")
+	var mp := ManPerception.new()
+	mp.prepare(4, [high, mid, low], [], null)
+	assert_eq(mp._foes.candidates(Vector2(1000.0, 1000.0), SIGHT), [low, mid, high])
+
+
+func test_the_hash_path_ignores_a_unit_the_caller_did_not_list() -> void:
+	var man := _tree_unit(1, 0, PackedVector2Array([Vector2(1000.0, 1000.0)]))
+	var listed := _tree_unit(2, 1, PackedVector2Array([Vector2(1000.0, 1100.0)]))
+	var unlisted := _tree_unit(3, 1, PackedVector2Array([Vector2(1010.0, 1100.0)]))
+	SpatialHash.rebuild(get_tree(), 6)
+	assert_true(SpatialHash.query(Vector2(1000.0, 1000.0), SIGHT).has(unlisted), "precondition: the hash holds it")
+	var mp := ManPerception.new()
+	mp.prepare(6, [man, listed], [], null)
+	assert_eq(mp.perceive(man, 0, 6)["perceived"], 1, "only the listed foe counts")
+
+
 func test_the_hash_path_matches_the_list_path_bit_for_bit() -> void:
 	var man := _tree_unit(1, 0, PackedVector2Array([Vector2(1000.0, 1000.0), Vector2(1010.0, 990.0)]))
 	var a := _tree_unit(2, 1, PackedVector2Array([Vector2(1000.0, 1150.0), Vector2(1030.0, 1160.0)]))
@@ -437,8 +499,8 @@ func test_the_hash_path_matches_the_list_path_bit_for_bit() -> void:
 	var hashed := ManPerception.new()
 	hashed.prepare(7, units, [], null)
 	for i in range(2):
-		var l: Dictionary = listed.perceive(man, i)
-		var h: Dictionary = hashed.perceive(man, i)
+		var l: Dictionary = listed.perceive(man, i, 1)
+		var h: Dictionary = hashed.perceive(man, i, 7)
 		assert_eq(h["threat"], l["threat"], "man %d: same threat" % i)
 		assert_eq(h["nearest_unit"], l["nearest_unit"])
 		assert_eq(h["nearest_index"], l["nearest_index"])
@@ -457,7 +519,7 @@ func test_the_hash_path_reaches_a_wide_blocks_far_bodies() -> void:
 	assert_true(SpatialHash.is_current(3), "precondition: the hash path runs")
 	var mp := ManPerception.new()
 	mp.prepare(3, [man, wide], [], null)
-	var r: Dictionary = mp.perceive(man, 0)
+	var r: Dictionary = mp.perceive(man, 0, 3)
 	assert_eq(r["perceived"], 1)
 	assert_eq(r["nearest_index"], 0)
 
@@ -483,7 +545,7 @@ func test_the_hash_path_finds_a_unit_that_moved_since_the_rebuild() -> void:
 	var mp := ManPerception.new()
 	mp.sight_radius = radius
 	mp.prepare(5, [man, foe], [], null)
-	assert_eq(mp.perceive(man, 0)["perceived"], 1)
+	assert_eq(mp.perceive(man, 0, 5)["perceived"], 1)
 
 
 func test_a_reaped_foe_drops_a_cached_nearest_index() -> void:
@@ -491,11 +553,11 @@ func test_a_reaped_foe_drops_a_cached_nearest_index() -> void:
 	var foe := _unit(2, 1, PackedVector2Array([Vector2(0.0, 300.0) * 0.1, Vector2(0.0, 60.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, foe], [], null)
-	assert_eq(mp.perceive(man, 0)["nearest_index"], 0, "the foe at 30 is nearest")
+	assert_eq(mp.perceive(man, 0, 1)["nearest_index"], 0, "the foe at 30 is nearest")
 	# The nearest foe falls and the arrays re-pack: index 0 now names the man at 60.
 	foe._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 60.0)])
 	foe._sim_soldier_facing = PackedVector2Array([MAN_FACING])
-	var r: Dictionary = mp.perceive(man, 0)
+	var r: Dictionary = mp.perceive(man, 0, 1)
 	assert_eq(r["nearest_index"], 0)
 	assert_almost_eq(float(r["nearest_distance"]), 60.0, EPS, "recomputed for the man now there")
 	assert_eq(r["perceived"], 1)
@@ -507,11 +569,11 @@ func test_a_unit_that_gains_bodies_mid_frame_is_perceived() -> void:
 	var other := _unit(3, 0, PackedVector2Array([Vector2(500.0, 500.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, promoted, other], [], null)
-	assert_eq(mp.perceive(other, 0)["perceived"], 0, "first query of the frame: nothing near")
+	assert_eq(mp.perceive(other, 0, 1)["perceived"], 0, "first query of the frame: nothing near")
 	promoted._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 80.0)])
 	promoted._sim_soldier_facing = PackedVector2Array([MAN_FACING])
 	promoted.position = Vector2(0.0, 80.0)
-	assert_eq(mp.perceive(man, 0)["perceived"], 1, "promoted later in the frame: seen")
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "promoted later in the frame: seen")
 
 
 func test_out_of_range_parameters_are_reported_and_refused() -> void:
@@ -608,8 +670,8 @@ func test_a_host_that_gains_a_distant_body_mid_frame_is_remeasured() -> void:
 	var host := _unit(2, 1, PackedVector2Array([Vector2(0.0, 1000.0)]))
 	var mp := ManPerception.new()
 	mp.prepare(1, [man, host], [], null)
-	assert_eq(mp.perceive(man, 0)["perceived"], 0, "the host stands far out of sight")
+	assert_eq(mp.perceive(man, 0, 1)["perceived"], 0, "the host stands far out of sight")
 	# A newcomer is inserted into the host near the man; the host's centre stays put.
 	host._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 1000.0), Vector2(0.0, 250.0)])
 	host._sim_soldier_facing = PackedVector2Array([MAN_FACING, MAN_FACING])
-	assert_eq(mp.perceive(man, 1)["perceived"], 1, "the newcomer at 250 is seen")
+	assert_eq(mp.perceive(man, 1, 1)["perceived"], 1, "the newcomer at 250 is seen")
