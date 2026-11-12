@@ -3,12 +3,12 @@ extends RefCounted
 ## Perception.gd answers which enemy UNITS a team sees, from unit centres. This answers it
 ## one level down, for a single man: which enemy bodies he himself can see (ManScan, from
 ## his own position under the fog's sight rule, ManSight), how strongly each presses on him
-## (ManWeights: nearer and in front weighs more), and which is nearest.
-## The threat vector is the weighted sum of the unit directions from him to each foe he
-## perceives, so it points TOWARD the threat (a man fleeing it runs the other way).
+## (ManWeights: nearer and in front weighs more), and which is nearest. The threat
+## vector is the weighted sum of the unit directions from him to each foe he perceives, so it
+## points TOWARD the threat (a man fleeing it runs the other way).
 ## His sight radius is by default his unit's base `sight_range`, the fog model's radius
-## for that unit's observers, without the cut applied while a unit routs (a fleeing man's
-## look is his facing, which the front arc already models).
+## for that unit's observers. The cut the fog applies while a unit routs is dropped, and
+## nothing replaces it yet.
 ## Read-only: it reads unit and body state, the SpatialHash grid, and PathField.active.
 ## Cached per tick: the first query for a man in a frame fixes his answer for that frame,
 ## unless his unit's or his nearest foe's body arrays change size (a casualty reap or a
@@ -57,8 +57,7 @@ func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> vo
 
 
 ## What man `index` of `unit` perceives this frame. Returns:
-##   threat           Vector2, the weighted sum of directions toward perceived foes
-##                    (ZERO when he perceives none)
+##   threat           Vector2, weighted sum of directions toward perceived foes (ZERO: none)
 ##   nearest_unit     the unit of the nearest perceived foe, or null
 ##   nearest_index    that foe's body index in nearest_unit, or -1
 ##   nearest_distance distance to that foe, world units (INF when none)

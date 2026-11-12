@@ -14,7 +14,8 @@ extends GutTest
 
 const ManPerception = preload("res://scripts/ManPerception.gd")
 const TICKS := 240
-const FIVE_METRES: float = 100.0
+const WorldScaleRef = preload("res://scripts/WorldScale.gd")
+const FIVE_METRES: float = 5.0 * WorldScaleRef.WU_PER_M
 var _battle: Node = null
 
 
@@ -30,7 +31,7 @@ func after_each() -> void:
 func _enabled() -> bool:
 	if OS.get_environment("SPARTA_MEASURE_MAN_PERCEPTION") == "1":
 		return true
-	pass_test("skipped: set SPARTA_MEASURE_MAN_PERCEPTION=1 to measure")
+	pending("skipped: set SPARTA_MEASURE_MAN_PERCEPTION=1 to measure")
 	return false
 
 

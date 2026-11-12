@@ -1,8 +1,9 @@
 extends RefCounted
 ## Which units could hold a body near a man, for one frame: the units in play in uid order,
 ## each unit's bounding circle (its farthest body from its position), and a spatial-hash
-## lookup. bind() measures every unit once; a query re-measures only a candidate whose body
-## count has changed since (a far-tier block promoted, a merge inserting newcomers).
+## lookup. bind() measures every unit once; every query re-measures any unit whose body count
+## has changed since (a far-tier block promoted, a merge inserting newcomers), before it
+## reads the reach it pads the hash query with.
 ##
 ## Candidates come from the per-frame unit SpatialHash when it has been rebuilt for the
 ## frame, and from the bound list otherwise. On the hash path a bound unit that is missing
@@ -37,6 +38,9 @@ func bind(frame: int, units: Array) -> void:
 func candidates(pos: Vector2, radius: float) -> Array:
 	var raw: Array = _ordered
 	if SpatialHash.is_current(_frame):
+		# Re-measure first: a unit that gained a distant body raises the padding below.
+		for u in _ordered:
+			_refresh(u)
 		# The hash buckets unit positions from the start of the frame; padding the query by
 		# one cell covers how far a unit can have moved since.
 		raw = SpatialHash.query(pos, radius + _max_reach + SpatialHash.CELL_SIZE)

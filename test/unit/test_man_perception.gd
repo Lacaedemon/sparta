@@ -576,6 +576,35 @@ func test_a_unit_that_gains_bodies_mid_frame_is_perceived() -> void:
 	assert_eq(mp.perceive(man, 0, 1)["perceived"], 1, "promoted later in the frame: seen")
 
 
+func test_the_hash_path_sees_a_unit_that_gains_bodies_mid_frame() -> void:
+	var man := _tree_unit(1, 0, PackedVector2Array([Vector2.ZERO]))
+	var promoted := _tree_unit(2, 1, PackedVector2Array())   # far tier: no bodies yet
+	promoted.position = Vector2(0.0, 1000.0)
+	var other := _tree_unit(3, 0, PackedVector2Array([Vector2(500.0, 500.0)]))
+	SpatialHash.rebuild(get_tree(), 8)
+	assert_true(SpatialHash.is_current(8), "precondition: the hash path runs")
+	var mp := ManPerception.new()
+	mp.prepare(8, [man, promoted, other], [], null)
+	assert_eq(mp.perceive(other, 0, 8)["perceived"], 0, "first query of the frame: nothing near")
+	# Promoted: a body 250 from the man, the unit's position still 1000 away.
+	promoted._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 250.0)])
+	promoted._sim_soldier_facing = PackedVector2Array([MAN_FACING])
+	assert_eq(mp.perceive(man, 0, 8)["perceived"], 1, "promoted later in the frame: seen")
+
+
+func test_the_hash_path_remeasures_a_host_that_gains_a_distant_body() -> void:
+	var man := _tree_unit(1, 0, PackedVector2Array([Vector2.ZERO, Vector2(1.0, 0.0)]))
+	var host := _tree_unit(2, 1, PackedVector2Array([Vector2(0.0, 1000.0)]))
+	SpatialHash.rebuild(get_tree(), 9)
+	assert_true(SpatialHash.is_current(9), "precondition: the hash path runs")
+	var mp := ManPerception.new()
+	mp.prepare(9, [man, host], [], null)
+	assert_eq(mp.perceive(man, 0, 9)["perceived"], 0, "the host stands far out of sight")
+	host._sim_soldier_pos = PackedVector2Array([Vector2(0.0, 1000.0), Vector2(0.0, 250.0)])
+	host._sim_soldier_facing = PackedVector2Array([MAN_FACING, MAN_FACING])
+	assert_eq(mp.perceive(man, 1, 9)["perceived"], 1, "the newcomer at 250 is seen")
+
+
 func test_out_of_range_parameters_are_reported_and_refused() -> void:
 	var mp := ManPerception.new()
 	mp.rear_weight = 0.0

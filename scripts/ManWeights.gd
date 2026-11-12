@@ -3,11 +3,13 @@ extends RefCounted
 ## of its distance. The two multiply.
 
 ## Half-angle of a man's visual field, measured from straight ahead: the temporal extent of
-## the normal monocular field, about 107 degrees from the line of sight. Published figures
-## run from about 90 to 110 degrees (the Wikipedia article "Visual field" gives about 107;
-## perimetry texts after H. M. Traquair, "An Introduction to Clinical Perimetry", give
-## 100 to 110), so 107 is one defensible value, not a measured constant. A closed helmet
-## (the Corinthian type, for one) narrowed it; a caller modelling one sets a smaller angle.
+## the normal monocular field, 107 degrees from the line of sight. Source: the Wikipedia
+## article "Visual field" (normal limits), which cites H. M. Traquair, "An Introduction to
+## Clinical Perimetry" (London: Henry Kimpton, 1938), chapter 1; it also quotes an earlier
+## measurement of 110 degrees outwards by A. Hueck, "Von den Graenzen des Sehvermoegens"
+## (1840, umlauts transliterated), and notes that the temporal field exceeds the often
+## quoted 90 degrees. So 107 is one well-attested value, not a measured constant. A caller
+## modelling a narrower view, such as a closed helmet's, sets a smaller angle.
 const VISUAL_FIELD_HALF_ANGLE: float = deg_to_rad(107.0)
 ## Weight of a foe directly behind a man, relative to one in his visual field. ManScan
 ## applies the same sight rule behind a man as in front of him (no sound, shout or contact
