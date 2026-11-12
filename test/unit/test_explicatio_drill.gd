@@ -422,7 +422,7 @@ func test_an_explicatio_held_on_the_right_opens_its_lanes_on_the_left() -> void:
 
 
 ## A block on the march keeps main's lateral deal: the drill is for a block standing still
-## (#1967), and no man is set to follow another.
+## (the drill on the march is still to do), and no man is set to follow another.
 func test_a_unit_widening_on_the_march_is_not_dealt_the_drill() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
@@ -664,6 +664,45 @@ func test_a_man_pressed_by_another_regiment_takes_his_place_where_he_stands() ->
 	u._advance_explicatio_drill()
 	assert_eq(u._explicatio_following[pressed], 0, "the pressed man takes his place")
 	assert_eq(u._explicatio_following[free], 1, "the free man goes on following")
+
+
+## A man coming up an interval that has not yet opened where he is goes on following when a man
+## of another regiment presses on him: the man beside him, not the press, holds him back, and
+## leaving the follow mode would walk him up the interval before it opened.
+func test_a_pressed_column_leader_waits_for_his_interval_to_open() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	await get_tree().physics_frame
+	var h: int = -1
+	for i in range(u.soldiers):
+		if u.soldier_role(i) == UnitFormation.SoldierRole.HEMILOCHITES \
+				and u._explicatio_rooms[i] < 1.0 and u._explicatio_following[i] == 1:
+			h = i
+			break
+	assert_gte(h, 0, "precondition: a hemilochites whose interval has not opened")
+	u._explicatio_following[u._explicatio_leaders[h]] = 0   # his leader has taken his place
+	u._sim_steer[h] = Vector2(5.0, 0.0)
+	u._advance_explicatio_drill()
+	assert_eq(u._explicatio_following[h], 1, "he goes on following")
+
+
+## A man who falls takes his entry in the follow flags with him, and the plan is read afresh for
+## the men left the same tick, so the drill goes on with every man lined up.
+func test_a_casualty_mid_drill_keeps_the_follow_flags_lined_up() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	await get_tree().physics_frame
+	assert_true(u._refresh_explicatio_follow(u.soldiers), "precondition: a plan this tick")
+	u._sim_soldier_hp[5] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_eq(u.soldiers, SPEARMEN - 1, "precondition: a man fell")
+	assert_eq(u._explicatio_following.size(), u.soldiers, "one flag for each man left")
+	assert_true(u._refresh_explicatio_follow(u.soldiers), "the plan is read for the men left")
+	assert_eq(u._explicatio_places.size(), u.soldiers, "one place for each man left")
+	await get_tree().physics_frame
+	assert_true(u.explicatio_drill_active(), "the drill goes on")
 
 
 ## A friendly block standing where the right wing opens out crowds the drill: the men it presses

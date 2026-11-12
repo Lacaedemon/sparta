@@ -59,7 +59,8 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
 - **Every second man.**
   Polyaenus (Stratagems 2.10.4) tells how Cleandridas, his phalanx drawn up deep,
   ordered the epistatai to pass over into the place of a parastates, a side-man
-  (παρήγγειλε τοὺς ἐπιστάτας μεταβαίνειν εἰς παραστάτην; this rendering is the sim's own),
+  (παρήγγειλε τοὺς ἐπιστάτας μεταβαίνειν εἰς παραστάτην,
+  the English rendering being the sim's own),
   each rear-rank man stepping up beside the man ahead of him,
   and so made his line "much longer" (πολλῷ ... ὑπερμηκεστέραν) and outflanked the Lucanians
   (Greek text of Woelfflin and Melber, 1887, on [attalus.org](https://www.attalus.org/greek/polyaenus2.html);
@@ -99,7 +100,8 @@ The B key gives the half-file drill.
 
 - **Alternate rank** (every second man, Polyaenus 2.10.4).
   Each epistates, and every second man after him, steps into the interval beside the man who stood ahead of him.
-  Polyaenus does not say on which side; the sim uses the same side as the half-file drill.
+  Polyaenus does not say on which side.
+  The sim uses the same side as the half-file drill.
 
 In both, the sim keeps the file pitch, so the front's length doubles with the number of its files.
 Aelian's doubling in number keeps the length, and fills the spaces of an open order.

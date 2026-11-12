@@ -6294,7 +6294,7 @@ func _reset_shield_hold_angles() -> void:
 ## files (NONE). A standing file-major block doubled by a drill does the drill
 ## (_begin_explicatio), from wherever its men stand: each man follows a man he can see until
 ## every man has taken his place (_can_deal_explicatio says which blocks can). Any other change,
-## a drill that cannot double the files, a block on the march (#1967), a block whose grid stands
+## a drill that cannot double the files, a block on the march, a block whose grid stands
 ## turned from its facing, and the combo's widen, which doubles the turned block's files against
 ## the width it had before the turn and so is the drill only for a block as deep as it was wide,
 ## re-deal the files from the bodies as before (_ensure_file_assignment).
@@ -6343,7 +6343,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 
 ## Whether a change from `old_files` to `new_files` can be done as an explicatio drill, from what
 ## the men are doing: a file-major line (not a square) doubling its files, standing (the drill
-## on the march is #1967), not fighting, with an assignment on the old files for the drill to
+## on the march is still to do), not fighting, with an assignment on the old files for the drill to
 ## split, whose files run the way its men face. The men need not stand on their slots: the drill
 ## reads each man's file, rank and body where he is. But each man follows the man ahead of him in
 ## his file and dresses to his own right, so the grid's front must be the men's front: a block
