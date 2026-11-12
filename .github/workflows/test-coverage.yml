@@ -24,20 +24,14 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
+    # Above the 5400 s coverage budget plus setup, so check.sh's own kill message
+    # fires before the runner cancels the job.
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
         with:
           # Full history, so patch_coverage can find the merge-base with the PR's base.
           fetch-depth: 0
-
-      # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
-      # defaults (.github/actions/setup-godot-project/action.yml). The
-      # coverage addon (addons/coverage) is committed, so only GUT is
-      # fetched at run time; import resolves autoloads/class_name globals/
-      # cross-script references before the coverage run instruments and
-      # reloads them.
-      - name: Set up Godot project
-        uses: ./.github/actions/setup-godot-project
 
       - name: Resolve the patch-coverage base
         # check.sh falls back to origin/main when the given base does not
@@ -46,8 +40,33 @@ jobs:
         if: github.event_name == 'pull_request'
         run: git rev-parse --verify "origin/${{ github.base_ref }}^{commit}"
 
+      - name: Decide whether the coverage run is needed
+        # The run takes 30 to 45+ minutes. A pull request that changes only docs,
+        # the website, agent notes or unrelated workflows cannot change a test result
+        # or the patch-coverage verdict, so every step below is skipped for it (#1963).
+        # Pushes to main and manual runs always run. tools/ci/coverage-needed.sh
+        # fails open: an undecidable diff runs the coverage.
+        id: needed
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            tools/ci/coverage-needed.sh "origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # GODOT_VERSION/GUT_VERSION pins now live as the composite action's own
+      # defaults (.github/actions/setup-godot-project/action.yml). The
+      # coverage addon (addons/coverage) is committed, so only GUT is
+      # fetched at run time; import resolves autoloads/class_name globals/
+      # cross-script references before the coverage run instruments and
+      # reloads them.
+      - name: Set up Godot project
+        if: steps.needed.outputs.needed == 'true'
+        uses: ./.github/actions/setup-godot-project
+
       - name: Run unit tests with coverage, then gate patch coverage
         id: coverage
+        if: steps.needed.outputs.needed == 'true'
         # `coverage` runs the instrumented GUT suite (the pre/post-run hooks
         # instrument res://scripts and write coverage/lcov.info) and fails on a
         # test failure, a script error, or a missing report. `patch_coverage`
@@ -59,6 +78,10 @@ jobs:
         # history) fails rather than passing silently.
         env:
           GODOT_BIN: godot
+          # The suite alone has run 30 to 45+ minutes on the shared runners; a 2700 s
+          # budget was hit by 17 of the last 38 runs (#1963), so this leaves headroom.
+          # It is still a hard kill: a hang fails the job loudly.
+          SPARTA_CHECK_COVERAGE_TIMEOUT: 5400
           SPARTA_CHECK_PATCH_COVERAGE_BASE: origin/${{ github.base_ref || 'main' }}
         run: |
           set -o pipefail
@@ -73,7 +96,7 @@ jobs:
         # Puts the patch_coverage section of the log (its verdict, per-file
         # uncovered lines, and any error or skip message) on the run's summary
         # page, whether the gate passed or failed.
-        if: ${{ !cancelled() && hashFiles('coverage-check.log') != '' }}
+        if: ${{ !cancelled() && steps.needed.outputs.needed == 'true' && hashFiles('coverage-check.log') != '' }}
         run: |
           {
             echo "### Patch coverage"
