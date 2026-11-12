@@ -293,6 +293,21 @@ func test_a_march_order_ends_the_drill() -> void:
 		"the grid is laid where the men stood (%.2f wu)" % u.position.distance_to(reading))
 
 
+## Demoted to the far tier mid-drill, the block lays its grid on the men before they go, and no
+## drill is left under way for men who no longer exist.
+func test_a_demotion_ends_the_drill_with_the_grid_on_the_men() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	await _run(60)
+	assert_true(u.explicatio_drill_active(), "precondition: under way")
+	var reading: Vector2 = u.explicatio_grid_position()
+	TierTransition.demote(u)
+	assert_false(u.explicatio_drill_active(), "the demotion ends the drill")
+	assert_almost_eq(u.position.x, reading.x, 0.01, "the grid is laid on the men")
+	assert_almost_eq(u.position.y, reading.y, 0.01, "the grid is laid on the men")
+
+
 ## The rear half-files take the interval on the unit's right, its spear side, whichever way it
 ## faces and whether or not an about-face mirror stands on its grid: set_frontage bakes the
 ## mirror first, so the slot frame's +x is the right.

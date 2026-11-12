@@ -1230,12 +1230,13 @@ explicatio (B) unfolds it back into a broad line.
 </video>
 ```
 
-A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8.
-The front rank keeps its ground, within 0.03 m of where it stood.
+A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8,
+each man following a man he can see.
+The front rank keeps its ground, within 0.002 m of where it stood.
 The rear half of each file steps sideways into the interval on its right
-and marches up it in column behind its half-file leader,
+and comes up it in column behind its half-file leader,
 so no man walks through a man of his own file:
-the closest two men stay 0.68 m apart while the block unfolds.
+the closest two men stay 0.37 m apart while the block unfolds.
 :::
 
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
