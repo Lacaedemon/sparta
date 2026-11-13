@@ -115,22 +115,22 @@ static func parse_tier_band(band) -> Dictionary:
 	return {"promote": promote, "demote": demote}
 
 
-## The names of the `units` (Unit nodes; anything else is skipped) with at least one formation
-## slot strictly inside a block-terrain rect of `field`, in the order given. Empty when `field`
-## is null or has no block terrain. Pure over its arguments, so it is testable without a tree.
+## The names of the `units` (Unit nodes; anything else is skipped) whose footprint, the
+## rectangle their men fill (Unit._formation_local_half_extents: the layout's, since no man is
+## seeded before the first tick), overlaps a block-terrain rect of `field`, in the order given.
+## A footprint that only touches a rect's edge is clear. Empty when `field` is null or has no
+## block terrain. Pure over its arguments, so it is testable without a tree.
 static func units_on_block_terrain(units: Array, field: PathField) -> Array[String]:
 	var names: Array[String] = []
 	if field == null or not field.has_block_terrain():
 		return names
-	var rects: Array[Rect2] = field.block_rects()
 	for node in units:
 		var u: Unit = node as Unit
 		if u == null:
 			continue
-		for slot in u.soldier_world_slots(u.soldiers):
-			if PathField.inside_any_rect(slot, rects):
-				names.append(u.unit_name)
-				break
+		var file_axis: Vector2 = Vector2.RIGHT.rotated(u.soldier_block_world_angle())
+		if field.footprint_blocked(u.position, file_axis, u._formation_local_half_extents()):
+			names.append(u.unit_name)
 	return names
 
 

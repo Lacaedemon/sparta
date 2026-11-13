@@ -96,7 +96,7 @@ func test_an_absorb_past_square_is_given_back_only_to_square() -> void:
 	_absorb_reface(u, INSIDE_LEFT)
 	var before: float = u.grid_fold()
 	assert_lt(before, 0.0, "sanity: the absorb carried the fold past square")
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var bound: float = 1.01 * u.bounded_turn_rate(radius) * DT * u.soldier_block_extent()
 	var worst: float = _run_clear(u, 600)
 	assert_almost_eq(u.grid_fold(), 0.0, ANGLE_TOL, "the grid ends square")

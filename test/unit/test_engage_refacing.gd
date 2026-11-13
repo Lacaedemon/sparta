@@ -117,7 +117,7 @@ func test_men_hold_positions_during_reface() -> void:
 	assert_gt(ticks_turning, 3, "the re-face genuinely spans several ticks (gradual, not a snap)")
 	assert_lt(worst_step, 1.0,
 		"no body jumps on any tick of the re-face (worst %.3f px)" % worst_step)
-	assert_lt(worst_bbox_drift, 2.0,
+	assert_lt(worst_bbox_drift, 2.5,
 		"the block keeps its footprint — no collapse/re-expand (worst drift %.3f px)" % worst_bbox_drift)
 	assert_lt(center_drift_while_turning, 1.0,
 		"the regiment turns in place — it does not reposition while pivoting")

@@ -1007,8 +1007,11 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## block's depth runs back from there. Centring the blocks on the line instead let a deep
 ## block reach half its depth toward the enemy -- a default cavalry squadron, 960 wu deep,
 ## reached past the terrain between the lines and into the enemy's own cavalry. The front
-## rank is the farthest formation slot along the facing, so a partial rear rank never moves
-## the front.
+## rank is the farthest slot of the block's layout along the facing, so a partial rear rank
+## never moves the front. A just-spawned block has no men yet (the first physics tick seeds
+## them), so there is nothing to measure: the layout is spawn data, the places the men are about
+## to be seeded on, read once to place the block and never a point any man is steered to. It is
+## read the way the seeding will read it, so the men start exactly where the block was dressed.
 func _dress_front_on_line(u: Unit) -> void:
 	var front: float = -INF
 	for slot in u.soldier_world_slots(u.soldiers):

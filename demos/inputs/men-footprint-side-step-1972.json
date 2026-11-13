@@ -1,0 +1,35 @@
+{
+  "_comment": "A deep block doubles its files, then side-steps toward the hill. The order footprint is measured from where the men stand now (the strung-out files mid-reshape), so each step stops with every man clear of the rock. Fresh scenario for this change; no combat, so every seed plays the same.",
+  "seed": "1972",
+  "drill": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Infantry",
+      "x": 940,
+      "y": 300,
+      "count": 48,
+      "frontage_override": 4,
+      "facing": [0, -1]
+    }
+  ],
+  "camera": [
+    {"tick": 0, "x": 1120.0, "y": 420.0, "zoom": 1.2}
+  ],
+  "steps": [
+    {"tick": 10, "click": [940, 300]},
+    {"tick": 40, "key": "N"},
+    {"tick": 200, "key": "Right"},
+    {"tick": 320, "key": "Right"},
+    {"tick": 440, "key": "Right"},
+    {"tick": 560, "key": "Right"}
+  ],
+  "expect": [
+    {"tick": 8, "uid": 0, "field": "position", "value": [940.0, 300.0]},
+    {"tick": 190, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0},
+    {"tick": 310, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0},
+    {"tick": 430, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0},
+    {"tick": 550, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0},
+    {"tick": 680, "uid": 0, "field": "soldiers_in_block_terrain", "value": 0}
+  ]
+}

@@ -161,13 +161,13 @@ static func current_engaged_fraction(u: Unit) -> float:
 		# on a wide line's flank, stand up to both blocks' reaches apart, past the plain
 		# lookup's one cell.
 		var candidates: Array = u._separation_candidates(true)
-		var u_extent: float = u.separation_radius + u.render_block_extent() + u.block_centre_offset().length()
+		var u_extent: float = u.separation_radius + u.soldier_block_extent()
 		for o in candidates:
 			var other: Unit = o as Unit
 			if other == null or other == u or other.team == u.team or other.state == Unit.State.DEAD:
 				continue
 			has_live_enemy_in_tree = true
-			var other_extent: float = other.separation_radius + other.render_block_extent() + other.block_centre_offset().length()
+			var other_extent: float = other.separation_radius + other.soldier_block_extent()
 			var contact: float = maxf(u.attack_range, other.attack_range) + u_extent + other_extent
 			# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
 			if u.position.distance_squared_to(other.position) <= contact * contact:

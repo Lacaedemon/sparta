@@ -1455,7 +1455,7 @@ var router_heading_anchor_fold: float = ROUTER_HEADING_ANCHOR_FOLD
 # set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
-# How much of a foot block's own slot footprint (soldier_block_half_extents, per axis) its
+# How much of a foot block's own footprint (soldier_block_half_extents, per axis) its
 # cavalry target's centre must lie inside, with the block in enemy contact, for a small combat
 # re-face to be folded into _formation_angle rather than turn the slot grid
 # (_cavalry_inside_foot_footprint): 1.0, the footprint itself. 0 or less turns the fold off, so
@@ -1945,11 +1945,15 @@ var _combat_intermixing: float = 0.0
 
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
 var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/bars/shadow
-# Test-only instrumentation: counts formation_slots() calls, so a test can measure how
-# many O(soldiers) slot-layout builds one _move_to() call performs (it should be exactly
-# one -- see _move_to()'s own doc comment). Never read by production code; incrementing
-# an int is cheap enough to leave live rather than gate behind a build flag.
+var _block_centre: Vector2 = Vector2.ZERO   # block footprint centre offset; the chrome centres on it
+# Test-only instrumentation: counts formation_slots() calls, so a test can check that a
+# measure never builds the slot grid. Never read by production code; incrementing an int is
+# cheap enough to leave live rather than gate behind a build flag.
 var _formation_slots_call_count: int = 0
+# Test-only instrumentation, same contract: counts _formation_local_half_extents() scans of the
+# men, so a test can measure how many O(soldiers) scans one _move_to() call performs (it should
+# be exactly one -- see _move_to()'s own doc comment).
+var _half_extents_call_count: int = 0
 # Test-only instrumentation, same contract as _formation_slots_call_count above: counts
 # _relief_swap_partner()'s whole-group reverse scans, so a test can check that the
 # scan is skipped when no link-arming order is live.
@@ -1988,11 +1992,10 @@ var _render_last_alpha: float = 1.0
 var _render_extent_n: int = -1
 var _render_extent_frontage: int = -1
 var _render_extent_mode: int = -1
-# Last effective slot-grid centre (local X, _slot_anchor_centre) the chrome was
-# placed for -- a change (an offset set, grown, or cleared, or a square entry/exit
-# dropping/re-arming a standing one) re-places the shadow and requests a redraw
-# even when the extent itself is unchanged (the centred extent is
-# offset-independent by construction).
+# Last effective layout centre (local X, _layout_anchor_centre) the chrome was placed
+# for, read while the block has no men -- a change (an offset set, grown, or cleared, or a
+# square entry/exit dropping/re-arming a standing one) re-places the shadow and requests a
+# redraw even when the extent itself is unchanged.
 var _render_last_anchor_offset: float = 0.0
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
@@ -4223,14 +4226,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# is already done).
 		#
 		# _formation_local_half_extents() is deliberately UNCACHED (see its own doc
-		# comment), so this call computes the live slot layout ONCE for the whole
-		# PathField query and threads the result through terrain_clearance(),
-		# funnel_lane_offset() (which needs it for its own internal terrain_clearance()
-		# and corner_clearance() calls), and corner_clearance() below -- one O(soldiers)
-		# rebuild per _move_to() call instead of three independent ones. A far-tier
-		# block usually skips even that one rebuild: _far_tier_half_extents() reads the
-		# same bounds off the headcount in O(1), falling back to the live slots only
-		# during a relief swap (see its own doc comment).
+		# comment), so this call measures the men ONCE for the whole PathField query
+		# and threads the result through terrain_clearance(), funnel_lane_offset()
+		# (which needs it for its own internal terrain_clearance() and
+		# corner_clearance() calls), and corner_clearance() below -- one O(soldiers)
+		# scan per _move_to() call instead of three independent ones. A far-tier
+		# block has no men and skips even that scan: _far_tier_half_extents() reads
+		# the layout's bounds off the headcount in O(1) (see its own doc comment).
 		var leg_dir: Vector2 = point - position
 		extents = _far_tier_half_extents() if tier == FormationTier.FAR \
 				else _formation_local_half_extents()
@@ -4410,7 +4412,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false, formed_turn: 
 		# still produces a slow, real pivot -- never a stalled one, and never one that lets
 		# the corner slot outrun the jog arrival cap the derate exists to stay under.
 		pivot_rate = UnitManeuver.wheel_gait_rate(
-				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_arm(extents))
+				pivot_rate, jog_speed * _formed_turn_gait_frac(), _pivot_arm())
 		# wheel_gait_rate alone only bounds the corner man's TANGENTIAL footspeed -- a
 		# purely geometric limit that says nothing about whether a body actually
 		# CRUISING at speed could physically achieve that turn. Redirecting a body's own
@@ -4850,7 +4852,7 @@ func _wheel_combat_reface(dir: Vector2, offset: float, delta: float, enemy_unit:
 		_combat_wheel_tick = -2   # a snap ends the wheel: the next one starts from rest
 		_face_dir(dir)
 		return true
-	var radius: float = _formation_local_half_extents().length()
+	var radius: float = _block_radius()
 	var diff: float = angle_difference(facing.angle(), dir.angle())
 	var rate: float = bounded_turn_step(_combat_wheel_rate if followed else 0.0, diff,
 			bounded_turn_rate(radius), bounded_turn_accel(radius), delta)
@@ -4906,8 +4908,8 @@ func _combat_wheel_applies(enemy_unit: Unit) -> bool:
 			and (enemy_unit.state == State.ROUTING or enemy_unit.in_square()))
 
 
-## Whether `enemy_unit`'s centre stands inside this block's own slot footprint (its half extents
-## in its grid's frame, about the anchor).
+## Whether `enemy_unit`'s centre stands inside this block's own footprint (the reach of its men
+## along each axis of its grid's frame, about the anchor).
 func _enemy_inside_own_footprint(enemy_unit: Unit) -> bool:
 	if enemy_unit == null:
 		return false
@@ -4918,7 +4920,7 @@ func _enemy_inside_own_footprint(enemy_unit: Unit) -> bool:
 
 ## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
 ## doing so when its centre lies within the block's own reach (soldier_block_extent, the
-## slot grid's circumradius around the anchor) without leading this anchor along its own
+## farthest man's distance from the anchor) without leading this anchor along its own
 ## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach,
 ## stops routing, or this block leaves the fight: a router that has worked its way just past
 ## the anchor is still among the ranks, and a bearing taken from a few world units behind it
@@ -4946,11 +4948,11 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 
 
 ## Whether this is a foot block and `enemy_unit` a cavalry unit whose centre lies inside the
-## block's own slot footprint, scaled by melee_reface_fold_footprint_scale:
-## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
-## radius) in the grid's own frame (soldier_block_world_angle). The box is centred on the
-## anchor and spans the largest |x| and |y| of any slot about it, so for a block laid out with
-## a frontage_anchor_offset, whose slots reach less far on one side of the anchor, the box
+## block's own footprint, scaled by melee_reface_fold_footprint_scale:
+## soldier_block_half_extents (the reach of the men along the grid's half-width and half-depth
+## axes, padded by a mark radius) in the grid's own frame (soldier_block_world_angle). The box
+## is centred on the anchor and spans the largest |x| and |y| of any man about it, so for a
+## block whose men reach less far on one side of the anchor (a frontage_anchor_offset), the box
 ## reaches slightly past the block on that side, plus the mark padding. Only riders inside
 ## a foot block count. Foot blocks fighting each other mostly stop at each other's front and
 ## outer ranks (MeleeFrontLine), but a small foot squad can still stand at a block's centre
@@ -5206,7 +5208,7 @@ func _advance_grid_lag(delta: float) -> void:
 	if _grid_lag == 0.0 or delta <= 0.0 or is_turning():
 		_grid_lag_rate = 0.0
 		return
-	var radius: float = _formation_local_half_extents().length()
+	var radius: float = _block_radius()
 	var rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, bounded_turn_rate(radius),
 			bounded_turn_accel(radius), delta)
 	var turn: float = rate * delta
@@ -5234,7 +5236,7 @@ func _advance_grid_lag(delta: float) -> void:
 ## bound (_hold_pivot_for_resquare), so the clamp binds only on a pivot the hold did not limit
 ## (one back toward the grid, or one taken before this tick's re-square started).
 func _close_resquare_lag_in_pivot(delta: float) -> void:
-	var radius: float = _formation_local_half_extents().length()
+	var radius: float = _block_radius()
 	var max_rate: float = bounded_turn_rate(radius)
 	var pivot_rate: float = _facing_turn_step / delta
 	var rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, max_rate,
@@ -5292,7 +5294,7 @@ func _bleed_absorbed_fold(delta: float) -> void:
 		_absorbed_drill_turn = 0.0   # and the fold stands off the drilled line
 		_grid_lag_rate = 0.0
 		return
-	var radius: float = _formation_local_half_extents().length()
+	var radius: float = _block_radius()
 	var max_rate: float = bounded_turn_rate(radius)
 	var pivot_rate: float = _facing_turn_step / delta
 	var rate: float = bounded_turn_step(_grid_lag_rate, target, max_rate,
@@ -5383,7 +5385,7 @@ func _hold_pivot_for_resquare(step: float, delta: float) -> float:
 	var close: float = signf(-_grid_lag)
 	if signf(step) != close:
 		return step
-	var radius: float = _formation_local_half_extents().length()
+	var radius: float = _block_radius()
 	var max_rate: float = bounded_turn_rate(radius)
 	var lag_rate: float = bounded_turn_step(_grid_lag_rate, -_grid_lag, max_rate,
 			bounded_turn_accel(radius), delta)
@@ -5502,22 +5504,27 @@ func _pivot_radius() -> float:
 
 
 ## The arm a formed pivot's corner man actually swings on: the larger of _pivot_radius()
-## and the live slot grid's half-diagonal about `position`. A pivot rotates the WHOLE
-## local slot vector rigidly about `position`, so a standing frontage_anchor_offset (or
+## and the farthest man's distance from `position` (_block_radius). A pivot rotates the
+## whole block rigidly about `position`, so a standing frontage_anchor_offset (or
 ## a file-major block whose deepest surviving file outruns ranks_for()'s even split)
 ## puts the farthest man further out than _pivot_radius() assumes. The angular-rate
 ## caps (UnitManeuver.wheel_gait_rate) read this, so that man's tangential pace stays
 ## within the footspeed they budget. _formed_turn_gait_frac's depth ratio still reads
 ## _pivot_radius(): an anchor offset lengthens the arm without making the block deeper.
-## A far-tier block uses the same O(1) headcount bounds _move_to's routing does.
-## `extents` lets a caller that already holds the live half-extents pass them in, as
-## corner_clearance() does, instead of paying for a second O(soldiers) rebuild.
-func _pivot_arm(extents: Vector2 = UNKNOWN_EXTENTS) -> float:
-	var half_extents: Vector2 = extents
-	if half_extents.x < 0.0:
-		half_extents = _far_tier_half_extents() if tier == FormationTier.FAR \
-				else _formation_local_half_extents()
-	return maxf(_pivot_radius(), half_extents.length())
+## The farthest man's distance, not the half-diagonal of the men's bounding rectangle in the
+## grid's frame: while the men trail a turning grid that rectangle grows with the turn,
+## which would slow the pivot the men are trying to keep up with.
+func _pivot_arm() -> float:
+	return maxf(_pivot_radius(), _block_radius())
+
+
+## The farthest a man stands from `position`: the arm the block's corner man swings on when the
+## block turns, whatever frame the men are measured in. A block with no men reads the layout's
+## corner (_far_tier_half_extents).
+func _block_radius() -> float:
+	if MenExtent.has_men(self):
+		return MenExtent.reach(self)
+	return _far_tier_half_extents().length()
 
 
 ## Depth-scoped corner-slot tracking fraction for a formed march turn (see
@@ -5562,39 +5569,14 @@ func _formed_turn_gait_frac() -> float:
 ## never collide with a genuine value.
 const UNKNOWN_EXTENTS := Vector2(-1.0, -1.0)
 
-## The formation block's half-extents -- (half-width along its own file axis,
-## half-depth along its own rank axis), in the block's LOCAL frame -- read directly
-## off the LIVE slot layout instead of derived from the headcount. Three effects a
-## headcount-only formula (files/ranks_for()/file_pitch_wu()/rank_pitch_wu()) misses,
-## all fixed for free by reading the slots the layout actually produced:
-##
-## - A file-major reform's casualty reflow only shortens its OWN file's rear
-##   (UnitFormation.file_major_block_slots: `rank_counts[file]` increments
-##   independently per file, and `max_rank` -- what actually sets the grid's depth --
-##   is the MAX over files, not the average), so the deepest SURVIVING file can be
-##   deeper than UnitFormation.ranks_for()'s ceil(soldiers/files) estimate. See
-##   _apply_relief_corridor_to_slots' own identical fix and its doc comment ("Rank geometry
-##   is read OFF THE SLOTS, never recomputed from the headcount... a thinned
-##   file-major block can be deeper than ceil(count / files)"), which this mirrors.
-## - A standing frontage_anchor_offset shifts every non-square slot off centre
-##   (UnitFormation.apply_frontage_anchor_offset, applied inside formation_slots'
-##   both branches before rotation), so the farthest file can sit farther from
-##   `position` than half the frontage alone -- reading the slots directly captures
-##   that automatically, in `hw`, with no separate offset term needed.
-## - An active RELIEF pass widens the ranks a live partner is passing through
-##   (_apply_relief_corridor_to_slots: `out[i] = slot + ...relief_corridor_slot_offset(
-##   slot, rank, ranks, corridor_perp, spread * gate)`, pushing back-rank flank bodies
-##   OUTWARD along the corridor-perpendicular axis), so a relieving unit's real
-##   footprint is wider than its base grid while the swap is under way.
-##
-## Passes `true` for formation_slots()'s own `apply_relief_corridor` argument (unlike
-## soldier_block_half_extents()/SoldierFlock.compute_half_extents, which pass `false`
-## deliberately: _apply_relief_corridor_to_slots calls `partner.soldier_block_half_
-## extents()` to size the corridor gate, so if THAT call also asked for the relief-
-## widened grid it would recurse into the partner's own corridor computation. This
-## function is never called from inside that chain (it feeds PathField routing, not
-## the corridor's own geometry), so it can safely read the fully relief-expanded
-## slots with no such cycle.
+## The block's half-extents -- (half-width along its own file axis, half-depth along its own
+## rank axis), in the block's LOCAL frame -- read off where its men stand (MenExtent), not off
+## the slot grid. Where the men stand is what clears terrain, so every way the men differ from
+## their places shows here: a casualty reflow that leaves one file deeper than the rest, a
+## standing frontage anchor shift, a relief pass that opens the ranks, a reshape or a drill
+## still under way, and men knocked out of the line. A block with no men (before the first
+## physics tick seeds them, or a far-tier block, which has none) reads its layout instead,
+## _far_tier_half_extents(): spawn data, the headcount and pitches the men are seeded from.
 ##
 ## Deliberately the RAW, unpadded extent (no mark radius baked in, unlike
 ## soldier_block_half_extents()/SoldierFlock.compute_half_extents, which exist for a
@@ -5604,35 +5586,18 @@ const UNKNOWN_EXTENTS := Vector2(-1.0, -1.0)
 ## padding on a rotated rectangle (baking it in per axis first, the way the render
 ## helper does, would under-add it at any oblique travel angle).
 ##
-## O(soldiers) -- the same cost soldier_block_half_extents() itself already pays on
-## every call (more, during an active relief pass, for the corridor widening's own
-## extra O(soldiers) pass); there is no cached per-axis extent to reuse instead (only
-## the isotropic circumradius _block_extent is a maintained field, and it discards
-## the per-axis direction this function's callers need). Deliberately UNCACHED: an
-## earlier revision memoized this per physics frame, invalidated either by reasoning
-## about call ORDERING (a unit's self-writes always land after that tick's cache
-## fill) or, when that stopped converging, by wrapping every Unit.gd mutator that
-## writes a formation_slots() input with an explicit invalidation call -- and THAT
-## kept finding one more write path it missed (a relief partner's own position/
-## extents moving mid-frame with no write to this unit at all, the direct
-## `host.position -=` line in UnitReinforce.commit, _settle_order_turn/
-## _settle_engage_turn writing _formation_angle, the file_major_reform bool-proxy
-## setter, the square-formation live-count path...). Enumerating every writer of a
-## multi-field input, transitively through another unit's geometry, does not
-## converge; storing nothing is what removes the question. Callers instead avoid
-## redundant rebuilds by computing this ONCE and threading the result through --
-## see _move_to()'s own doc comment for the specific case (terrain_clearance(),
-## funnel_lane_offset(), and corner_clearance() all accept the already-computed
-## extents as an optional argument) and _has_congested_same_team_router()'s for why
-## a congestion SCAN over other units uses a cheap O(1) estimate instead of forcing
-## an O(soldiers) rebuild on every scanned unit.
+## O(soldiers) over the men's positions, and deliberately UNCACHED: a cache would have to be
+## invalidated by every writer of the body arrays, and enumerating them does not converge.
+## Callers instead avoid redundant scans by computing this ONCE and threading the result
+## through -- see _move_to()'s own doc comment (terrain_clearance(), funnel_lane_offset(),
+## and corner_clearance() all accept the already-computed extents as an optional argument)
+## and _has_congested_same_team_router()'s for why a congestion SCAN over other units uses a
+## cheap O(1) estimate instead of forcing an O(soldiers) scan on every scanned unit.
 func _formation_local_half_extents() -> Vector2:
-	var hw: float = 0.0
-	var hd: float = 0.0
-	for s in formation_slots(soldiers, true):
-		hw = maxf(hw, absf(s.x))
-		hd = maxf(hd, absf(s.y))
-	return Vector2(hw, hd)
+	_half_extents_call_count += 1   # test-only instrumentation; see its own doc comment
+	if MenExtent.has_men(self):
+		return MenExtent.half_extents(self, soldier_block_world_angle())
+	return _far_tier_half_extents()
 
 
 ## The destination a move order toward `dest` should actually be given: `dest` itself
@@ -5732,44 +5697,37 @@ func _order_held_facing(dest: Vector2) -> Vector2:
 
 
 ## The half-extents the tier pass reads for this block at either tier: the headcount
-## reading _far_tier_half_extents() gives, which is O(1) except during a relief swap.
+## reading _far_tier_half_extents() gives, which is O(1).
 func tier_half_extents() -> Vector2:
 	return _far_tier_half_extents()
 
 
-## O(1) half-extents for a FAR-tier block, derived from the headcount instead of read
-## off the slots -- what _move_to() uses for a far-tier mover, which otherwise would pay
-## _formation_local_half_extents()'s O(soldiers) slot rebuild on every physics tick.
-##
-## Of the three live-slot effects _formation_local_half_extents() exists to capture,
-## two cannot apply to a far block, and the third is handed back to it:
-## - no casualty reflow: TierTransition.demote drops the persistent file/rank
-##   assignment with the bodies, so a far block's file-major layout is the fresh
-##   full-ranks-then-centred-partial fill, whose depth is exactly ranks_for(); a
-##   row-major layout's held cell pairing only permutes the same grid cells;
-## - no traverse flank arcs: they need live bodies;
-## - a relief corridor is NOT tier-gated (nothing keeps a far block out of a relief
-##   swap), so while a relief partner exists this defers to the live-slot reading.
-##   The partner lookup is O(1) unless some order links to this unit (see
-##   _relief_swap_partner()), so the common no-link tick stays O(1); a relief swap is
-##   short, so the O(soldiers) rebuild is paid only then.
-## What is left -- files, ranks, the two pitches (a square's depth runs at file pitch,
-## UnitFormation.block_slots' own default), and the standing frontage_anchor_offset,
-## which formation_slots() applies to every non-square layout -- is all read here. A
-## partial rear rank only ever sits INSIDE these bounds, so it never under-clears. A
-## headcount under one full rank is measured exactly instead, since reading the whole
-## declared frontage there would re-create the oversized detour this margin exists to
-## avoid: a row-major (or square) rank closes onto the centre and spans soldiers - 1
-## gaps, while a file-major block keeps the full frontage's columns and fills the
-## centred run UnitFormation.file_capacities() starts at (files - soldiers) / 2. Either
-## way the half-width is the farther end of that occupied span from the unit centre
-## once the signed anchor shift is applied. A test pins every far-tier layout against
-## the live-slot reading.
+## O(1) half-extents of the block's LAYOUT, derived from the headcount and the formation
+## parameters: what a block with no men reads. A far-tier block has none (TierTransition.demote
+## drops the bodies), and a block spawned this tick has none until the first physics tick seeds
+## them. Both read spawn data, the layout the men are (or will be) placed from, and never a
+## target any man is steered onto. Nothing is read off the slot grid.
+## The layout is the fresh full-ranks-then-centred-partial fill, whose depth is exactly
+## ranks_for(); a row-major layout's held cell pairing only permutes the same grid cells.
+## A relief swap's widening and a casualty reflow are not in it: they act on men, and a block
+## with no men has no men to widen or reflow.
 func _far_tier_half_extents() -> Vector2:
+	var span: Vector3 = _layout_span()
+	return Vector2(maxf(absf(span.x), absf(span.y)), span.z)
+
+
+## The layout's front rank in block-local coordinates: Vector3(leftmost file x, rightmost file
+## x, half-depth), the signed anchor shift included. The headcount fill: files, ranks, the two
+## pitches (a square's depth runs at file pitch, UnitFormation.block_slots' own default) and the
+## standing frontage_anchor_offset, which every non-square layout applies. A partial rear rank
+## only ever sits INSIDE these bounds. A headcount under one full rank is measured exactly
+## instead, since reading the whole declared frontage there would re-create the oversized
+## detour this margin exists to avoid: a row-major (or square) rank closes onto the centre and
+## spans soldiers - 1 gaps, while a file-major block keeps the full frontage's columns and
+## fills the centred run UnitFormation.file_capacities() starts at (files - soldiers) / 2.
+func _layout_span() -> Vector3:
 	if soldiers <= 0:
-		return Vector2.ZERO
-	if _relief_swap_partner() != null:
-		return _formation_local_half_extents()
+		return Vector3.ZERO
 	var files: int = maxi(1, formation_files(soldiers))
 	var ranks: int = UnitFormation.ranks_for(soldiers, files)
 	var squared: bool = in_square()
@@ -5784,12 +5742,19 @@ func _far_tier_half_extents() -> Vector2:
 		else:
 			hi = float(soldiers - 1) * 0.5
 			lo = -hi
-	# formation_slots() shifts every non-square slot by the SIGNED anchor offset, so the
-	# half-width is whichever end of that shifted span lies farther from the unit centre.
 	var anchor: float = 0.0 if squared else frontage_anchor_offset
 	var pitch: float = file_pitch_wu()
-	return Vector2(maxf(absf(lo * pitch + anchor), absf(hi * pitch + anchor)),
+	return Vector3(lo * pitch + anchor, hi * pitch + anchor,
 			float(maxi(0, ranks - 1)) * depth_pitch * 0.5)
+
+
+## How far the layout reaches from `position` (or, with `about_footprint`, from the layout's
+## own centre, the anchor shift) to its farthest corner: the reach a block with no men reports
+## where MenExtent.reach reports the men's.
+func layout_reach(about_footprint: bool = false) -> float:
+	var span: Vector3 = _layout_span()
+	var cx: float = _layout_anchor_centre().x if about_footprint else 0.0
+	return Vector2(maxf(absf(span.x - cx), absf(span.y - cx)), span.z).length()
 
 
 ## Open ground this regiment needs between its centre and impassable terrain, for a
@@ -9635,21 +9600,20 @@ func soldier_facing(index: int) -> Vector2:
 	return _sim_soldier_facing[index]
 
 
-## Half-extent of the seeded soldier block around the regiment center: the
-## containment radius the parallel layer must stay within while the regiment
-## circle is authoritative. Reuses the render's block-extent math.
-## Uses the BASE grid (no relief-corridor widen) so extent queries that feed the
-## corridor's own spread gate cannot recurse through formation_slots.
+## Half-extent of the soldier block around the regiment center: the farthest man from
+## `position`, padded. The containment radius the parallel layer must stay within while the
+## regiment circle is authoritative. Reuses the render's block-extent math.
+## Reads the men's positions, never the slot grid, so it cannot recurse through formation_slots.
 func soldier_block_extent() -> float:
-	return SoldierFlock.compute_extent(self, formation_slots(soldiers, false))
+	return SoldierFlock.compute_extent(self)
 
 
-## Per-axis counterpart to soldier_block_extent(): (half-width, half-depth) of the seeded
+## Per-axis counterpart to soldier_block_extent(): (half-width, half-depth) of the
 ## soldier block in its own LOCAL frame (files along x, ranks along y). Lets a caller bound
 ## the block's reach along one specific direction (soldier_block_world_angle() gives the
 ## rotation to express that direction in) instead of every direction via the circumradius.
 func soldier_block_half_extents() -> Vector2:
-	return SoldierFlock.compute_half_extents(self, formation_slots(soldiers, false))
+	return SoldierFlock.compute_half_extents(self)
 
 
 ## The soldier block's current world-space rotation: the same facing + in-progress-maneuver
@@ -9668,14 +9632,14 @@ func render_block_extent() -> float:
 	return _block_extent
 
 
-## The slot grid's own centre in the block's LOCAL frame: the standing frontage
-## anchor shift for the wide-line formations, and ZERO for SQUARE/SCHILTRON --
-## formation_slots ignores the anchor there (block_slots centres the ring on
-## `position`) while nothing clears frontage_anchor_offset on entry, so a squared
-## block must read as centred even when a stale offset still stands. Single source
-## for block_centre_offset and the chrome-extent measurements, so the two can't
-## disagree about where the grid actually sits.
-func _slot_anchor_centre() -> Vector2:
+## The layout's own centre in the block's LOCAL frame: the standing frontage anchor shift
+## for the wide-line formations, and ZERO for SQUARE/SCHILTRON -- the layout ignores the
+## anchor there (block_slots centres the ring on `position`) while nothing clears
+## frontage_anchor_offset on entry, so a squared block must read as centred even when a
+## stale offset still stands. What a block with no men yet (spawn, far tier) reads for its
+## footprint centre: spawn data, never a point any man is measured against or steered onto.
+## With men, block_centre_offset measures the footprint from them instead.
+func _layout_anchor_centre() -> Vector2:
 	if frontage_anchor_offset == 0.0 or in_square():
 		return Vector2.ZERO
 	return Vector2(frontage_anchor_offset, 0.0)
@@ -9697,16 +9661,19 @@ func contact_point(enemy: Unit) -> Vector2:
 	return position + MeleeFrontLine.toward(self, enemy)
 
 
-## World-aligned offset of the soldier block's footprint centre from `position`: the
-## standing frontage anchor shift (an asymmetric explicatio/duplicatio, or a
-## flank-anchored grip resize), expressed through the same local-to-world mapping
-## soldier_world_slots applies to the slots themselves (mirror fold, then the block's
-## world rotation). ZERO for a centred block. Chrome that frames the block -- the
-## state ring, selection halo, stat bars, flag, shadow, and resize grips -- centres
-## here rather than on `position`, which a standing offset leaves sitting off-centre
-## inside the block's true footprint.
+## World-aligned offset of the soldier block's footprint centre from `position`: the middle of
+## the rectangle the men fill, in the block's own frame (MenExtent.centre_offset). A
+## flank-anchored frontage (an asymmetric explicatio/duplicatio, or a flank-anchored grip
+## resize) or a block whose men have spread off its position shows as an offset. A block with
+## no men yet reads its layout's anchor shift instead (_layout_anchor_centre), through the
+## same local-to-world mapping soldier_world_slots applies (mirror fold, then the block's
+## world rotation). Chrome that frames the block -- the state ring, selection halo, stat bars,
+## flag, shadow, and resize grips -- centres here rather than on `position`, which a standing
+## offset leaves sitting off-centre inside the block's true footprint. O(soldiers).
 func block_centre_offset() -> Vector2:
-	var local: Vector2 = _slot_anchor_centre()
+	if MenExtent.has_men(self):
+		return MenExtent.centre_offset(self, soldier_block_world_angle())
+	var local: Vector2 = _layout_anchor_centre()
 	if local == Vector2.ZERO:
 		return Vector2.ZERO
 	if _formation_mirror_x:
@@ -11618,7 +11585,7 @@ func _turn_flight_toward(dir: Vector2, delta: float) -> void:
 	if diff == 0.0 or delta <= 0.0:
 		_flight_turn_rate = 0.0
 		return
-	var radius: float = _formation_local_half_extents().length()
+	var radius: float = _block_radius()
 	_flight_turn_rate = bounded_turn_step(_flight_turn_rate, diff, bounded_turn_rate(radius),
 			bounded_turn_accel(radius), delta)
 	var turn: float = _flight_turn_rate * delta
@@ -11645,24 +11612,24 @@ static func bounded_turn_step(rate: float, diff: float, max_rate: float, turn_ac
 
 ## The fastest a block's slot grid turns at a bounded rate (rad/s): a router's heading
 ## (_turn_flight_toward), or any block's grid after a small heading correction
-## (_advance_grid_lag). It is the rate at which the farthest slot (the block's corner, at
-## _formation_local_half_extents().length() from the anchor) sweeps sideways at jog_speed, the
-## pace a body's arrival term closes on a moving slot at (SoldierBodies.step caps arrival at
-## jog_speed). INF for a block with no extent. `radius` lets a caller that already holds that
-## corner radius pass it in instead of paying for a second O(soldiers) slot walk.
+## (_advance_grid_lag). It is the rate at which the farthest man (at _block_radius() from the
+## anchor) sweeps sideways at jog_speed, the pace a body's arrival term closes on a moving slot
+## at (SoldierBodies.step caps arrival at jog_speed). INF for a block with no extent. `radius`
+## lets a caller that already holds that radius pass it in instead of paying for a second
+## O(soldiers) scan.
 func bounded_turn_rate(radius: float = -1.0) -> float:
 	if radius < 0.0:
-		radius = _formation_local_half_extents().length()
+		radius = _block_radius()
 	return jog_speed / radius if radius > 0.0 else INF
 
 
 ## How fast a bounded grid turn's rate builds or sheds (rad/s^2): the rate at which the block's
-## farthest slot's sideways speed changes at the bodies' own acceleration (SoldierBodies.step's
+## farthest man's sideways speed changes at the bodies' own acceleration (SoldierBodies.step's
 ## max(accel, BODY_ACCEL_FLOOR)). INF for a block with no extent. `radius` as for
 ## bounded_turn_rate.
 func bounded_turn_accel(radius: float = -1.0) -> float:
 	if radius < 0.0:
-		radius = _formation_local_half_extents().length()
+		radius = _block_radius()
 	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) / radius if radius > 0.0 else INF
 
 
@@ -12403,10 +12370,10 @@ func _setup_flock_renderer() -> void:
 
 	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
 	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
-	# from frame 1. Size the shadow/chrome from the formation extent up front, measured
-	# about the slot grid's own centre so a standing anchor offset can't inflate the ring.
-	_block_extent = SoldierFlock.compute_extent(self, formation_slots(soldiers),
-			_slot_anchor_centre())
+	# from frame 1. Size the shadow/chrome up front from the layout the men will be seeded
+	# from (no men exist yet), measured about the layout's own centre so a standing anchor
+	# offset can't inflate the ring.
+	_refresh_block_chrome()
 	_update_shadow()
 
 
@@ -12521,13 +12488,14 @@ func _process(delta: float) -> void:
 	if not is_equal_approx(_render_alpha, _render_last_alpha):
 		_render_last_alpha = _render_alpha
 		queue_redraw()
-	# Block extent depends only on the soldier count, frontage, and formation mode
-	# (SQUARE/SHIELD_WALL/TESTUDO reshape the grid itself, not just frontage), not body
-	# positions, so recompute (and reshape the shadow/chrome) only when one of those
-	# changes — not the fresh PackedVector2Array the old path allocated every frame.
+	# The block's extent and footprint centre are measured from the men, so they follow them:
+	# recompute (and reshape the shadow/chrome) when a body moved (SoldierBodies.step raised
+	# _render_dirty), or when the shape inputs a block with no men reads (the soldier count,
+	# frontage and formation mode: SQUARE/SHIELD_WALL/TESTUDO reshape the layout itself) change.
 	var fr: int = UnitFormation.frontage(self)
-	if soldiers != _render_extent_n or fr != _render_extent_frontage \
-			or formation_mode != _render_extent_mode:
+	var reshaped: bool = soldiers != _render_extent_n or fr != _render_extent_frontage \
+			or formation_mode != _render_extent_mode
+	if reshaped:
 		_render_extent_n = soldiers
 		_render_extent_frontage = fr
 		_render_extent_mode = formation_mode
@@ -12535,23 +12503,18 @@ func _process(delta: float) -> void:
 		# (count / frontage / density-mode) must relay the grid marks, not just the chrome.
 		# Nothing else raises _render_dirty for a far unit (no bodies step), so raise it here.
 		_render_dirty = true
-		var new_extent: float = SoldierFlock.compute_extent(self, formation_slots(soldiers),
-				_slot_anchor_centre())
-		if not is_equal_approx(new_extent, _block_extent):
-			_block_extent = new_extent
-			_update_shadow()
-			queue_redraw()
-	# A standing anchor offset shifts the chrome's centre (block_centre_offset), which
-	# also rotates with the block -- so chrome must re-place when the effective centre
+	# With no men, a standing anchor offset shifts the chrome's centre (block_centre_offset),
+	# which also rotates with the block -- so chrome must re-place when the effective centre
 	# changes (an offset set or cleared, or a square entry/exit dropping/re-arming a
 	# standing one) and, while one stands, whenever the heading turns. A centred
 	# block's chrome is facing-invariant and skips this entirely.
-	var anchor_centre_x: float = _slot_anchor_centre().x
-	if anchor_centre_x != _render_last_anchor_offset \
-			or (anchor_centre_x != 0.0 and facing != _render_last_facing):
-		_render_last_anchor_offset = anchor_centre_x
-		_update_shadow()
-		queue_redraw()
+	var anchor_centre_x: float = _layout_anchor_centre().x
+	var layout_moved: bool = not MenExtent.has_men(self) and (
+			anchor_centre_x != _render_last_anchor_offset
+			or (anchor_centre_x != 0.0 and facing != _render_last_facing))
+	_render_last_anchor_offset = anchor_centre_x
+	if reshaped or layout_moved or _render_dirty:
+		_refresh_block_chrome()
 	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body
 	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
 	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
@@ -12799,13 +12762,26 @@ func _apply_flock_color() -> void:
 	_mmi_facing_pip.modulate = Color(1.0, 1.0, 1.0, alpha * 0.9)
 
 
+## Re-measure the chrome's extent and footprint centre from the men (or, with none, the
+## layout), and re-place the shadow and request a redraw when either moved.
+func _refresh_block_chrome() -> void:
+	var new_extent: float = SoldierFlock.compute_extent(self, true)
+	var new_centre: Vector2 = block_centre_offset()
+	if is_equal_approx(new_extent, _block_extent) and new_centre.is_equal_approx(_block_centre):
+		return
+	_block_extent = new_extent
+	_block_centre = new_centre
+	_update_shadow()
+	queue_redraw()
+
+
 ## Size/position the ground shadow ellipse to the current block extent, centred on
 ## the block's footprint (which a standing anchor offset shifts off `position`).
 func _update_shadow() -> void:
 	if _shadow == null:
 		return
 	var r: float = _block_extent * 0.95
-	_shadow.position = block_centre_offset() + Vector2(0, _block_extent * 0.45)
+	_shadow.position = _block_centre + Vector2(0, _block_extent * 0.45)
 	_shadow.scale = Vector2(r, r)
 
 
@@ -12823,7 +12799,7 @@ func _draw() -> void:
 	# places them on the block's footprint, which a standing anchor offset shifts
 	# off this node's origin (`position`).
 	var extent: float = _block_extent
-	var centre: Vector2 = block_centre_offset()
+	var centre: Vector2 = _block_centre
 
 	# State ring around the block: red = engaged, orange = routing.
 	# Rendered as a subtle translucent ring (STATE_RING_ALPHA) rather than an opaque circle,

@@ -2934,6 +2934,9 @@ the move to the nearest spot where the whole formation fits, laid out in the fac
 it will hold there (a quarter-turned block is first squared to that facing, as the
 order itself squares it, each man taking the new place nearest where he stands rather
 than marching across the block to reach it).
+The footprint is the room the men fill where they stand now, so a block whose men are
+still strung out from a reshape or a drill asks for the ground they take, not the ground
+a tidy grid would.
 A deep column side-stepping toward a hill stops with its rear ranks
 at the hill's edge rather than among the rocks. If no spot along the move is clear,
 the unit stays where it is.

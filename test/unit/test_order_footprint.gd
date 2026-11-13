@@ -92,10 +92,10 @@ func test_a_move_with_no_clear_point_holds_position() -> void:
 func test_a_far_tier_block_uses_the_far_tier_extents() -> void:
 	var u := _make_deep_block(Vector2(1110, 330))
 	TierTransition.demote(u)
-	var before: int = u._formation_slots_call_count
+	var before: int = u._half_extents_call_count
 	_nudge(u, BattleScript.NudgeDir.RIGHT)
-	var calls: int = u._formation_slots_call_count - before
-	assert_eq(calls, 0, "a far-tier block validates its order without building the slot layout")
+	var calls: int = u._half_extents_call_count - before
+	assert_eq(calls, 0, "a far-tier block validates its order without scanning any men")
 	var limit: float = _clear_x(u, u._far_tier_half_extents().x)
 	assert_almost_eq(u.move_target.y, 330.0, 0.001, "pulled back along the move")
 	assert_lte(u.move_target.x, limit, "the far-tier footprint's right edge stays off the hill")
@@ -150,9 +150,9 @@ func test_the_same_point_reissued_after_moving_is_revalidated_from_the_new_posit
 	assert_gte(u.move_target.x, limit - OrderFootprint.SEARCH_TOLERANCE,
 		"and pulled back only as far as the footprint needs")
 	assert_ne(u.move_target, Vector2(1140, 330), "the reissued point was validated, not taken as is")
-	var before: int = u._formation_slots_call_count
+	var before: int = u._half_extents_call_count
 	u.move_target = Vector2(1140, 330)
-	assert_eq(u._formation_slots_call_count - before, 1, "every write rebuilds the footprint")
+	assert_eq(u._half_extents_call_count - before, 1, "every write re-measures the footprint")
 	# Widened to 5 files, the same point must stop farther west than the 3-file clamp did.
 	u.frontage_override = 5
 	u.move_target = Vector2(1140, 330)

@@ -65,7 +65,7 @@ func _wheel_tick(u: Unit, e: Unit, followed: bool) -> bool:
 func test_a_small_reface_in_contact_wheels_the_heading_from_rest() -> void:
 	var u := _make_block()
 	var e := _make_enemy(_bearing_point(30.0))
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var first: float = u.bounded_turn_accel(radius) * DT * DT
 	assert_lt(first, deg_to_rad(30.0), "sanity: one tick from rest is far short of the turn")
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
@@ -233,7 +233,7 @@ func test_a_reversal_sheds_the_rate_through_zero() -> void:
 	# The enemy crosses to the heading's other side: the wheel brakes at bounded_turn_accel and
 	# carries on its old way this tick, rather than stopping dead.
 	e.position = u.position + Vector2.from_angle(u.facing.angle() - deg_to_rad(40.0)) * 2000.0
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var prev: float = u.facing.angle()
 	_wheel_tick(u, e, true)
 	assert_almost_eq(u._combat_wheel_rate, rate - u.bounded_turn_accel(radius) * DT, FACING_TOL,
@@ -288,7 +288,7 @@ func test_a_running_wheel_keeps_wheeling_past_the_turn_threshold_onto_an_enemy_a
 	assert_true(u._enemy_inside_own_footprint(e), "sanity: the enemy stands inside the footprint")
 	assert_gt(_offset(u, e), Unit.ENGAGE_TURN_THRESHOLD, "sanity: past the turn-in-place threshold")
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	assert_true(_wheel_tick(u, e, true), "the block strikes an enemy among its ranks")
 	assert_eq(u._engage_turn_target, Vector2.ZERO, "no turn in place is armed")
 	assert_almost_eq(u._combat_wheel_rate, rate + u.bounded_turn_accel(radius) * DT, FACING_TOL,
@@ -323,7 +323,7 @@ func test_a_wheel_onto_a_new_enemy_starts_from_rest_and_judges_afresh() -> void:
 	var u: Unit = pair[0]
 	var other := _make_enemy(_off_heading(u, 70.0, 2000.0))
 	other.uid = 3
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	assert_false(_wheel_tick(u, other, true), "70 degrees off a new enemy, the block withholds")
 	assert_almost_eq(absf(u._combat_wheel_rate), u.bounded_turn_accel(radius) * DT, FACING_TOL,
 		"the wheel onto the new enemy starts from rest")
@@ -339,7 +339,7 @@ func test_a_target_flipping_between_two_enemies_side_by_side_keeps_the_wheel_run
 	var a := _make_enemy(_bearing_point(60.0))
 	var b := _make_enemy(_bearing_point(60.0 + 0.5 * rad_to_deg(u.combat_reface_snap_turn)))
 	b.uid = 3
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var accel_step: float = u.bounded_turn_accel(radius) * DT
 	var ticks := 30
 	# Over the run the rate stays under the bounded rate and under sqrt(2 a d), so every tick
@@ -374,7 +374,7 @@ func test_a_flip_to_an_enemy_close_beside_past_the_threshold_keeps_the_wheel_run
 			+ 0.5 * u.combat_reface_snap_turn) * 10.0
 	assert_true(u._enemy_inside_own_footprint(b), "sanity: the second enemy stands among the ranks")
 	assert_gt(_offset(u, b), Unit.ENGAGE_TURN_THRESHOLD, "sanity: it is past the threshold too")
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	assert_true(_wheel_tick(u, b, true), "the block strikes the enemy among its ranks")
 	assert_eq(u._engage_turn_target, Vector2.ZERO, "no turn in place is armed for the flip")
 	assert_almost_eq(u._combat_wheel_rate, rate + u.bounded_turn_accel(radius) * DT, 1e-4,
@@ -567,7 +567,7 @@ func test_a_wheel_restored_from_a_snapshot_carries_on_at_its_saved_rate() -> voi
 		"the stamp is rebased onto the current clock")
 	r._is_facing_turning = false
 	r._facing_turn_step = 0.0
-	var radius: float = r._formation_local_half_extents().length()
+	var radius: float = r._block_radius()
 	r._face_for_action(e.position, DT, e)
 	assert_almost_eq(r._combat_wheel_rate, rate + r.bounded_turn_accel(radius) * DT, 1e-4,
 		"the restored wheel builds on its saved rate rather than starting from rest")

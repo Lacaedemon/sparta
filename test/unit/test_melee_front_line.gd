@@ -108,7 +108,7 @@ func _clash(scale: float = -1.0) -> Dictionary:
 		tick += 1
 		if not (is_instance_valid(a) and is_instance_valid(b)):
 			break
-		var gap: float = a.position.distance_to(b.position)
+		var gap: float = _men_gap(a, b)
 		if out["contact_tick"] < 0:
 			if a._in_enemy_contact and b._in_enemy_contact:
 				out["contact_tick"] = tick
@@ -126,6 +126,13 @@ func _clash(scale: float = -1.0) -> Dictionary:
 		out["deep"] = maxi(out["deep"], deep)
 	out["men"] = (a.soldiers if is_instance_valid(a) else 0) + (b.soldiers if is_instance_valid(b) else 0)
 	return out
+
+
+## The distance between two blocks' men: their centres as the front line measures them
+## (MeleeFrontGeometry.men_offset), which stand off their positions where the men do.
+func _men_gap(a: Unit, b: Unit) -> float:
+	return (a.position + MeleeFrontGeometry.men_offset(a)).distance_to(
+			b.position + MeleeFrontGeometry.men_offset(b))
 
 
 func test_frontal_blocks_meet_at_their_front_ranks() -> void:
