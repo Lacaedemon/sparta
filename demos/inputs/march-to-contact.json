@@ -29,10 +29,8 @@
   ],
   "defect_exemptions": {
     "overlap": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip's subject is March-to-contact halt-and-resume, not post-melee lattice quality. After the 6-man hostile is beaten, the player's thinned block (44 of 50) resumes the southbound march; overlap and shape_residual fire on those judged resume-march samples (melee-contact ticks are already dropped). Both metrics already failed on merge-base before this expect re-pin."
+      "uids": [0],
+      "reason": "The clip's subject is March-to-contact halt-and-resume, not post-melee lattice quality. After the 6-man hostile is beaten, the player's thinned block (44 of 50) resumes the southbound march; overlap fires on those judged resume-march samples (melee-contact ticks are already dropped), and so did the slot-based shape_residual that follow_error has since replaced; both failed on merge-base before this expect re-pin. follow_error reads 1.6e-06 against 13.5 on this tree, so only overlap still needs the exemption."
     }
   },
   "fixed_fps": 30,

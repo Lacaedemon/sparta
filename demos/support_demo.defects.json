@@ -2,9 +2,7 @@
   "_comment": "Defect declarations for the support replay clip (demos/support_demo.json); see demos/README.md, Sidecar declarations. Uid 9's facing_flutter exemption (#1854) is gone: since #1880 uid 9 passes the gating scan, and on dense 2-tick FULL dumps (every exemption removed, Windows, 2026-10-31, on the tree later committed as e57be4c6; seed 0 re-checked on e57be4c6 2026-11-01) it passes on each of seeds 0 to 4 on e57be4c6, where 9f9bddee reads 4.00 on each against 3. The flutter is reduced, not gone: rerun with body_accel scaled by 1 + k * 1e-6 (k = 1 to 16, a nudge that favours no mechanism), uid 9 fails facing_flutter on 3 of 16 runs on e57be4c6 (4.00, 5.00 and 4.00), against 12 of 16 on 9f9bddee (4.00 to 7.00). The same runs fail uid 9's overlap on 0 of 16 on e57be4c6, 1 of 16 on 9f9bddee.",
   "defect_exemptions": {
     "overlap": {
-      "uids": [
-        6
-      ],
+      "uids": [6],
       "reason": "Team 1's Infantry (uid 6) reaches melee contact at the end of the clip (its count drops 120 -> 117 by tick 780) and compresses into the press: CI website demo-diff on PR #1677 measured a minimum neighbour distance of 1.318 wu against the 2.25 wu floor, merge-base 6.89, where contact came earlier and the sampled ticks missed it. Press-adjacent compression at contact, not standing interpenetration."
     }
   }

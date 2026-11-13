@@ -541,7 +541,7 @@ func _assert_men_stand_in_their_relations(u: Unit, what: String) -> void:
 	var full: Dictionary = rec["soldiers_full"]
 	var rel: Dictionary = full["relations"]
 	assert_eq(rel["leaders"].size(), u.soldiers, "%s: one leader entry per man" % what)
-	var read: Dictionary = DemoRelational.read(full["pos"], rel, 1.0)
+	var read: Dictionary = DemoRelational.read(full["pos"], rel, 1.0, 1.0)
 	assert_gt(read["edges"], 0, "%s: the grid names who stands behind and beside whom" % what)
 	assert_lt(float(read["rms"]), 0.05,
 			"%s: men on their grid read no error from the men they follow" % what)

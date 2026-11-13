@@ -20,11 +20,6 @@
     {"tick": 560, "uid": 0, "field": "state", "value": "ROUTING"}
   ],
   "defect_exemptions": {
-    "follow_error": {
-      "uids": [
-        1
-      ],
-      "reason": "follow_error, the relational successor of shape_residual, reads uid1 44.83 against 13.5 on this tree (dense 2-tick FULL dump, Windows, seed 0, measured 2026-11-13); the slot-based shape_residual this exemption was written against read uid1 37.31. Original reason: The infantry pursuer (uid 1) deforms while it follows the router at the edge of melee range, from about tick 440 to the clip's end, and the deformation is pre-existing (36.0 on main 45a9bb85 on the first sample set). Measured 2026-11-10 on aef5b476, seeds 0 to 4, every exemption removed. On dense 2-tick FULL dumps over ticks 2 to 600 the verdict FAILS on every seed: worst 37.3, 35.2, 40.1, 35.1 and 37.7 against the 13.5 threshold. On the clip's own declared ticks the samples are too sparse to sustain the failure, so the scan reads the exemption as STALE there (the worst reads 0, 33.9, 39.8, 35.1 and 37.5 on seeds 0 to 4, all passing). Kept because the dense dumps fail on every seed. Tracked as #1824."
-    }
+    "follow_error": {"uids": [1], "reason": "follow_error, the relational successor of shape_residual, reads uid1 44.83 against 13.5 on this tree (dense 2-tick FULL dump, Windows, seed 0, measured 2026-11-13); the slot-based shape_residual this exemption was written against read uid1 37.3. Original reason: The infantry pursuer (uid 1) deforms while it follows the router at the edge of melee range, from about tick 440 to the clip's end, and the deformation is pre-existing (36.0 on main 45a9bb85 on the first sample set). Measured 2026-11-10 on aef5b476, seeds 0 to 4, every exemption removed. On dense 2-tick FULL dumps over ticks 2 to 600 the verdict FAILS on every seed: worst 37.3, 35.2, 40.1, 35.1 and 37.7 against the 13.5 threshold. On the clip's own declared ticks the samples are too sparse to sustain the failure, so the scan reads the exemption as STALE there (the worst reads 0, 33.9, 39.8, 35.1 and 37.5 on seeds 0 to 4, all passing). Kept because the dense dumps fail on every seed. Tracked as #1824."}
   }
 }

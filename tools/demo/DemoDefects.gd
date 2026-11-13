@@ -111,17 +111,24 @@ const POSITION_QUANTUM: float = pow(10.0, -float(POSITION_DECIMAL_PLACES))
 ## Samples after the last contact sample that stay exempt from grid-shape judgments,
 ## allowing a disengaging unit time to re-form.
 const CONTACT_SETTLE_SAMPLES := 2
-## More than this fraction of a unit's soldiers standing on the place behind some OTHER man
-## (nearer it than the place behind their own leader, and within MISSLOT_SETTLED_FRAC of the
-## spacing of it), or on the wrong side of their dressing man, sustained pre-contact, is a
-## misslot verdict: the men settled behind the wrong men (rank/flank swapping). The places are
-## read in the frame the men's own relations fit, so a turn the whole block shares cannot fire it.
-## Identity is only meaningful once the men are actually STANDING in their places: while a
-## block is in transit (a reshape, a march re-form) each man is between places and "whose
-## place is nearest" is noise, so the fraction only counts on samples where the men with a
-## leader stand, at the median, within MISSLOT_SETTLED_FRAC of the spacing of the place behind him.
+## More than this fraction of a unit's soldiers standing behind some OTHER man than their own
+## leader (the nearest man ahead in their column), or in the place of their dressing man as he
+## stands in theirs, sustained pre-contact, is a misslot verdict: the men settled behind the wrong
+## men (rank/flank swapping). The column and the places are read in the frame the men's own
+## relations fit, so a turn the whole block shares cannot fire it.
+## Identity is only meaningful once the men are actually STANDING on their grid: while a block is
+## in transit (a reshape, a march re-form) each man is between places and "whose place is
+## nearest" is noise. So the fraction only counts on samples where the men stand on the grid
+## whoever stands where (the mean distance from each man to the nearest place, and from each
+## place to the nearest man, is within MISSLOT_SETTLED_FRAC of the spacing: DemoGridMatch), and
+## so can still read a scramble, which a gate on each man's own error would hide.
 const MISSLOT_MAX_FRAC := 0.25
 const MISSLOT_SETTLED_FRAC := 0.25
+## ...and only while the men stand still among themselves: the median speed of a man relative to
+## the block's own drift (wu/s) is within this fraction of the unit's walk speed. Men walking up
+## into the places a reflow or a re-deal gave them stand on the grid, behind other men than
+## their leaders, for as long as they walk; men who stay there are the swap.
+const MISSLOT_STILL_FRAC := 0.25
 ## Two soldiers whose routes cross swapped sides on the way to wherever they were going,
 ## rather than each walking to the nearest place that needed filling. Routes are measured
 ## in the block's own co-rotating frame (the rigid motion the whole block shares is
@@ -293,6 +300,23 @@ static func max_soldier_speed(prev: Array, cur: Array, dt_ticks: int, tps: float
 	return best
 
 
+## The median speed (wu/s) of a man relative to the block's drift between two index-aligned body
+## samples `dt_ticks` apart: 0 for men standing still among themselves, whatever the block does.
+static func median_relative_speed(prev: Array, cur: Array, dt_ticks: int, tps: float = 60.0) -> float:
+	var n: int = mini(prev.size(), cur.size())
+	if n == 0 or dt_ticks <= 0:
+		return 0.0
+	var drift := Vector2.ZERO
+	for i in range(n):
+		drift += _vec(cur[i]) - _vec(prev[i])
+	drift /= float(n)
+	var speeds: Array = []
+	for i in range(n):
+		speeds.append((_vec(cur[i]) - _vec(prev[i]) - drift).length() * tps / float(dt_ticks))
+	speeds.sort()
+	return speeds[floori(n / 2.0)]
+
+
 ## Worst-case speed error (wu/s) introduced by two rounded position endpoints sampled
 ## `dt_ticks` physics ticks apart. Each coordinate rounds to POSITION_QUANTUM, so each
 ## endpoint can drift by up to half a quantum in x and y (worst-case Euclidean error
@@ -314,6 +338,17 @@ static func _segments_cross(a1: Vector2, a2: Vector2, b1: Vector2, b2: Vector2) 
 	var d3: float = (b2 - b1).cross(a1 - b1)
 	var d4: float = (b2 - b1).cross(a2 - b1)
 	return ((d1 > 0.0) != (d2 > 0.0)) and ((d3 > 0.0) != (d4 > 0.0))
+
+
+## Whether two men have passed through each other: their separation `before` and `after` swung
+## round to the far side of where it pointed, and they stand within `width` of each other's line
+## after. Routes along one file never cross (they are collinear), so a pair of one file is judged
+## by this as well.
+static func _passed_through(before: Vector2, after: Vector2, width: float) -> bool:
+	if before.length_squared() == 0.0:
+		return false
+	var axis: Vector2 = before.normalized()
+	return after.dot(axis) < 0.0 and absf(after.cross(axis)) < width
 
 
 ## Which soldiers take a CROSSING route between two consecutive body samples -- the
@@ -352,7 +387,11 @@ static func crossing_indices(prev: Array, cur: Array, min_travel: float,
 				continue
 			if not groups.is_empty() and groups[i] != groups[j]:
 				continue
-			if _segments_cross(_vec(start[i]), _vec(cur[i]), _vec(start[j]), _vec(cur[j])):
+			var met: bool = _segments_cross(_vec(start[i]), _vec(cur[i]), _vec(start[j]), _vec(cur[j]))
+			if not met and not groups.is_empty():
+				met = _passed_through(_vec(start[i]) - _vec(start[j]), _vec(cur[i]) - _vec(cur[j]),
+						min_travel * 2.0)
+			if met:
 				crossed[i] = true
 				crossed[j] = true
 	var out: Array = crossed.keys()
@@ -379,7 +418,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "last_redeal_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "facing_angle": [], "pos": [],
-					"edges": [], "follow_rms": [], "follow_far": [], "misslotted": [], "files": [],
+					"edges": [], "follow_rms": [], "follow_far": [], "misslotted": [], "files": [], "deal": [],
 					"motion_ref": u["motion_ref"],
 				}
 			var s: Dictionary = series[uid]
@@ -409,17 +448,24 @@ static func analyze(snapshots: Array) -> Dictionary:
 			# read as an error. A dump without relations carries no edges and is not judged.
 			var spacing_now: float = float(u["motion_ref"]["formation_spacing"])
 			var rel = u["soldiers_full"].get("relations", {})
-			var rd: Dictionary = DemoRelational.read(bodies, rel, spacing_now * MISSLOT_SETTLED_FRAC)
+			var rd: Dictionary = DemoRelational.read(bodies, rel, spacing_now * MISSLOT_SETTLED_FRAC,
+					0.5 * float(u["motion_ref"].get("file_pitch", spacing_now)))
 			s["edges"].append(rd["edges"])
 			s["follow_rms"].append(rd["rms"])
 			s["follow_far"].append(rd["far"])
 			# Behind the wrong man counts only once the men stand in their places (see
 			# MISSLOT_SETTLED_FRAC): a man still walking is near no man's place, so who he
 			# stands behind is noise, not a swap.
+			var restless: float = 0.0
+			if not s["pos"].is_empty() and s["pos"][-1].size() == bodies.size():
+				restless = median_relative_speed(s["pos"][-1], bodies,
+						int(s["ticks"][-1]) - int(s["ticks"][-2]))
+			var still: bool = restless <= MISSLOT_STILL_FRAC * float(u["motion_ref"].get("walk_speed", 34.0))
 			s["misslotted"].append(
 					float(rd["behind_wrong"]) / maxf(1.0, float(bodies.size()))
-					if float(rd["settled"]) <= spacing_now * MISSLOT_SETTLED_FRAC else 0.0)
+					if still and float(rd["settled"]) <= spacing_now * MISSLOT_SETTLED_FRAC else 0.0)
 			s["files"].append(DemoRelations.files(rel.get("leaders", [])))
+			s["deal"].append(rel.get("leaders", []))
 			var fa: Array = u.get("facing", [0.0, 1.0])
 			s["facing_angle"].append(atan2(float(fa[1]), float(fa[0])))
 			s["pos"].append(u["soldiers_full"]["pos"])
@@ -512,7 +558,8 @@ static func reshape_timeout(old_files: int, new_files: int, soldiers: int,
 
 
 ## Transit timeout (seconds) after a near-quarter re-deal: twice the time the man farthest from
-## his place (`farthest`, wu, read at the first sample after the re-deal) needs at jog speed,
+## his place (`farthest`, wu: the walk to his fitted relational place, DemoRelationalFit, read at
+## the first sample after the re-deal) needs at jog speed,
 ## plus a second, as reshape_timeout allows. reshape_timeout's crossing of the whole old and new
 ## grids is far longer for a deep block, and would keep the window open well past the men's own
 ## walk: 58.8 s for an 80-horse squadron of 9 files 40 wu and 9 ranks 120 wu apart, against
@@ -526,7 +573,10 @@ static func redeal_timeout(farthest: float, jog_speed: float) -> float:
 ## places of a new frontage, formation change, reinforcement insertion, or near-quarter
 ## re-deal). The exemption window extends from the reshape tick for reshape_timeout() seconds
 ## (or while anchor_held is true), ending early once the men settle into their new places.
-static func follow_error_mask(s: Dictionary, base_mask: Array = []) -> Array:
+## With `casualties`, a drop in the headcount or a change of the deal (who follows whom) opens a
+## window too: the men close up into the places they are dealt, and until they have, who stands
+## behind whom is the reflow's, not a swap.
+static func follow_error_mask(s: Dictionary, base_mask: Array = [], casualties: bool = false) -> Array:
 	var n: int = s["ticks"].size()
 	var mask: Array = base_mask.duplicate() if not base_mask.is_empty() else judged_mask(s)
 	if n == 0:
@@ -568,6 +618,9 @@ static func follow_error_mask(s: Dictionary, base_mask: Array = []) -> Array:
 			if (s.has("frontage") and s["frontage"].size() > i and int(s["frontage"][i]) != int(s["frontage"][i - 1])):
 				reshape_event = true
 			elif (s.has("formation") and s["formation"].size() > i and String(s["formation"][i]) != String(s["formation"][i - 1])):
+				reshape_event = true
+			elif casualties and (int(s["counts"][i]) < int(s["counts"][i - 1])
+					or s["deal"][i] != s["deal"][i - 1]):
 				reshape_event = true
 
 		if reshape_event:
@@ -627,7 +680,7 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 				spacing * FOLLOW_RMS_FRAC, follow_error_mask(s, mask), MIN_SUSTAIN, true))
 		# Misslot: the fraction of soldiers standing behind another man than their leader.
 		out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
-				MISSLOT_MAX_FRAC, mask, MIN_SUSTAIN, true))
+				MISSLOT_MAX_FRAC, follow_error_mask(s, mask, true), MIN_SUSTAIN, true))
 
 	# Facing whipsaw while marching.
 	var moving_angles: Array = []
@@ -730,9 +783,8 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		cross_run = cross_run + 1 if frac > CROSS_MAX_FRAC else 0
 		worst_cross_run = maxi(worst_cross_run, cross_run)
 		if judged_relations:
-			var in_file: int = crossing_indices(s["pos"][i - 1], s["pos"][i], min_travel,
-					s["files"][i]).size()
-			var file_frac: float = float(in_file) / maxf(1.0, float(s["counts"][i]))
+			var file_frac: float = _worst_file_share(crossing_indices(s["pos"][i - 1], s["pos"][i],
+					min_travel, s["files"][i]), s["files"][i])
 			worst_file_cross = maxf(worst_file_cross, file_frac)
 			file_cross_run = file_cross_run + 1 if file_frac > CROSS_MAX_FRAC else 0
 			worst_file_run = maxi(worst_file_run, file_cross_run)
@@ -742,6 +794,21 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		out.append({"uid": uid, "metric": "file_crossing", "pass": worst_file_run < MIN_SUSTAIN,
 				"worst": worst_file_cross, "threshold": CROSS_MAX_FRAC})
 	return out
+
+
+## The largest share of any one file's men among `crossed` (indices of men), `files` giving each
+## man's file: one file walking through itself reads whole however large the block is.
+static func _worst_file_share(crossed: Array, files: Array) -> float:
+	var sizes: Dictionary = {}
+	for f in files:
+		sizes[f] = int(sizes.get(f, 0)) + 1
+	var hits: Dictionary = {}
+	for i in crossed:
+		hits[files[i]] = int(hits.get(files[i], 0)) + 1
+	var worst: float = 0.0
+	for f in hits:
+		worst = maxf(worst, float(hits[f]) / float(sizes[f]))
+	return worst
 
 
 ## Fraction of meaningful improvement between consecutive failing samples below which
@@ -1100,6 +1167,14 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 	return out
 
 
+## The per-unit metrics `analyze` emits, the only names an exemption can forgive: an exemption
+## keyed on any other name (a retired metric, a typo) forgives nothing and would sit unnoticed.
+const EXEMPTABLE_METRICS: Array[String] = [
+	"blob", "overlap", "follow_error", "misslotted", "facing_whipsaw", "facing_flutter",
+	"superphysical_speed", "path_crossing", "file_crossing",
+]
+
+
 ## Shape-validate one `defect_exemptions` entry: empty string when usable, else a message
 ## naming what's wrong. An entry names the units it covers and states why:
 ##
@@ -1115,6 +1190,9 @@ static func check_expectations(expects: Array, snapshots: Array) -> Array:
 static func exemption_error(metric, entry) -> String:
 	if not (metric is String) or String(metric).strip_edges().is_empty():
 		return "exemption key must be a metric name"
+	if not EXEMPTABLE_METRICS.has(String(metric)):
+		return "'%s' is not a metric the analyzer emits (one of %s)" % [
+				str(metric), ", ".join(EXEMPTABLE_METRICS)]
 	if not (entry is Dictionary):
 		return "exemption for '%s' must be an object with `uids` and `reason`" % str(metric)
 	var uids = (entry as Dictionary).get("uids")

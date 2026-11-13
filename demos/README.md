@@ -641,18 +641,28 @@ where a flee was staged) turns into a red exit code instead of an eyeball catch.
 machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
 follow error, men standing behind the wrong man, facing whipsaw, facing
 flutter, sustained super-physical speed, and crossing routes).
-The follow error and misslot checks are relational, from the dump's `relations`:
-`follow_error` is the RMS error of every man from the place behind his leader and of his interval
-to his dressing man, after fitting the one rotation the men's relations share from the men themselves,
+The follow error, misslot and file-crossing checks are relational, from the dump's `relations`:
+`follow_error` is the larger of two readings.
+One is the RMS error of every man from the place behind his leader and of his interval to his dressing man.
+The other is the RMS walk of every man to his identity place, which the relations chain back through his file and rank
+(so a block compressed, spread, sheared or bent as a whole reads, where each edge stays near its pitch).
+Both are taken after fitting the one rotation the men's relations share from the men themselves,
 so a turn, a fold, a re-deal or a shift of the slot grid cannot read as a defect.
-`misslotted` is the fraction of men standing on the place behind another man rather than behind their
-own leader (or standing in the place of their dressing man, as he does in theirs): behind the right man or not.
-`file_crossing` is the share of men whose route crosses another man's of the same file between two
-judged samples: men walking through each other in a file.
-Like `path_crossing`, it fails when more than 15% of the men do so over two samples running.
+`misslotted` is the fraction of men standing behind another man than their own leader
+(the nearest man ahead in their column),
+or in the place of their dressing man as he stands in theirs.
+It is only judged while the men stand on the grid whoever stands where
+(each man near some place, each place near some man) and still among themselves,
+so a scramble, a block with every file reversed or a single rank traded in places is read,
+while men walking into a reflow, in transit, or trailing off the grid's end are not.
+A headcount drop or a change of who follows whom opens a window until the men settle.
+`file_crossing` is the largest share of any one file's men whose route crosses another man's of that file
+(or who pass through each other along it) between two judged samples.
+Like `path_crossing`, it fails when more than 15% of a file's men do so over two samples running.
 The slot-based `shape_residual` verdict is retired:
-it read a fold or re-deal of the grid under the men as a defect, and every clip that still fails
-`follow_error` reads the same deformation of the men themselves.
+it read a fold or re-deal of the grid under the men as a defect,
+and `follow_error` reads the same deformation of the men themselves where it is real.
+An exemption can only name a metric the analyzer emits, so one keyed on a retired metric is refused.
 A dump taken before `relations` existed is not judged by the relational checks.
 Facing flutter is the small-amplitude counterpart of whipsaw: a facing that flips back and
 forth sample after sample, however small each swing, while marching out of contact.

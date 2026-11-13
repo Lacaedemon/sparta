@@ -21,15 +21,11 @@
   "state": [8, 170, 340, 355, 510, 680],
   "defect_exemptions": {
     "path_crossing": {
-      "uids": [
-        0
-      ],
+      "uids": [0],
       "reason": "The Tight->Loose (1x->4x) expansion re-slots the 36 men across a quadrupling pitch, so half the routes measured from the t170 Tight hold cross while the block spreads (routes measured across the whole cycle, Normal->Loose net, do not cross). The clip's claim is the interval labels and the pitch identity through the cycle, and it deliberately films this expansion."
     },
     "overlap": {
-      "uids": [
-        1
-      ],
+      "uids": [1],
       "reason": "At the t510 Tight sample one horse pair is still resolving the 2x->1x pack (min neighbour 4.25 wu) while the block's 25th-percentile and median neighbour distances already sit on the 20 wu knee-to-knee file pitch. A transient straggler pair during the sampled pack, not standing interpenetration."
     }
   },

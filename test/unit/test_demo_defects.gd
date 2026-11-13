@@ -819,9 +819,9 @@ func test_a_converging_transition_passes_where_a_stuck_defect_fails() -> void:
 	# A rigid translation would be absorbed by the fit, so build genuine shape error
 	# with COMPRESSED grids annealing toward the ordered spacing.
 	var slots: Array = _grid(6, 4, SPACING)
-	var far: Array = _grid(6, 4, SPACING * 0.1)
-	var mid: Array = _grid(6, 4, SPACING * 0.2)
-	var near: Array = _grid(6, 4, SPACING * 0.4)
+	var far: Array = _grid(6, 4, SPACING * 0.3)
+	var mid: Array = _grid(6, 4, SPACING * 0.55)
+	var near: Array = _grid(6, 4, SPACING * 0.8)
 	var converging: Array = [
 		_snapshot(0, far, slots), _snapshot(60, mid, slots), _snapshot(120, near, slots),
 		_snapshot(180, slots.duplicate(), slots)]
@@ -832,6 +832,111 @@ func test_a_converging_transition_passes_where_a_stuck_defect_fails() -> void:
 		_snapshot(120, far.duplicate(), slots)]
 	assert_false(bool(_verdict(DemoDefects.analyze(stuck), "follow_error")["pass"]),
 			"the same magnitude holding flat is a defect")
+
+
+func test_whole_block_deformations_fail_follow_error_where_a_small_one_does_not() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var sheared: Array = []
+	for i in range(slots.size()):
+		sheared.append([float(slots[i][0]) + SPACING * floorf(i / 6.0), slots[i][1]])
+	var cases: Dictionary = {"compressed": _grid(6, 4, SPACING * 0.4),
+			"spread": _grid(6, 4, SPACING * 1.6), "sheared": sheared}
+	for what in cases:
+		var men: Array = cases[what]
+		var snaps: Array = [_snapshot(0, men, slots), _snapshot(60, men, slots), _snapshot(120, men, slots)]
+		assert_false(bool(_verdict(DemoDefects.analyze(snaps), "follow_error")["pass"]),
+				"a block %s as a whole is out of shape" % what)
+	var line: Array = _grid(40, 1, SPACING)
+	var bent: Array = []
+	for i in range(40):
+		bent.append([minf(i, 19.0) * SPACING, maxf(i - 19.0, 0.0) * SPACING])
+	var snaps_bent: Array = [_snapshot(0, bent, line), _snapshot(60, bent, line), _snapshot(120, bent, line)]
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps_bent), "follow_error")["pass"]),
+			"a 40-file line bent through a right angle is out of shape")
+	var nudged: Array = _grid(6, 4, SPACING * 0.9)
+	var ok: Array = [_snapshot(0, nudged, slots), _snapshot(60, nudged, slots), _snapshot(120, nudged, slots)]
+	assert_true(bool(_verdict(DemoDefects.analyze(ok), "follow_error")["pass"]),
+			"a block a tenth tighter than ordered is within tolerance")
+
+
+func test_a_scrambled_block_and_one_with_every_file_reversed_fail_misslotted() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var scrambled: Array = []
+	var reversed: Array = []
+	for i in range(slots.size()):
+		scrambled.append(slots[[17, 3, 22, 9, 14, 0, 19, 6, 11, 23, 2, 15, 8, 20, 5, 13, 1, 18, 10, 21, 7, 12, 4, 16][i]])
+		reversed.append([-float(slots[i][0]), slots[i][1]])
+	for men in [scrambled, reversed]:
+		var snaps: Array = [_snapshot(0, men, slots), _snapshot(60, men, slots), _snapshot(120, men, slots)]
+		assert_false(bool(_verdict(DemoDefects.analyze(snaps), "misslotted")["pass"]),
+				"men on the grid behind the wrong men fail misslotted, however many")
+
+
+func test_a_single_file_walking_back_through_itself_fails_file_crossing_in_a_wide_block() -> void:
+	var grid: Array = _grid(10, 4, SPACING)
+	var back: Array = grid.duplicate()
+	for r in range(4):
+		back[r * 10 + 3] = grid[(3 - r) * 10 + 3]
+	var snaps: Array = [_snapshot(0, grid, grid), _snapshot(30, back, grid), _snapshot(60, grid, grid)]
+	var result: Dictionary = DemoDefects.analyze(snaps)
+	assert_false(bool(_verdict(result, "file_crossing")["pass"]),
+			"one file of ten reversing along itself, the men passing through one another")
+	assert_true(bool(_verdict(result, "path_crossing")["pass"]),
+			"path_crossing, counting the whole block, cannot see it")
+
+
+func test_exemption_error_rejects_a_metric_the_analyzer_does_not_emit() -> void:
+	var entry: Dictionary = {"uids": [0], "reason": "a reason"}
+	assert_ne(DemoDefects.exemption_error("shape_residual", entry), "",
+			"a retired metric forgives nothing, so it is refused")
+	assert_ne(DemoDefects.exemption_error("path_crosing", entry), "", "a typo is refused")
+	for metric in DemoDefects.EXEMPTABLE_METRICS:
+		assert_eq(DemoDefects.exemption_error(metric, entry), "", "%s is a metric analyze emits" % metric)
+
+
+func test_median_relative_speed_ignores_the_blocks_drift_and_reads_men_walking_among_themselves() -> void:
+	var grid: Array = _grid(6, 4, SPACING)
+	var drifted: Array = _grid(6, 4, SPACING, Vector2(30.0, 0.0))
+	assert_almost_eq(DemoDefects.median_relative_speed(grid, drifted, 60), 0.0, 0.001,
+			"a block marching on stands still among itself")
+	var walking: Array = []
+	for i in range(grid.size()):
+		walking.append([float(grid[i][0]), float(grid[i][1]) + (10.0 if i % 2 == 0 else -10.0)])
+	assert_gt(DemoDefects.median_relative_speed(grid, walking, 60), 5.0, "men moving relative to each other")
+
+
+func _mask_series(counts: Array, rms: Array, deals: Array) -> Dictionary:
+	var n: int = counts.size()
+	var ticks: Array = []
+	var zeros: Array = []
+	var frontage: Array = []
+	var formation: Array = []
+	var anchors: Array = []
+	for i in range(n):
+		ticks.append(i * 60)
+		zeros.append(-1)
+		frontage.append(6)
+		formation.append("NORMAL")
+		anchors.append(false)
+	return {"ticks": ticks, "counts": counts, "follow_rms": rms, "follow_far": rms.duplicate(),
+			"deal": deals, "frontage": frontage, "formation": formation, "last_reshape_tick": zeros,
+			"last_redeal_tick": zeros.duplicate(), "anchor_held": anchors,
+			"motion_ref": {"formation_spacing": SPACING, "file_pitch": SPACING, "rank_pitch": SPACING,
+					"jog_speed": 64.0, "back_speed_fraction": 0.5}}
+
+
+func test_a_casualty_or_a_new_deal_opens_a_window_for_misslot_until_the_men_settle() -> void:
+	var series: Dictionary = _mask_series([24, 24, 22, 22, 22], [0.0, 0.0, 20.0, 20.0, 1.0],
+			[[1], [1], [2], [2], [2]])
+	var all_judged: Array = [true, true, true, true, true]
+	assert_eq(DemoDefects.follow_error_mask(series, all_judged), all_judged,
+			"without the flag a headcount drop opens no window")
+	assert_eq(DemoDefects.follow_error_mask(series, all_judged, true), [true, true, false, false, true],
+			"with it, the men closing up are not judged until they have settled")
+	var redealt: Dictionary = _mask_series([24, 24, 24, 24, 24], [0.0, 0.0, 20.0, 20.0, 1.0],
+			[[1], [1], [2], [2], [2]])
+	assert_eq(DemoDefects.follow_error_mask(redealt, all_judged, true), [true, true, false, false, true],
+			"a change of who follows whom opens one at the same headcount")
 
 
 # --- declared expectations (intent as data) ------------------------------------------

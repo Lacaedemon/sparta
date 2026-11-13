@@ -1,18 +1,13 @@
 class_name DemoRelational
 extends RefCounted
-## The men judged against the men they follow, never against a point of a grid in the world.
-## A dump's `relations` (DemoState.relations) name, for each man, the man ahead of him in his
-## file and the man to his right in his rank, with where he stands from each in the grid's own
-## frame as (right, behind). Those relations hold however the block is turned, shifted or folded,
-## so the one rotation the men's relations share is fitted from the men themselves, and what
-## remains is each man's error from the place behind his leader and from his interval to his
-## dressing man. Pure, and a leaf: it runs under bare `godot -s` with no autoloads.
+## The men judged against the men they follow, never against a point of the world. A dump's
+## `relations` (DemoState.relations) name each man's leader (ahead in his file) and dressing man
+## (to his right in his rank) with the offsets from them in the grid's own frame as (right,
+## behind), so a turn, shift or fold of the grid cannot read as an error. Pure, and a leaf.
 
 
-## Each relation edge read off the men at `pos`: [actual, target, man, other, kind], where
-## `actual` is the world vector the men stand at, `target` the grid-frame offset it should be,
-## `man` the man judged, `other` the man he is judged from, and `kind` 0 for a leader edge
-## (man behind other) and 1 for a dressing edge (other to the man's right).
+## Each relation edge at `pos`: [actual world vector, grid-frame target, man, other, kind], kind
+## 0 for a leader edge (man behind other) and 1 for a dressing edge (other to the man's right).
 static func edges(pos: Array, rel: Dictionary) -> Array:
 	var out: Array = []
 	if not rel.has("leaders"):
@@ -31,9 +26,7 @@ static func edges(pos: Array, rel: Dictionary) -> Array:
 	return out
 
 
-## The rotation the grid frame has taken in the world, the one that best fits every edge's
-## target onto where the men stand (the 2-D Kabsch angle over edge vectors, which needs no
-## centroid, so no point of the grid is read).
+## The rotation that best fits every edge's target onto the men (2-D Kabsch over edge vectors).
 static func angle(edge_list: Array) -> float:
 	var dot_sum: float = 0.0
 	var cross_sum: float = 0.0
@@ -43,52 +36,63 @@ static func angle(edge_list: Array) -> float:
 	return atan2(cross_sum, dot_sum)
 
 
-## Whether man `i`, who stands `err` from the place behind his leader (`place` is the offset to
-## it in the world), stands on the place behind some other man instead: within `stand` of it and
-## nearer it than his own. He has taken the wrong man for his leader; a man still walking, near
-## no man's place, has taken none.
-static func _behind_wrong_man(pos: Array, i: int, leader: int, place: Vector2, err: float,
-		stand: float) -> bool:
+## Whether some man other than `leader` stands in man `i`'s column nearer ahead of him than his
+## leader does (or any man does, with the leader out of the column): he is behind the wrong man.
+## The column runs along the grid's ahead axis turned by `turn`, `half_width` to either side.
+static func _behind_wrong_man(pos: Array, i: int, leader: int, turn: float,
+		half_width: float) -> bool:
+	var ahead: Vector2 = Vector2.UP.rotated(turn)
 	var me := Vector2(pos[i][0], pos[i][1])
+	var nearest_other: float = INF
+	var leader_along: float = INF
 	for k in range(pos.size()):
-		if k != i and k != leader \
-				and me.distance_to(Vector2(pos[k][0], pos[k][1]) + place) < minf(err, stand):
-			return true
-	return false
+		var d := Vector2(pos[k][0], pos[k][1]) - me
+		var along: float = d.dot(ahead)
+		if k == i or along <= 0.0 or absf(d.dot(ahead.orthogonal())) > half_width:
+			continue
+		if k == leader:
+			leader_along = along
+		else:
+			nearest_other = minf(nearest_other, along)
+	return nearest_other < leader_along
 
 
-## Reading of one sample: `rms` over every edge's error from where it should be, `far` the
-## largest one, `behind_wrong` the men who stand on the place behind another man rather than
-## behind their leader (or in the very place their dressing man should stand, and he in theirs:
-## two men who have traded places), `settled` the median error of
-## the men with a leader (the gate misslot reads only below: who a man stands nearest in transit
-## is noise, while a minority of swapped men leaves the median where it was, so a swap can
-## still be read), and `men` how many men have a leader. `edges` is zero when the dump carries
-## no relations.
-static func read(pos: Array, rel: Dictionary, stand: float) -> Dictionary:
+## Reading of one sample. `rms`: the larger of the per-edge RMS error (each man from the place
+## behind his leader and his interval to his dressing man) and the whole block's, the RMS walk of
+## every man to his fitted place (DemoRelationalFit). `far`: the farthest walk. `behind_wrong`:
+## men behind another man than their leader, or in the place of their dressing man as he is in
+## theirs. `settled`: the larger of the mean distance from each man to the nearest fitted place
+## of any man and from each place to the nearest man (DemoGridMatch): small for men on the grid
+## whoever stands where, large for men in transit or trailing off the grid.
+static func read(pos: Array, rel: Dictionary, stand: float, half_width: float) -> Dictionary:
 	var list: Array = edges(pos, rel)
 	if list.is_empty():
-		return {"edges": 0, "rms": 0.0, "far": 0.0, "behind_wrong": 0, "settled": 0.0, "men": 0}
+		return {"edges": 0, "rms": 0.0, "far": 0.0, "behind_wrong": 0, "settled": 0.0}
+	var n: int = pos.size()
+	var grid: Dictionary = DemoRelationalFit.grid(rel, n)
+	var fit: Dictionary = DemoRelationalFit.fit(pos, grid["places"], grid["piece"], stand)
+	var cells: PackedVector2Array = fit["cells"]
 	var turn: float = angle(list)
 	var sq: float = 0.0
-	var far: float = 0.0
 	var wrong: Dictionary = {}
-	var led_errors: Array = []
 	for e in list:
-		var place: Vector2 = (e[1] as Vector2).rotated(turn)
-		var err: float = ((e[0] as Vector2) - place).length()
-		sq += err * err
-		far = maxf(far, err)
+		sq += ((e[0] as Vector2) - (e[1] as Vector2).rotated(turn)).length_squared()
+		var theta: float = fit["grid_theta"][e[2]]
 		if e[4] == 1:
-			if ((e[0] as Vector2) + place).length() < stand:
+			if ((e[0] as Vector2) + (e[1] as Vector2).rotated(theta)).length() < stand:
 				wrong[e[2]] = true
 				wrong[e[3]] = true
-			continue
-		led_errors.append(err)
-		if _behind_wrong_man(pos, e[2], e[3], place, err, stand):
+		elif _behind_wrong_man(pos, e[2], e[3], theta, half_width):
 			wrong[e[2]] = true
-	led_errors.sort()
-	return {"edges": list.size(), "rms": sqrt(sq / list.size()), "far": far,
-			"behind_wrong": wrong.size(),
-			"settled": led_errors[floori(led_errors.size() / 2.0)] if not led_errors.is_empty() else 0.0,
-			"men": led_errors.size()}
+	var walk_sq: float = 0.0
+	var far: float = 0.0
+	var near_sum: float = 0.0
+	var fill_sum: float = 0.0
+	for i in range(n):
+		var walk: float = Vector2(pos[i][0], pos[i][1]).distance_to(cells[i])
+		walk_sq += walk * walk
+		far = maxf(far, walk)
+		near_sum += fit["near"][i]
+		fill_sum += fit["fill"][i]
+	return {"edges": list.size(), "rms": maxf(sqrt(sq / list.size()), sqrt(walk_sq / n)),
+			"far": far, "behind_wrong": wrong.size(), "settled": maxf(near_sum, fill_sum) / n}

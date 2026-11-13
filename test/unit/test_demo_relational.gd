@@ -71,7 +71,7 @@ func test_a_block_in_its_places_reads_zero_however_it_is_turned_or_shifted() -> 
 	var rel: Dictionary = _rel(local)
 	for angle in [0.0, 0.7, PI, -2.0]:
 		var read: Dictionary = DemoRelational.read(_men(local, angle, Vector2(300.0, -80.0)),
-				rel, PITCH * 0.25)
+				rel, PITCH * 0.25, PITCH * 0.5)
 		assert_almost_eq(float(read["rms"]), 0.0, 0.001, "a rigid turn is not an error")
 		assert_almost_eq(float(read["far"]), 0.0, 0.001)
 		assert_eq(read["behind_wrong"], 0, "every man stands behind his own leader")
@@ -81,7 +81,7 @@ func test_a_man_off_his_place_reads_his_distance_from_it() -> void:
 	var local := _local(3, 3)
 	var men: Array = _men(local)
 	men[4][0] += 6.0
-	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25)
+	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25, PITCH * 0.5)
 	assert_gt(float(read["rms"]), 0.0)
 	assert_almost_eq(float(read["far"]), 6.0, 0.7, "the worst edge is the man's own displacement")
 
@@ -92,7 +92,7 @@ func test_two_men_who_traded_files_stand_behind_the_wrong_men() -> void:
 	var swap: Array = men[6]
 	men[6] = men[8]
 	men[8] = swap
-	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25)
+	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25, PITCH * 0.5)
 	assert_gte(int(read["behind_wrong"]), 2, "the two who traded stand behind each other's leaders")
 
 
@@ -102,10 +102,81 @@ func test_two_men_who_traded_places_in_a_rank_stand_on_the_wrong_side() -> void:
 	var swap: Array = men[0]
 	men[0] = men[1]
 	men[1] = swap
-	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25)
+	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25, PITCH * 0.5)
 	assert_eq(read["behind_wrong"], 2, "each of the pair has his dressing man on the wrong side")
 
 
 func test_a_dump_without_relations_reads_no_edges() -> void:
-	var read: Dictionary = DemoRelational.read(_men(_local(2, 2)), {}, PITCH * 0.25)
+	var read: Dictionary = DemoRelational.read(_men(_local(2, 2)), {}, PITCH * 0.25, PITCH * 0.5)
 	assert_eq(read["edges"], 0, "nothing to judge against, so nothing is claimed")
+
+
+## The reading of `men` standing off their own places in `local`'s relations.
+func _rms(local: PackedVector2Array, men: Array) -> float:
+	return float(DemoRelational.read(men, _rel(local), PITCH * 0.25, PITCH * 0.5)["rms"])
+
+
+func test_a_block_compressed_or_spread_as_a_whole_reads_far_past_the_pitch() -> void:
+	var local := _local(6, 4)
+	var floor_rms: float = 0.75 * PITCH
+	for scale in [0.3, 0.5, 1.6]:
+		var men: Array = []
+		for p in local:
+			var q: Vector2 = (p - Vector2(2.5 * PITCH, 1.5 * RANK)) * scale
+			men.append([q.x, q.y])
+		assert_gt(_rms(local, men), floor_rms, "a block scaled to %s of its intervals is out of shape" % scale)
+
+
+func test_a_block_sheared_one_pitch_a_rank_reads_far_past_the_pitch() -> void:
+	var local := _local(6, 4)
+	var men: Array = []
+	for p in local:
+		men.append([p.x + PITCH * round(p.y / RANK), p.y])
+	assert_gt(_rms(local, men), 0.75 * PITCH)
+
+
+func test_a_line_of_forty_files_bent_through_a_right_angle_reads_far_past_the_pitch() -> void:
+	var local := _local(40, 1)
+	var men: Array = []
+	for i in range(40):
+		men.append([minf(i, 19) * PITCH, maxf(i - 19, 0) * PITCH])
+	assert_gt(_rms(local, men), 0.75 * PITCH, "every edge is one pitch long, but the line is bent")
+	var edge_only: float = 0.0
+	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25, PITCH * 0.5)
+	for e in DemoRelational.edges(men, _rel(local)):
+		edge_only = maxf(edge_only, ((e[0] as Vector2) - (e[1] as Vector2)).length())
+	assert_gt(float(read["far"]), 5.0 * PITCH, "the far end stands far from its place")
+
+
+func test_a_full_scramble_and_a_block_with_every_file_reversed_are_misslotted() -> void:
+	var local := _local(6, 4)
+	var scrambled: Array = []
+	for i in range(local.size()):
+		var q: Vector2 = local[[17, 3, 22, 9, 14, 0, 19, 6, 11, 23, 2, 15, 8, 20, 5, 13, 1, 18, 10, 21, 7, 12, 4, 16][i]]
+		scrambled.append([q.x, q.y])
+	var read: Dictionary = DemoRelational.read(scrambled, _rel(local), PITCH * 0.25, PITCH * 0.5)
+	assert_lt(float(read["settled"]), PITCH * 0.25, "men on the grid, whoever stands where, are settled")
+	assert_gt(int(read["behind_wrong"]), local.size() / 4, "a scramble puts the men behind the wrong men")
+	var reversed: Array = []
+	for p in local:
+		reversed.append([5.0 * PITCH - p.x, p.y])
+	read = DemoRelational.read(reversed, _rel(local), PITCH * 0.25, PITCH * 0.5)
+	assert_lt(float(read["settled"]), PITCH * 0.25)
+	assert_gt(int(read["behind_wrong"]), local.size() / 4, "every file reversed is every man beside the wrong man")
+
+
+func test_a_single_rank_traded_in_places_is_misslotted_and_one_in_transit_is_not() -> void:
+	var local := _local(10, 1)
+	var men: Array = _men(local)
+	for k in range(4):
+		var tmp = men[2 * k]
+		men[2 * k] = men[2 * k + 1]
+		men[2 * k + 1] = tmp
+	var read: Dictionary = DemoRelational.read(men, _rel(local), PITCH * 0.25, PITCH * 0.5)
+	assert_eq(int(read["behind_wrong"]), 8, "eight of the ten stand where their dressing man should")
+	assert_lt(float(read["settled"]), PITCH * 0.25)
+	var between: Array = []
+	for p in local:
+		between.append([p.x * 0.5 + PITCH * 0.25, p.y])
+	assert_gt(float((DemoRelational.read(between, _rel(local), PITCH * 0.25, PITCH * 0.5))["settled"]),
+			PITCH * 0.1, "men between places are not settled")
