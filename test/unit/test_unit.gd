@@ -1934,6 +1934,7 @@ func test_terrain_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> 
 		uneven_files.append(2)
 	deep._sim_soldier_file = uneven_files
 	deep._file_assignment_files = 3
+	deep._sim_soldier_pos = deep.soldier_world_slots(deep.soldiers)   # the men stand on those places
 	var deepest_file_ranks: int = 8   # file 0's real survivor count
 	var ranks_for_estimate: int = UnitFormation.ranks_for(deep.soldiers, 3)
 	assert_lt(ranks_for_estimate, deepest_file_ranks,
@@ -1964,6 +1965,7 @@ func test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> v
 		uneven_files.append(2)
 	deep._sim_soldier_file = uneven_files
 	deep._file_assignment_files = 3
+	deep._sim_soldier_pos = deep.soldier_world_slots(deep.soldiers)   # the men stand on those places
 	var half_frontage: float = 0.5 * float(maxi(0, deep.formation_files(deep.soldiers) - 1)) * deep.file_pitch_wu()
 	var half_depth_real: float = 0.5 * 7.0 * deep.rank_pitch_wu()   # 8 ranks in file 0 -> 7 gaps
 	var expected: float = Vector2(half_frontage, half_depth_real).length() + deep.soldier_body_radius()
@@ -2137,9 +2139,8 @@ func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> 
 	other.set_current_order(link)
 	link.friendly_target = u
 	u._far_tier_half_extents()
-	# (More than once: finding the partner falls back to the live slots, whose corridor
-	# step looks the partner up again.)
-	assert_gt(u._relief_reverse_scan_count, before, "a live link elsewhere: the scan runs")
+	assert_eq(u._relief_reverse_scan_count, before,
+			"a live link elsewhere: still no scan, a far block has no men to open a corridor in")
 	other.set_current_order(null)
 
 
@@ -2367,6 +2368,7 @@ func test_congested_same_team_router_uses_the_scanned_units_cheap_estimate_not_i
 		uneven_files.append(2)
 	b._sim_soldier_file = uneven_files
 	b._file_assignment_files = 3
+	b._sim_soldier_pos = b.soldier_world_slots(b.soldiers)   # the men stand on those places
 	var exact_radius: float = a.corner_clearance() + b.corner_clearance()
 	var cheap_radius: float = a.corner_clearance() + b._pivot_radius() + b.soldier_body_radius()
 	assert_gt(exact_radius, cheap_radius + 10.0,
@@ -4367,8 +4369,8 @@ func test_body_tier_in_square_narrows_within_the_threatened_set_not_the_whole_bl
 	# stay green while the single-test run failed).
 	SoldierEnemyProximity.reset()
 	var u := _make_unit(60)
-	u.seed_sim_soldiers()
 	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()   # the men stand in the square: the block's extent is theirs
 	assert_true(u.in_square(), "sanity: the unit is in a square")
 	var enemy := _make_unit(60)
 	enemy.team = 1
@@ -7081,14 +7083,11 @@ func test_block_extent_measures_about_the_shifted_centre() -> void:
 	# size as the centred block's, not inflated to cover the offset from the
 	# regiment point -- while the default (containment) measurement still grows.
 	var u := _make_unit()
-	var centred: float = SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers))
+	var centred: float = SoldierFlock.compute_extent(u, true)
 	u.frontage_anchor_offset = 40.0
-	var slots: PackedVector2Array = u.formation_slots(u.soldiers)
-	assert_almost_eq(
-			SoldierFlock.compute_extent(u, slots, Vector2(u.frontage_anchor_offset, 0.0)),
-			centred, 0.001,
+	assert_almost_eq(SoldierFlock.compute_extent(u, true), centred, 0.001,
 			"measured about its own centre, the shifted block is the same size")
-	assert_gt(SoldierFlock.compute_extent(u, slots), centred,
+	assert_gt(SoldierFlock.compute_extent(u), centred,
 			"the default from-the-regiment-point measurement still covers the shifted reach")
 
 
