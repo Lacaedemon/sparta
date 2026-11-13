@@ -6526,7 +6526,7 @@ func _explicatio_cell_men(cells: Dictionary, pos: Vector2, place: Vector2, cell:
 	var out_cells: int = ceili((cell * sin(EXPLICATIO_TILT_MAX) + clear) / cell)
 	var a0: int = floori(minf(pos.dot(right), place.dot(right)) / cell) - out_cells
 	var a1: int = floori(maxf(pos.dot(right), place.dot(right)) / cell) + out_cells
-	var sway: float = (clear + absf((place - pos).dot(right))) * sin(EXPLICATIO_TILT_MAX)
+	var sway: float = (clear + (place - pos).length()) * sin(EXPLICATIO_TILT_MAX)
 	var l0: int = floori((pos.dot(front) - behind - sway) / cell)
 	var l1: int = floori((pos.dot(front) + cell + sway) / cell)
 	var out := PackedInt32Array()
