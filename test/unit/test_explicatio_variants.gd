@@ -69,6 +69,21 @@ func _extent(u: Unit, axis: Vector2) -> Vector2:
 	return Vector2(lo, hi)
 
 
+## Each file leader's place across the front before a widen, keyed by his index: the man at rank 0
+## of his file, or, while the ranks are not dealt (an empty rank array means each man's rank is
+## his order among the earlier entries of his file), the first man of his file in array order.
+func _file_leaders_across(u: Unit, right: Vector2) -> Dictionary:
+	var out: Dictionary = {}
+	var seen: Dictionary = {}
+	var dealt: bool = u._sim_soldier_rank.size() == u.soldiers
+	for i in range(u.soldiers):
+		var f: int = u._sim_soldier_file[i]
+		if (dealt and u._sim_soldier_rank[i] == 0) or (not dealt and not seen.has(f)):
+			out[i] = u._sim_soldier_pos[i].dot(right)
+		seen[f] = true
+	return out
+
+
 ## Walk the drill under way for up to `ticks` ticks: the farthest the front went ahead of the line
 ## it stood on and behind it ("ahead", "behind"), the farthest any man of the front rank ended off
 ## it ("end_line"), the closest two men came ("closest"), the farthest any man got ahead of the
@@ -139,7 +154,7 @@ func _assert_drill(u: Unit, walk: Dictionary, files: int, floor_wu: float, what:
 # and file_crossing read 0 on dense dumps of both).
 func _floor(u: Unit, drill: int, side: int = OUTWARD, ground: int = LENGTHEN,
 		start_mode: int = Unit.FORMATION_TIGHT) -> float:
-	var short: bool = side == INWARD \
+	var short: bool = UnitFormation.explicatio_ground_side(side, ground) == INWARD \
 			or (ground == SAME_GROUND and start_mode == Unit.FORMATION_LOOSE)
 	if drill == ALTERNATE_RANK and not short:
 		return u.soldier_body_radius()
@@ -378,6 +393,23 @@ func test_the_b_key_deals_the_selection_managers_readings() -> void:
 	assert_eq(cmd["explicatio_ground"], SAME_GROUND, "and the ground")
 
 
+## A widen on the same ground rides the replay the battle records.
+func test_a_same_ground_widen_rides_the_recorded_replay() -> void:
+	var u: Unit = await _stage()
+	u.set_formation(Unit.FORMATION_NORMAL)
+	var old_mode: int = Replay.mode
+	Replay.mode = Replay.Mode.RECORD
+	Replay._order_stream.reset()
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE, SHIELD_SIDE, SAME_GROUND)
+	await get_tree().physics_frame
+	var recorded: Array = Replay._order_stream.orders.duplicate()
+	Replay.mode = old_mode
+	Replay._order_stream.reset()
+	assert_eq(recorded.size(), 1, "precondition: the widen is recorded")
+	assert_eq(recorded[0].get("explicatio_side", -1), SHIELD_SIDE, "the entry names the side")
+	assert_eq(recorded[0].get("explicatio_ground", -1), SAME_GROUND, "and the ground")
+
+
 ## An inward drill under way rides a snapshot, and its widen rides the replay the battle records.
 func test_an_inward_drill_rides_a_snapshot_and_the_recorded_replay() -> void:
 	var u: Unit = await _stage()
@@ -385,14 +417,14 @@ func test_an_inward_drill_rides_a_snapshot_and_the_recorded_replay() -> void:
 	var old_mode: int = Replay.mode
 	Replay.mode = Replay.Mode.RECORD
 	Replay._order_stream.reset()
-	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE, INWARD, SAME_GROUND)
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE, INWARD)
 	await get_tree().physics_frame
 	var recorded: Array = Replay._order_stream.orders.duplicate()
 	Replay.mode = old_mode
 	Replay._order_stream.reset()
 	assert_eq(recorded.size(), 1, "precondition: the widen is recorded")
 	assert_eq(recorded[0].get("explicatio_side", -1), INWARD, "the recorded entry names the side")
-	assert_eq(recorded[0].get("explicatio_ground", -1), SAME_GROUND, "and the ground")
+	assert_false(recorded[0].has("explicatio_ground"), "and no ground: it lengthens")
 	assert_true(u._explicatio_inward, "precondition: the drill opens inward")
 	var snap: Dictionary = u.to_snapshot_dict()
 	u._end_explicatio_drill()
@@ -414,6 +446,30 @@ func test_a_combo_widen_step_deals_its_readings() -> void:
 	assert_eq(u.formation_mode, Unit.FORMATION_TIGHT, "on the same ground")
 
 
+## A combo's widen step on the same ground, for a block with no closer order to take, is
+## skipped quietly, as Battle does not issue the B order to it: no error, and the width stays.
+func test_a_combo_same_ground_step_without_a_closer_order_is_skipped() -> void:
+	var u: Unit = await _stage()
+	assert_eq(u.formation_mode, Unit.FORMATION_TIGHT, "precondition: Spearmen at locked shields")
+	var files: int = UnitFormation.frontage(u)
+	u._apply_file_double_step(Order.new_file_double(1, HALF_FILE, SPEAR_SIDE, SAME_GROUND))
+	assert_eq(UnitFormation.frontage(u), files, "the width stays")
+	assert_false(u.explicatio_drill_active(), "no drill")
+	u._apply_file_double_step(Order.new_file_double(-1, HALF_FILE, SPEAR_SIDE, SAME_GROUND))
+	assert_lt(UnitFormation.frontage(u), files, "a narrowing step ignores the ground")
+
+
+## On the same ground OUTWARD and INWARD read as the spear side; every other side, and every side
+## when the line lengthens, is as named.
+func test_the_same_ground_opens_on_one_side() -> void:
+	for side in [OUTWARD, INWARD]:
+		assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND), SPEAR_SIDE)
+		assert_eq(UnitFormation.explicatio_ground_side(side, LENGTHEN), side)
+	for side in [SPEAR_SIDE, SHIELD_SIDE]:
+		assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND), side)
+		assert_eq(UnitFormation.explicatio_ground_side(side, LENGTHEN), side)
+
+
 ## Held on a flank there is no inward reading: an inward widen held on the right is the outward
 ## one, the corner file standing and every interval opening on the left.
 func test_an_inward_widen_held_on_a_flank_is_the_outward_one() -> void:
@@ -432,41 +488,52 @@ func test_an_inward_widen_held_on_a_flank_is_the_outward_one() -> void:
 ## keep their ground across the front, and the flanks stand where they stood but for the one file
 ## that opens beyond the right flank's last file, half an old pitch.
 func test_the_same_ground_keeps_the_length_and_closes_the_order() -> void:
-	for start in [Unit.FORMATION_NORMAL, Unit.FORMATION_LOOSE]:
-		for drill in [HALF_FILE, ALTERNATE_RANK]:
-			var what: String = "mode %d drill %d" % [start, drill]
-			var u: Unit = await _stage()
-			u.set_formation(start)
-			for _i in range(DRILL_TICKS):
-				await get_tree().physics_frame
-			var old_pitch: float = u.file_pitch_wu()
-			var right: Vector2 = _right(u)
-			var before: Vector2 = _extent(u, right)
-			var leaders_before: Dictionary = {}
-			for i in range(u.soldiers):
-				if u._sim_soldier_rank.size() == u.soldiers and u._sim_soldier_rank[i] == 0:
-					leaders_before[i] = u._sim_soldier_pos[i].dot(right)
-			_battle.enqueue_file_double([u.uid], 1, CENTRE, drill, OUTWARD, SAME_GROUND)
-			assert_true(u.explicatio_drill_active(), "%s: the widen is the drill" % what)
-			assert_eq(u.formation_mode, Unit.denser_formation_mode(start),
-				"%s: the block closes one order" % what)
-			assert_almost_eq(u.file_pitch_wu(), 0.5 * old_pitch, 0.001,
-				"%s: at half the file pitch" % what)
-			var walk: Dictionary = await _walk(u, DRILL_TICKS)
-			_assert_drill(u, walk, 18, _floor(u, drill, OUTWARD, SAME_GROUND, start), what)
-			var after: Vector2 = _extent(u, right)
-			assert_almost_eq(after.x, before.x, 0.25 * u.file_pitch_wu(),
-				"%s: the left flank stands where it stood" % what)
-			assert_almost_eq(after.y - before.y, 0.5 * old_pitch, 0.25 * u.file_pitch_wu(),
+	for combo in [[Unit.FORMATION_NORMAL, HALF_FILE, OUTWARD],
+			[Unit.FORMATION_LOOSE, HALF_FILE, OUTWARD],
+			[Unit.FORMATION_NORMAL, ALTERNATE_RANK, INWARD],
+			[Unit.FORMATION_LOOSE, ALTERNATE_RANK, SPEAR_SIDE],
+			[Unit.FORMATION_NORMAL, HALF_FILE, SHIELD_SIDE],
+			[Unit.FORMATION_LOOSE, ALTERNATE_RANK, SHIELD_SIDE]]:
+		var start: int = combo[0]
+		var drill: int = combo[1]
+		var side: int = combo[2]
+		var what: String = "mode %d drill %d side %d" % [start, drill, side]
+		var u: Unit = await _stage()
+		u.set_formation(start)
+		for _i in range(DRILL_TICKS):
+			await get_tree().physics_frame
+		var old_pitch: float = u.file_pitch_wu()
+		var right: Vector2 = _right(u)
+		var before: Vector2 = _extent(u, right)
+		var leaders_before: Dictionary = _file_leaders_across(u, right)
+		assert_eq(leaders_before.size(), 9, "%s: precondition: a leader for each file" % what)
+		_battle.enqueue_file_double([u.uid], 1, CENTRE, drill, side, SAME_GROUND)
+		assert_eq(u._explicatio_lane_split, 0 if side != SHIELD_SIDE else 9,
+			"%s: every interval opens on one side" % what)
+		assert_true(u.explicatio_drill_active(), "%s: the widen is the drill" % what)
+		assert_eq(u.formation_mode, Unit.denser_formation_mode(start),
+			"%s: the block closes one order" % what)
+		assert_almost_eq(u.file_pitch_wu(), 0.5 * old_pitch, 0.001,
+			"%s: at half the file pitch" % what)
+		var walk: Dictionary = await _walk(u, DRILL_TICKS)
+		_assert_drill(u, walk, 18, _floor(u, drill, side, SAME_GROUND, start), what)
+		var after: Vector2 = _extent(u, right)
+		var quarter: float = 0.25 * u.file_pitch_wu()
+		var grown: float = 0.5 * old_pitch
+		if side == SHIELD_SIDE:
+			assert_almost_eq(after.y, before.y, quarter, "%s: the right flank stands" % what)
+			assert_almost_eq(before.x - after.x, grown, quarter,
+				"%s: the left flank gains half an old pitch" % what)
+		else:
+			assert_almost_eq(after.x, before.x, quarter, "%s: the left flank stands" % what)
+			assert_almost_eq(after.y - before.y, grown, quarter,
 				"%s: the right flank gains half an old pitch" % what)
-			var drift: float = 0.0
-			for i in leaders_before:
-				if UnitFormation.explicatio_file_stays(u._sim_soldier_file[i], 4) \
-						and u._sim_soldier_rank[i] == 0:
-					drift = maxf(drift, absf(u._sim_soldier_pos[i].dot(right) - leaders_before[i]))
-			assert_lt(drift, 0.25 * u.file_pitch_wu(),
-				"%s: a file leader who stays moved %.2f wu across the front" % [what, drift])
-			await _free_battle()
+		var drift: float = 0.0
+		for i in leaders_before:
+			drift = maxf(drift, absf(u._sim_soldier_pos[i].dot(right) - leaders_before[i]))
+		assert_lt(drift, quarter,
+			"%s: a file leader moved %.2f wu across the front" % [what, drift])
+		await _free_battle()
 
 
 ## A block at locked shields (where Spearmen stand) has no closer order: the B order on the same

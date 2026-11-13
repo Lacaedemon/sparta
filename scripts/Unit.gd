@@ -6306,7 +6306,9 @@ func _reset_shield_hold_angles() -> void:
 ## its file pitch or its ground. A widen that keeps its ground closes the block by one order of
 ## spacing (denser_formation_mode) as its files double, drill or lateral deal; a block with no
 ## closer order to take cannot keep its ground, and that widen is refused, said out loud, with
-## the width left as it was (Battle.enqueue_file_double never issues one).
+## the width left as it was (Battle.enqueue_file_double never issues one, and a combo step skips
+## it, _apply_file_double_step). A widen on the same ground opens every interval on one side
+## (UnitFormation.explicatio_ground_side), so every file it had keeps its ground.
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
 		held_flank: int = UnitFormation.Anchor.CENTRE,
@@ -6326,8 +6328,9 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 	_bake_formation_mirror()
 	_end_explicatio_drill()   # a new width supersedes a drill still under way
 	var dealt: Dictionary = {}
-	var split: int = UnitFormation.explicatio_lane_split(old_files, held_flank, explicatio_side)
-	var inward: bool = UnitFormation.explicatio_inward(held_flank, explicatio_side)
+	var side: int = UnitFormation.explicatio_ground_side(explicatio_side, explicatio_ground)
+	var split: int = UnitFormation.explicatio_lane_split(old_files, held_flank, side)
+	var inward: bool = UnitFormation.explicatio_inward(held_flank, side)
 	if explicatio_drill != UnitFormation.ExplicatioDrill.NONE \
 			and _can_deal_explicatio(old_files, target_files):
 		dealt = UnitFormation.explicatio_assignment(_sim_soldier_file, _sim_soldier_rank,
@@ -6350,7 +6353,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 		# new one's), captured before the frontage actually changes underneath it.
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
 	if denser >= 0:
-		set_formation(denser)   # the doubled files keep the ground at half the pitch
+		set_formation(denser)   # the inserted files halve the pitch on the same ground
 	if not dealt.is_empty():
 		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill, split, inward)
 	note_front_depth()   # a narrower frontage deepens the block
@@ -8386,7 +8389,14 @@ func _arm_combo_step(step: Order) -> bool:
 ##   a lag of minus 60 degrees turns the grid by 120, exactly as a 120 degree fold would): the
 ##   fold never drops a half-turn as a point reflection here.
 ## - Otherwise the fold and the grid agree, and a lag goes on closing.
+## A widening step on the same ground (Order.explicatio_ground) for a block with no closer order
+## of spacing to take (denser_formation_mode) is skipped, as Battle.enqueue_file_double does not
+## issue the B order to it: it cannot keep its ground.
 func _apply_file_double_step(step: Order) -> void:
+	if step.dir > 0 and step.explicatio_drill != UnitFormation.ExplicatioDrill.NONE \
+			and step.explicatio_ground == UnitFormation.ExplicatioGround.SAME_GROUND \
+			and denser_formation_mode(formation_mode) < 0:
+		return
 	var files: int = step.frontage
 	if step.dir != 0:
 		var current: int = UnitFormation.frontage(self)

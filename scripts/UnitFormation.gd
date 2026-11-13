@@ -1266,7 +1266,9 @@ enum ExplicatioDrill { NONE = 0, HALF_FILE = 1, ALTERNATE_RANK = 2 }
 ## - INWARD: each wing's intervals open toward the middle. Bingham's own note on chapter 33: "The
 ##   files next the middle section stand fast, and the right wing turne faces to the Target, the
 ##   left to the Pike". The intervals of the two middle files then both open between them, so
-##   only one of the two can stand fast; the right-hand one stands (explicatio_stand_old_file).
+##   only one of the two can stand fast. Which one is the sim's choice, not the note's: the
+##   right-hand one stands, as the guide does outward (explicatio_stand_old_file), and the
+##   left-hand one steps out two file pitches.
 ##   A widen held on one flank has no inward reading: for a phalanx closed to a wing the note's
 ##   words of command move "the rest" from the corner file "to the Target", as the text does, so
 ##   INWARD held on a flank is OUTWARD (explicatio_inward).
@@ -1285,10 +1287,16 @@ enum ExplicatioSide { OUTWARD = 0, INWARD = 1, SPEAR_SIDE = 2, SHIELD_SIDE = 3 }
 ##   inserted between the original files, "maintaining all the while the length of the phalanx,
 ##   so that a compact order arises"; Aelian 29.3, "keeping the same ground". The file pitch
 ##   halves, so the block closes by one order of spacing, open order into compact and compact into
-##   locked shields (Asclepiodotus 4.1: four cubits, two, and one, "on all sides"), on both axes,
-##   and its file leaders keep their ground. Bingham's note on 29.3 says it "must be done in open
-##   order"; a block already at locked shields has no closer order to take, and its widen is
-##   refused (Unit.denser_formation_mode).
+##   locked shields (Asclepiodotus 4.1: four cubits, two, and one, "on all sides"), on both axes.
+##   Every original file keeps its place and each new file comes up in the gap beside the file it
+##   opened from, so every interval opens on the same side: SPEAR_SIDE or SHIELD_SIDE, the sources
+##   being silent on which. Asked for OUTWARD or INWARD, which would leave two neighbouring files
+##   with no gap between them and close the wings on it, the sim takes the spear side
+##   (explicatio_ground_side), its own choice; so the one new file beyond the last original file
+##   lengthens the line by half an old pitch on the right (the left on the shield side), also the
+##   sim's inference. Bingham's note on 29.3 says it "must be done in open order"; a block already
+##   at locked shields has no closer order to take, and its widen is refused
+##   (Unit.denser_formation_mode).
 enum ExplicatioGround { LENGTHEN = 0, SAME_GROUND = 1 }
 ## Roles a man takes in an explicatio's new file: the man who leads a column up an interval.
 ## HEMILOCHITES leads a half-file (HALF_FILE); EPISTATES, the first epistates, the man behind the
@@ -1317,6 +1325,16 @@ static func explicatio_lane_split(old_files: int, held_flank: int,
 	if held_flank > 0:
 		return old_files
 	return old_files / 2
+
+
+## The side an explicatio of `side` on `ground` (ExplicatioGround) opens its intervals on: `side`,
+## except that on the same ground only a one-sided split puts each new file in the gap beside the
+## file it opened from, so OUTWARD and INWARD read as SPEAR_SIDE there, the sim's default.
+static func explicatio_ground_side(side: int, ground: int) -> int:
+	if ground == ExplicatioGround.SAME_GROUND \
+			and (side == ExplicatioSide.OUTWARD or side == ExplicatioSide.INWARD):
+		return ExplicatioSide.SPEAR_SIDE
+	return side
 
 
 ## Whether an explicatio of `side` (ExplicatioSide) held on `held_flank` (-1 left, +1 right, 0

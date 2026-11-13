@@ -140,7 +140,8 @@ Which side of each file its interval opens on (`UnitFormation.ExplicatioSide`):
   Widened about the middle, every interval of the left wing opens on the right of its file, toward the middle, and every interval of the right wing on the left.
   The intervals of the two files next to the middle then both open between them,
   so only one of the two can stand fast:
-  the right-hand one stands, as in the outward reading, and the left-hand one steps out two file pitches to make room.
+  which one is the sim's choice, not the note's.
+  The right-hand one stands, as the guide does in the outward reading, and the left-hand one steps out two file pitches to make room.
   9 files doubled to 18 move the left flank out 5 file pitches and the right 4.
   Held on a flank there is no inward reading, since the note's words of command for a wing move "the rest" to the Target as the text does,
   so an inward widen held on a flank is the outward one.
@@ -166,9 +167,15 @@ Whether the doubled line keeps its pitch or its ground (`UnitFormation.Explicati
 - **`same_ground`** (Asclepiodotus 10.17, Aelian 29.3).
   The line keeps its length.
   The block closes one order of spacing as its files double, open order into compact and compact into locked shields, on both axes (Asclepiodotus 4.1),
-  so the file pitch halves,
-  and every file leader whose file stays keeps the ground he stood on while the new files come up between them.
-  The one interval that opens beyond the last file of a wing adds half the old pitch on that flank.
+  so the file pitch halves.
+  Asclepiodotus inserts the new files "between the original files":
+  every original file keeps its place, file leader included,
+  and each new file comes up in the gap beside the file it opened from.
+  That needs every interval on the same side of its file, so the same ground takes the spear side or the shield side, the sources saying neither.
+  Asked for the outward or inward reading, which would leave two neighbouring original files with no gap between them and close each wing on the middle by half the old pitch,
+  the sim takes the spear side instead; that default is the sim's choice.
+  The one new file beyond the last original file then lengthens the line by half the old pitch,
+  on the right on the spear side and on the left on the shield side, which is also the sim's inference.
   Bingham's note on 29.3 says it "must be done in open order".
   A block already at locked shields, or in a shield wall, testudo or square, has no closer order to take,
   so it cannot keep its ground: the order is not issued to it.
