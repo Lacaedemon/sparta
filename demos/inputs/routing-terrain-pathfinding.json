@@ -191,11 +191,5 @@
       "field": "soldiers_in_block_terrain",
       "value": 0
     }
-  ],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [0],
-      "reason": "uid 0 (the router): it rallies at tick 704, and the 16 ticks to the clip's end are its only judged samples (a router is not judged). Through them it coasts with its heading held where its flight turn had reached (-110 degrees), and its re-square waits for the coast to stop, after the clip, so its men stand about 41 to 45 wu off their slots on average (45.1 wu at tick 704, 41.2 at tick 720). That is the bounded flight turn's lag (the anchor runs along the flight line while the heading and grid turn behind it), not a scramble: the gap stays between about 13 and 45 wu from the rout on. Sustained shape residual 44.6 wu on 2-tick samples from the divergence (tick 343), against 69.7 wu on main bb2a9e4f, where the in-contact flight snap swung the grid under the men. The residual left is the deep router's slow bounded flight turn, which leaves it rallying 20 degrees off its flight line, and the rally re-square falling after the clip (#1812). Measured 2026-10-11. Re-measured: Dense 2-tick FULL dumps, every exemption removed, Windows, seeds 0 to 4, measured 2026-11-04: aeb67079 reads 44.77, 44.78, 44.70, 44.80, 44.74; 3c442b07 (a cavalry troop in contact wheels onto its enemy at a bounded rate, #1806) reads 45.26 on every seed: the router's own re-face as the charge lands wheels instead of snapping, so it fights and flees a little differently."
-    }
-  }
+  ]
 }

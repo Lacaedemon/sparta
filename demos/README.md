@@ -673,7 +673,8 @@ a declaration would silently disable every check for the clip. Post-contact samp
 melee press legitimately compresses a block -- and the sustained checks are
 convergence-aware: a long transition (a reshape, a big commanded turn) that steadily
 improves toward tolerance is read as healthy, while the same magnitude holding flat or
-worsening is a defect. Misslot only counts once the men are actually standing in their
+worsening is a defect.
+Misslot only counts once the men are actually standing in their
 places (who a man stands behind is noise mid-transit).
 
 `path_crossing` is the one metric that scores the ROUTE rather than the destination, and it

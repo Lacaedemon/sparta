@@ -29,12 +29,6 @@
     }
   ],
   "steps": [],
-  "defect_exemptions": {
-    "misslotted": {
-      "uids": [0],
-      "reason": "After the rally the block coasts to a stop and re-squares at tick 300, and the men of the four short files then walk one pitch (9 wu) forward onto their new cells: misslotted reads 0.267 on 2-tick samples from tick 30 to tick 480, against the 0.25 threshold (0.917 on main 7d209821, where all 60 men re-paired at the rally). Tracked in #1766. Measured 2026-10-11."
-    }
-  },
   "state": [
     30,
     120,

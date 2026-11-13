@@ -23,12 +23,6 @@
         1
       ],
       "reason": "Archers execute a drilled rear-move about-face and rear-rank countermarch reform, passing ranks through each other during the turn. Measured on the density re-pin."
-    },
-    "misslotted": {
-      "uids": [
-        1
-      ],
-      "reason": "Soldiers transiently displace from target slots during the rapid rear countermarch before settling. Measured on the density re-pin."
     }
   }
 }

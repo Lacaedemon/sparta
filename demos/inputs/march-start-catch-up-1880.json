@@ -23,11 +23,5 @@
     {"tick": 120, "uid": 0, "field": "order_phase", "value": "MARCH"},
     {"tick": 240, "uid": 0, "field": "slot_lateral_excess", "value": 0, "tol": 5.0},
     {"tick": 320, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 2.0}
-  ],
-  "defect_exemptions": {
-    "misslotted": {
-      "uids": [0],
-      "reason": "Loosening the spacing doubles every man's distance from the pivot, so while the men walk out to their new slots most stand nearer another man's slot than their own: misslotted reads 0.4375 on 9f9bddee and 0.396 on ea0a9029 (#1880) on each of seeds 0 to 4, and on e57be4c6 on seed 0, against 0.25. The scan has a transit window for shape_residual after a reshape but none for misslotted. Tracked in #1892. 9f9bddee and ea0a9029 measured 2026-10-31 on dense 2-tick FULL dumps, every exemption removed, Windows; e57be4c6's seed 0 measured 2026-10-31 on the tree later committed as e57be4c6, judged by the clip's own script with this exemption in place (the judge still reports the exempted worst reading); seed 0 re-read 2026-11-01 on the branch at 7b5053d6, whose scripts match e57be4c6's."
-    }
-  }
+  ]
 }

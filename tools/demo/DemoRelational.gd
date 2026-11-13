@@ -59,7 +59,8 @@ static func _behind_wrong_man(pos: Array, i: int, leader: int, place: Vector2, e
 
 ## Reading of one sample: `rms` over every edge's error from where it should be, `far` the
 ## largest one, `behind_wrong` the men who stand on the place behind another man rather than
-## behind their leader (or on the wrong side of their dressing man), `settled` the median error of
+## behind their leader (or in the very place their dressing man should stand, and he in theirs:
+## two men who have traded places), `settled` the median error of
 ## the men with a leader (the gate misslot reads only below: who a man stands nearest in transit
 ## is noise, while a minority of swapped men leaves the median where it was, so a swap can
 ## still be read), and `men` how many men have a leader. `edges` is zero when the dump carries
@@ -79,7 +80,7 @@ static func read(pos: Array, rel: Dictionary, stand: float) -> Dictionary:
 		sq += err * err
 		far = maxf(far, err)
 		if e[4] == 1:
-			if (e[0] as Vector2).dot(Vector2.RIGHT.rotated(turn)) * (e[1] as Vector2).x < 0.0:
+			if ((e[0] as Vector2) + place).length() < stand:
 				wrong[e[2]] = true
 				wrong[e[3]] = true
 			continue

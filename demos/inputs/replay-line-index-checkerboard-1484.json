@@ -19,11 +19,5 @@
     {"tick": 6, "box": {"from": [280, 640], "to": [1140, 880]}},
     {"tick": 24, "rmb_drag": {"from": [330, 600], "to": [1090, 600]}}
   ],
-  "state": [12, 60, 100, 140, 200, 280, 360, 440, 540, 640, 740, 840, 940],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [0, 1, 2, 3, 4, 5],
-      "reason": "The units spawn facing south and the checkerboard order turns them about to face north, so each block rotates its ranks in place before it marches: while a block is rotating its ranks, the post-fit residual against the ordered grid is necessarily large because the men are in transit between slots. Over ticks 500-940 the residual is 0.4-1.4 wu against a 13.5 wu threshold and misslotted is 0.0 for every unit, so the settled quincunx is a clean grid."
-    }
-  }
+  "state": [12, 60, 100, 140, 200, 280, 360, 440, 540, 640, 740, 840, 940]
 }
