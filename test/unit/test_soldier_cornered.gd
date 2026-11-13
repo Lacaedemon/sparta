@@ -139,3 +139,13 @@ func test_a_newly_broken_man_runs_for_his_refuge_until_he_looks_round() -> void:
 	SoldierFlightStep.step(r, 6, {}, TICK)
 	for i in range(6):
 		assert_eq(r._sim_flight_dir[i], Vector2.UP, "man %d heads for his rear edge" % i)
+
+
+func test_a_foe_that_gains_a_body_in_the_frame_is_measured_again() -> void:
+	var pair: Array = _router_and_foes([Vector2(0, -20)])
+	var r: Unit = pair[0]
+	var f: Unit = pair[1]
+	var far := AT + Vector2(0, 600)
+	assert_false(SoldierCornered.foes_near(r, far, 10.0).has(f), "setup: nothing of the foe is near")
+	f._sim_soldier_pos.append(far)   # a newcomer standing there, in the same frame
+	assert_true(SoldierCornered.foes_near(r, far, 10.0).has(f), "his new body is counted")
