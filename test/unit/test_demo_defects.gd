@@ -255,6 +255,33 @@ func test_routing_samples_are_exempt_from_grid_checks() -> void:
 			"a routing mob has no grid to deviate from")
 
 
+func test_a_pursuing_unit_is_judged_for_men_on_one_spot_but_not_for_its_shape() -> void:
+	# Riders after a rout chase the runners off their places (SoldierPursuitStep): the bunch a
+	# formed block would fail as a blob is no defect then, but two riders on one spot still are.
+	var slots: Array = _grid(6, 4, SPACING)
+	var bunch: Array = _grid(6, 4, SPACING * 0.35)
+	var snaps: Array = []
+	for t in [0, 60, 120]:
+		var snap: Dictionary = _snapshot(t, bunch, slots)
+		snap["units"][0]["pursuing"] = true
+		snaps.append(snap)
+	var result: Dictionary = DemoDefects.analyze(snaps)
+	assert_true(bool(_verdict(result, "blob")["pass"]), "a pursuing bunch is not a blob")
+	assert_true(bool(_verdict(result, "follow_error")["pass"]), "nor off its places")
+	var formed: Array = []
+	for snap in snaps:
+		var copy: Dictionary = snap.duplicate(true)
+		copy["units"][0]["pursuing"] = false
+		formed.append(copy)
+	assert_false(bool(_verdict(DemoDefects.analyze(formed), "blob")["pass"]),
+			"the same bunch in a formed block is")
+	var press: Array = _grid(6, 4, SPACING * 0.2)   # under the single-sample overlap floor
+	for snap in snaps:
+		snap["units"][0]["soldiers_full"]["pos"] = press
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "overlap")["pass"]),
+			"riders on one spot fail while they pursue")
+
+
 func test_samples_adjacent_to_an_engagement_flip_are_exempt() -> void:
 	# The transition window: a block charging into contact legitimately compresses
 	# in the sampled moment just before `engaged` flips. The same compression far

@@ -300,7 +300,12 @@ static func step(unit: Unit, delta: float) -> void:
 		_keep_out_of_terrain(unit, n, chase_guard, delta)
 		SoldierFlight.work_usec += Time.get_ticks_usec() - chase_t0
 		return
-	unit._sim_flight_dir = PackedVector2Array()   # no chase or flight left to remember
+	# A chase that has just ended (its quarry fell, rallied or got clear) leaves each rider where
+	# he rode, with nothing left to remember; the unit forms up where its men stand, as a rally
+	# does, rather than each man riding back through the others to his old place.
+	if not unit._sim_flight_dir.is_empty():
+		unit._reform_where_men_stand()
+		unit._last_redeal_tick = Engine.get_physics_frames()
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged

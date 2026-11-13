@@ -414,7 +414,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			if not series.has(uid):
 				series[uid] = {
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
-					"moving": [], "routing": [], "rally_halting": [], "counts": [],
+					"moving": [], "routing": [], "rally_halting": [], "pursuing": [], "counts": [],
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "last_redeal_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "facing_angle": [], "pos": [],
@@ -434,6 +434,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			# Absent from transcripts dumped before the field existed: false there.
 			s["rally_halting"].append(bool(u.get("rally_halting", false)))
+			# Absent from transcripts dumped before the field existed: false there.
+			s["pursuing"].append(bool(u.get("pursuing", false)))
 			s["counts"].append(bodies.size())
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
@@ -535,6 +537,19 @@ static func judged_mask(s: Dictionary) -> Array:
 		if ok and i + 1 < n and contact[i + 1]:
 			ok = false
 		mask.append(ok)
+	return mask
+
+
+## Which samples are judged for a formation's shape (blob, follow error, misslot, crossing
+## routes): judged_mask(), less the samples where the unit rides a router down
+## (SoldierPursuitStep): each of its men then chases the runner nearest him, off any place, as a
+## routed man runs off his. A transcript dumped before the `pursuing` field existed reads none.
+static func shape_mask(s: Dictionary) -> Array:
+	var mask: Array = judged_mask(s)
+	var pursuing: Array = s.get("pursuing", [])
+	for i in range(mini(mask.size(), pursuing.size())):
+		if bool(pursuing[i]):
+			mask[i] = false
 	return mask
 
 
@@ -669,16 +684,18 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 			"soldier_body_radius", spacing * 0.5))
 	var sprint: float = float(s["motion_ref"]["move_speed"])
 	var n: int = s["ticks"].size()
-	var mask: Array = judged_mask(s)
+	# Overlap: any single judged sample with two soldiers effectively co-located. Judged on a
+	# pursuing unit too: its riders chase runners off their places, but never ride through
+	# each other (SoldierKeepClear).
+	out.append(_sustained_verdict(uid, "overlap", s, "nnd_min",
+			two_bodies * OVERLAP_BODY_FRAC, judged_mask(s), 1))
+	var mask: Array = shape_mask(s)
 	var judged_relations: bool = int(s["edges"].max()) > 0
 
 	# Blob: median-neighbour compression, sustained -- bodies stacked well inside
 	# each other on median, floored at a pitch fraction for roomy-grid collapse.
 	out.append(_sustained_verdict(uid, "blob", s, "nnd_med",
 			maxf(two_bodies * BLOB_BODY_FRAC, spacing * BLOB_PITCH_FRAC), mask, MIN_SUSTAIN))
-	# Overlap: any single judged sample with two soldiers effectively co-located.
-	out.append(_sustained_verdict(uid, "overlap", s, "nnd_min",
-			two_bodies * OVERLAP_BODY_FRAC, mask, 1))
 	# The men against the men they follow (DemoRelational), judged only for a dump that
 	# carries relations. Follow error is the scramble/smear check: RMS error from the place
 	# behind each man's leader and from his interval to his dressing man, sustained. Pitch-based

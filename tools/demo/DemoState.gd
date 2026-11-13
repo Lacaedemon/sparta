@@ -373,6 +373,10 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# DemoDefects' speed ceiling then allows them the flee pace they are still running at,
 		# as for a router.
 		"rally_halting": u.shedding_flight(),
+		# True while the unit rides a router down (SoldierPursuitStep.is_pursuing): each of its
+		# men chases the runner nearest him, off any place, so DemoDefects judges no formation
+		# shape on it then, as for a router, though it still judges two of its men on one spot.
+		"pursuing": SoldierPursuitStep.is_pursuing(u),
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),

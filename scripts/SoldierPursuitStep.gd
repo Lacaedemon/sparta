@@ -30,6 +30,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	var top: float = unit.move_speed
 	var cap_floor: float = top * unit.superphysical_speed_frac
 	var field: PathField = PathField.active
+	var clear: PackedVector2Array = SoldierKeepClear.bias(unit, n, top)
 	if unit._sim_flight_dir.size() != n:
 		unit._sim_flight_dir.resize(n)
 		for i in range(n):
@@ -41,7 +42,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 			unit._sim_flight_dir[i] = _toward_nearest(pos, quarry)
 		var dir: Vector2 = unit._sim_flight_dir[i]
 		var desired: Vector2 = dir * top * (field.speed_at(pos) if field != null else 1.0) \
-				+ unit._sim_steer[i]
+				+ unit._sim_steer[i] + clear[i]
 		if not guard.is_empty() and guard["inside"][i] == 0:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel,
 					pos + dir * SoldierFlightStep.LOOK_AHEAD, desired, guard["grown"], accel, delta)
