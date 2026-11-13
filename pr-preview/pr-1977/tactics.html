@@ -52,9 +52,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-9a826d658782125d805e471eff4bdbc6.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-18191497f9f4aa9a5d4869de83687e3d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-9a826d658782125d805e471eff4bdbc6.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-9a6bfe3352ba6dc8ce3318bde1ee1a3f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-270b29d9e0fbc0b608088680ea862c4d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-9a6bfe3352ba6dc8ce3318bde1ee1a3f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -603,7 +603,7 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 <section id="morale-routing" class="level2">
 <h2 class="anchored" data-anchor-id="morale-routing">Morale &amp; routing</h2>
 <p>Units don’t fight to the last soldier. When a unit loses enough soldiers or takes flank/rear hits, it <strong>routs</strong> — it flees (its flag fading) toward its own back edge and stops fighting for now. A routing unit can flee past the field’s visible edge into a margin beyond it, and it is gone for good only once every one of its men has left that margin, staying on the field — and still fightable — for as long as any of them is plausibly still in view.</p>
-<p>A broken unit is no longer a formation: each of its men flees on his own. He runs away from the enemy soldiers he can see around him and toward his refuge, his own side’s back edge of the field, where its camp lies, so where the enemy he sees stands between him and that edge, he runs from them first (<a href="#fig-router-runs-from-foes" class="quarto-xref">Figure&nbsp;1</a>). He also takes part of his line from the man of his file running ahead of him, so the rout streams away as a crowd rather than scattering at random. The unit’s flag and marker stand at the centre of its fleeing men, and its facing is the way they run. Fleeing men made for a place of safety, and not all for the same one: after Delium, Thucydides says, some made for Delium and the sea, some for Oropus, and others for Mount Parnes (4.96.7). The game builds the back edge of the field as one refuge, and the nearest friendly unit as another, as a variant.</p>
+<p>A broken unit is no longer a formation: each of its men flees on his own. He runs away from the enemy soldiers he can see around him and toward his refuge, his own side’s back edge of the field, where its camp lies, so where the enemy he sees stands between him and that edge, he runs away from them and round them on one side toward it, never into them and never standing still in front of them (<a href="#fig-router-runs-from-foes" class="quarto-xref">Figure&nbsp;1</a>). He goes round on the side of his refuge where fewer of them stand, or the side not shut by rock, and keeps to that side until he next looks round. He looks round about every fifth of a second, a man’s reaction time, and runs the way he then chose in between. A man who finds his way ahead and to either side shut within his weapon’s reach, by rock or by enemy soldiers, turns to the enemy soldier nearest him and fights, and runs again once a way opens. He also takes part of his line from the man of his file running ahead of him, so the rout streams away as a crowd rather than scattering at random. The unit’s flag and marker stand at the centre of its fleeing men, and its facing is the way they run. Fleeing men made for a place of safety, and not all for the same one: after Delium, Thucydides says, some made for Delium and the sea, some for Oropus, and others for Mount Parnes (4.96.7). The game builds the back edge of the field as one refuge, and the nearest friendly unit as another, as a variant.</p>
 <div id="fig-router-runs-from-foes" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-router-runs-from-foes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -614,7 +614,7 @@ Table&nbsp;1: Damage and morale multipliers by attack angle.
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-router-runs-from-foes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: A broken cavalry squadron (blue) with a block of infantry standing between it and its own back edge. Each rider sees the infantry ahead of him and runs away from them, south, with the riders of his file, rather than into the block on the way to his refuge.
+Figure&nbsp;1: A broken cavalry squadron (blue) with a block of infantry standing between it and its own back edge. Each rider sees the infantry ahead of him and runs away from them and round them, the riders on each side of the squadron’s centre round their own side, rather than into the block or standing still in front of it.
 </figcaption>
 </figure>
 </div>
