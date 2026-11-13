@@ -1455,7 +1455,7 @@ var router_heading_anchor_fold: float = ROUTER_HEADING_ANCHOR_FOLD
 # set-before-_ready contract.
 const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
 var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
-# How much of a foot block's own slot footprint (soldier_block_half_extents, per axis) its
+# How much of a foot block's own footprint (soldier_block_half_extents, per axis) its
 # cavalry target's centre must lie inside, with the block in enemy contact, for a small combat
 # re-face to be folded into _formation_angle rather than turn the slot grid
 # (_cavalry_inside_foot_footprint): 1.0, the footprint itself. 0 or less turns the fold off, so
@@ -4908,8 +4908,8 @@ func _combat_wheel_applies(enemy_unit: Unit) -> bool:
 			and (enemy_unit.state == State.ROUTING or enemy_unit.in_square()))
 
 
-## Whether `enemy_unit`'s centre stands inside this block's own slot footprint (its half extents
-## in its grid's frame, about the anchor).
+## Whether `enemy_unit`'s centre stands inside this block's own footprint (the reach of its men
+## along each axis of its grid's frame, about the anchor).
 func _enemy_inside_own_footprint(enemy_unit: Unit) -> bool:
 	if enemy_unit == null:
 		return false
@@ -4920,7 +4920,7 @@ func _enemy_inside_own_footprint(enemy_unit: Unit) -> bool:
 
 ## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
 ## doing so when its centre lies within the block's own reach (soldier_block_extent, the
-## slot grid's circumradius around the anchor) without leading this anchor along its own
+## farthest man's distance from the anchor) without leading this anchor along its own
 ## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach,
 ## stops routing, or this block leaves the fight: a router that has worked its way just past
 ## the anchor is still among the ranks, and a bearing taken from a few world units behind it
@@ -4948,11 +4948,11 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 
 
 ## Whether this is a foot block and `enemy_unit` a cavalry unit whose centre lies inside the
-## block's own slot footprint, scaled by melee_reface_fold_footprint_scale:
-## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
-## radius) in the grid's own frame (soldier_block_world_angle). The box is centred on the
-## anchor and spans the largest |x| and |y| of any slot about it, so for a block laid out with
-## a frontage_anchor_offset, whose slots reach less far on one side of the anchor, the box
+## block's own footprint, scaled by melee_reface_fold_footprint_scale:
+## soldier_block_half_extents (the reach of the men along the grid's half-width and half-depth
+## axes, padded by a mark radius) in the grid's own frame (soldier_block_world_angle). The box
+## is centred on the anchor and spans the largest |x| and |y| of any man about it, so for a
+## block whose men reach less far on one side of the anchor (a frontage_anchor_offset), the box
 ## reaches slightly past the block on that side, plus the mark padding. Only riders inside
 ## a foot block count. Foot blocks fighting each other mostly stop at each other's front and
 ## outer ranks (MeleeFrontLine), but a small foot squad can still stand at a block's centre
