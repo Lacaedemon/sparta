@@ -115,3 +115,22 @@ func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() 
 	SoldierFlightStep._look_round(r, 0, frame, [] as Array[Rect2])
 	assert_ne(r._sim_flight_dir[0], Vector2.ZERO, "when he next looks round he runs again")
 	assert_gt(period, 0, "sanity: he looks round every %d ticks" % period)
+
+
+func test_a_dead_man_s_chosen_way_goes_with_him() -> void:
+	var r := _unit(0, 3)
+	r._rout()
+	r._sim_flight_dir = PackedVector2Array([Vector2.UP, Vector2.ZERO, Vector2.LEFT])
+	r._sim_soldier_hp[1] = 0.0
+	SoldierMelee.reap(r, null)
+	assert_eq(r._sim_flight_dir, PackedVector2Array([Vector2.UP, Vector2.LEFT]),
+			"each survivor keeps his own way")
+
+
+func test_a_newly_broken_man_runs_for_his_refuge_until_he_looks_round() -> void:
+	var r := _unit(0, 6)
+	r._rout()
+	SoldierFlight.perceive_threats = false
+	SoldierFlightStep.step(r, 6, {}, TICK)
+	for i in range(6):
+		assert_eq(r._sim_flight_dir[i], Vector2.UP, "man %d heads for his rear edge" % i)
