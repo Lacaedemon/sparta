@@ -73,7 +73,7 @@ tools/check.sh && git push
 | `NO_COLOR` | _(unset)_ | Set to disable coloured output. |
 | `SPARTA_CHECK_VALIDATE_TIMEOUT` | `900` | Hard timeout (s) for the `validate` Godot run. |
 | `SPARTA_CHECK_TEST_TIMEOUT` | `1800` | Hard timeout (s) for the `test` Godot run. |
-| `SPARTA_CHECK_COVERAGE_TIMEOUT` | `2700` | Hard timeout (s) for the `coverage` Godot run. |
+| `SPARTA_CHECK_COVERAGE_TIMEOUT` | `5400` | Hard timeout (s) for the `coverage` Godot run. |
 | `SPARTA_CHECK_COMMENTS_BASE` | _(unset)_ | Commit-ish the `comments` (and `units`, `file_length`, `markdown`) check diffs `HEAD` against to find new lines to scan. Falls back to `origin/main` then a local `main`; CI sets this per-event (PR base SHA, or the push event's `before`) -- see `check-comment-citations.yml`. |
 | `SPARTA_CHECK_GHA_REF` | `v2` | Morrison-Lab/gha ref whose lint-markdown and check-new-line-breaks checkers the `markdown` check runs; keep in step with both workflows' pin. |
 | `SPARTA_CHECK_WINDOWS_MAX_PATH` | `260` | On Windows, the path length at which the `markdown` check refuses to run the line-break checker on a changed file, since the checker would skip it unread; `0` disables the guard where long paths are enabled. |

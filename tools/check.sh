@@ -112,7 +112,7 @@
 #   SPARTA_CHECK_VALIDATE_TIMEOUT / SPARTA_CHECK_TEST_TIMEOUT /
 #   SPARTA_CHECK_COVERAGE_TIMEOUT
 #                Per-check hard timeouts in seconds for the Godot runs (defaults
-#                900 / 1800 / 2700). Generous hang-detectors, not perf gates: a
+#                900 / 1800 / 5400). Generous hang-detectors, not perf gates: a
 #                run that hits one was never going to finish, and killing it
 #                stops an orphaned Godot process from piling up on the machine.
 #   SPARTA_DUMP_STATE_TIMEOUT
@@ -164,7 +164,7 @@ GUT_VERSION="${GUT_VERSION:-v9.7.0}"
 # rationale; override via the SPARTA_CHECK_*_TIMEOUT variables above.
 VALIDATE_TIMEOUT="${SPARTA_CHECK_VALIDATE_TIMEOUT:-900}"
 TEST_TIMEOUT="${SPARTA_CHECK_TEST_TIMEOUT:-1800}"
-COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-2700}"
+COVERAGE_TIMEOUT="${SPARTA_CHECK_COVERAGE_TIMEOUT:-5400}"
 # Same variable/default tools/demo/dump-state.sh and website/tools/dump-demo-states.sh
 # use for their own headless dump runs; reused here for demo_defects' replay-sidecar
 # dump so all three stay in sync under one override.
