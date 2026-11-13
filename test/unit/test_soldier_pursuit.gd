@@ -71,3 +71,12 @@ func test_riders_strike_the_runners_within_reach_while_on_the_move() -> void:
 	assert_lt(after, before, "and his blows land")
 	p.state = Unit.State.FIGHTING
 	assert_false(SoldierPursuitStep.strike(p), "once FIGHTING, the unit's own strike takes over")
+
+
+func test_a_rider_turns_onto_a_new_runner_at_his_pace_rather_than_pulling_up() -> void:
+	var vel := Vector2(100, 0)
+	var next: Vector2 = SoldierPursuitStep.ride(vel, Vector2(0, 170), 30.0, PI, TICK)
+	assert_almost_eq(next.length(), 100.5, 0.001, "he keeps his pace, gaining at his own rate")
+	assert_almost_eq(Vector2.RIGHT.angle_to(next), PI * TICK, 0.0001, "swinging at his turn rate")
+	var halted: Vector2 = SoldierPursuitStep.ride(Vector2.ZERO, Vector2(0, 170), 30.0, PI, TICK)
+	assert_almost_eq(halted, Vector2(0, 0.5), Vector2(0.0001, 0.0001), "from rest he sets off at once")

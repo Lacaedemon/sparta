@@ -47,7 +47,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel,
 					pos + dir * SoldierFlightStep.LOOK_AHEAD, desired, guard["grown"], accel, delta)
 		var damped: Vector2 = SoldierCollision.apply_kinetic_friction(vel, mass, 0.0, delta)
-		var new_vel: Vector2 = damped.move_toward(desired, accel * delta) \
+		var new_vel: Vector2 = ride(damped, desired, accel, Unit.TURN_RATE, delta) \
 				.limit_length(maxf(cap_floor, vel.length()))
 		unit._sim_body_vel[i] = new_vel
 		unit._sim_soldier_pos[i] = pos + new_vel * delta
@@ -55,6 +55,17 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 			unit._sim_soldier_facing[i] = new_vel.normalized()
 			unit._render_dirty = true
 	SimOps.add(SimOps.BODY_STEP, n)
+
+
+## A rider's next velocity from `vel`: he swings onto `desired` at `turn` (radians a second)
+## keeping his pace, as a horse at the gallop turns rather than pulling up to turn, and gains or
+## sheds pace toward `desired`'s at `accel`. A rider at rest sets off along `desired` at once.
+static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float, delta: float) -> Vector2:
+	var speed: float = vel.length()
+	if speed <= SoldierBodies.REST_SPEED or desired == Vector2.ZERO:
+		return vel.move_toward(desired, accel * delta)
+	var swing: float = clampf(vel.angle_to(desired), -turn * delta, turn * delta)
+	return (vel / speed).rotated(swing) * move_toward(speed, desired.length(), accel * delta)
 
 
 ## The unit direction from `pos` to the nearest body of `quarry` (ZERO on top of one).
