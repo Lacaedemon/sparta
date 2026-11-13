@@ -254,7 +254,9 @@ static func step(unit: Unit, delta: float) -> void:
 	var routing: bool = unit.state == Unit.State.ROUTING
 	# A rallied man still pulling up faces his run too (pull_up_rallied).
 	var pulling_up: bool = unit._rally_pending and unit.state == Unit.State.IDLE
-	if not unit._per_soldier_facing and not routing and not pulling_up:
+	# So does a man riding a router down (SoldierPursuitStep).
+	var pursuing: bool = SoldierPursuitStep.is_pursuing(unit)
+	if not unit._per_soldier_facing and not routing and not pulling_up and not pursuing:
 		unit._sim_soldier_facing = unit.soldier_world_facings(n)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# follows the regiment's pace during the same pass (Unit.stamina_flow_per_s: regen at
@@ -276,9 +278,11 @@ static func step(unit: Unit, delta: float) -> void:
 	# A routed unit is no formation: each man flees on his own (SoldierFlightStep), with no
 	# slot to arrive on, and the terrain backstop has the last word as for any body.
 	if routing:
+		var flight_t0: int = Time.get_ticks_usec()
 		var flight_guard: Dictionary = _terrain_entry_guard(unit, n)
 		SoldierFlightStep.step(unit, n, flight_guard, delta)
 		_keep_out_of_terrain(unit, n, flight_guard, delta)
+		SoldierFlight.work_usec += Time.get_ticks_usec() - flight_t0
 		return
 	# A rallied unit's men pull up from their flight on their own, and its grid is laid out where
 	# they come to rest (Unit._reform_where_men_stand); a rallying unit taken out of IDLE by
@@ -288,6 +292,15 @@ static func step(unit: Unit, delta: float) -> void:
 			_keep_out_of_terrain(unit, n, _terrain_entry_guard(unit, n), delta)
 			return
 		unit._reform_where_men_stand()
+	# A unit riding a router down: each man chases the runner nearest him (SoldierPursuitStep).
+	if pursuing:
+		var chase_t0: int = Time.get_ticks_usec()
+		var chase_guard: Dictionary = _terrain_entry_guard(unit, n)
+		SoldierPursuitStep.step(unit, n, chase_guard, delta)
+		_keep_out_of_terrain(unit, n, chase_guard, delta)
+		SoldierFlight.work_usec += Time.get_ticks_usec() - chase_t0
+		return
+	unit._sim_flight_dir = PackedVector2Array()   # no chase or flight left to remember
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
@@ -1224,11 +1237,13 @@ static func couple(unit: Unit, delta: float) -> void:
 			unit._body_follow_vel = (unit.explicatio_grid_position() - unit.position) / delta
 		unit.position = unit.explicatio_grid_position()
 		return
-	# A routed unit has no grid, nor a rallied one whose men are still pulling up: its `position`
+	# A routed unit has no grid, nor a rallied one whose men are still pulling up, nor one riding a
+	# router down (SoldierPursuitStep): its `position`
 	# is where its men are (their centroid) and its heading the way they face, which is the way
 	# each runs (SoldierFlightStep, pull_up_rallied), both read off the men each tick and never
 	# fed back to them.
-	if unit.state == Unit.State.ROUTING or (unit._rally_pending and unit.state == Unit.State.IDLE):
+	if unit.state == Unit.State.ROUTING or (unit._rally_pending and unit.state == Unit.State.IDLE) \
+			or SoldierPursuitStep.is_pursuing(unit):
 		_read_router_off_men(unit, n, delta)
 		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the

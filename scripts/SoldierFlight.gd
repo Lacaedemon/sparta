@@ -26,6 +26,10 @@ enum Follow { HERD, COLUMN, ALONE }
 static var perceive_threats: bool = true
 static var _perception: RefCounted = ManPerceptionRef.new()
 static var _frame: int = -1
+## The routing work done so far, for the cost instrument: how many times a man looked round
+## (perceived), and the microseconds spent stepping routed and pursuing men and in their blows.
+static var looks: int = 0
+static var work_usec: int = 0
 
 
 ## Bind this frame's perception inputs, as ManPerception.prepare. Battle calls it once a tick
@@ -40,6 +44,7 @@ static func prepare(frame: int, units: Array, terrain: Array, path_field: Object
 ## sight_range: a man running from foes still sees the ones ahead of him, so the fog's routing cut
 ## does not apply. Nothing when perception is off or nothing prepared it this frame.
 static func perceived(unit: Unit, i: int, frame: int) -> Dictionary:
+	looks += 1
 	if not perceive_threats or frame != _frame:
 		return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
 				"nearest_distance": INF}

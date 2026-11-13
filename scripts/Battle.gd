@@ -3813,6 +3813,12 @@ func _tick_tier_transitions() -> Array:
 						FormationTier.support_reach(halves[j], angles[j], -between))
 			if gap < nearest_gap:
 				nearest_gap = gap
+		# A unit riding a router down keeps its men while it chases (SoldierPursuitStep): its
+		# quarry is the one routing unit that counts for its tier.
+		var quarry = u.target_enemy as UnitRef
+		if is_instance_valid(quarry) and quarry.state == UnitRef.State.ROUTING \
+				and quarry.team != u.team:
+			nearest_gap = minf(nearest_gap, u.position.distance_to(quarry.position))
 		if nearest_gap == INF:
 			# No enemy in play: hold the current tier (the victory check ends the battle).
 			# Still counted, since it keeps whatever tier it is already on.

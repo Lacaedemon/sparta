@@ -9,10 +9,13 @@ extends GutTest
 ## The clip is run twice from the same seed, once with routers querying perception
 ## (SoldierFlight.perceive_threats on) and once without, and each prints the mean, median, p95
 ## and max wall-clock milliseconds per battle tick over TICKS ticks (the clip's own 300 by
-## default; SPARTA_MEASURE_TICKS overrides it), with the routed men per tick, since only routers
-## query. The routing change's added cost is the difference of the two means. Wall-clock times
-## swing with machine load, so run it on an idle machine; the router counts are deterministic
-## for a given run.
+## default; SPARTA_MEASURE_TICKS overrides it), with the routed men per tick.
+## The routing cost itself is the direct measure: the milliseconds per tick spent in exactly the
+## routing work (SoldierFlight.work_usec: stepping routed and pursuing men, their looks round,
+## cornered checks and blows) and the looks round per tick (SoldierFlight.looks). The whole-battle
+## on/off difference is context only: turning perception off changes what the routers do, so
+## the two runs are different battles. Wall-clock times swing with machine load; the look counts
+## are deterministic for a given run.
 
 const DEFAULT_TICKS := 300
 var _battle: Node = null
@@ -64,6 +67,8 @@ func _measure(on: bool, label: String) -> Array:
 	var ticks: int = _ticks()
 	var tick_us: Array = []
 	var routed: int = 0
+	SoldierFlight.looks = 0
+	SoldierFlight.work_usec = 0
 	for _t in range(ticks):
 		var t0: int = Time.get_ticks_usec()
 		await get_tree().physics_frame
@@ -79,6 +84,8 @@ func _measure(on: bool, label: String) -> Array:
 	print("[router-perception-cost] %s: ticks=%d | ms/tick mean=%.2f median=%.2f p95=%.2f max=%.2f | routed men/tick=%.1f" % [
 		label, ticks, mean_ms, sorted[ticks / 2] / 1000.0, sorted[int(ticks * 0.95)] / 1000.0,
 		sorted[-1] / 1000.0, float(routed) / ticks])
+	print("[router-perception-cost] %s: routing work ms/tick=%.3f | looks/tick=%.1f" % [
+		label, SoldierFlight.work_usec / 1000.0 / ticks, float(SoldierFlight.looks) / ticks])
 	_battle.free()
 	_battle = null
 	await get_tree().physics_frame

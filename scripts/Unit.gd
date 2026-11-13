@@ -2000,8 +2000,10 @@ func _physics_process(delta: float) -> void:
 		_refresh_enemy_contact()
 		# A cornered man strikes at his unit's own cadence (SoldierCornered.fight).
 		_attack_cd = maxf(0.0, _attack_cd - delta)
+		var fight_t0: int = Time.get_ticks_usec()
 		if _attack_cd <= 0.0 and SoldierCornered.fight(self):
 			_start_attack_cd(melee_attack_interval())
+		SoldierFlight.work_usec += Time.get_ticks_usec() - fight_t0
 		# A far-tier router is billed at the pace it carried into this tick, as a close-tier
 		# router's men are (SoldierBodies.step), so a rally on this tick does not drop the bill.
 		_tick_far_stamina(delta)
@@ -2034,6 +2036,11 @@ func _physics_process(delta: float) -> void:
 	_facing_turn_step = 0.0
 
 	_think(delta)
+	# A unit riding a router down strikes the runners its men reach (SoldierPursuitStep.strike).
+	var strike_t0: int = Time.get_ticks_usec()
+	if _attack_cd <= 0.0 and SoldierPursuitStep.strike(self):
+		_start_attack_cd(melee_attack_interval())
+	SoldierFlight.work_usec += Time.get_ticks_usec() - strike_t0
 	_advance_grid_lag(delta)
 	_tick_intermixing(delta)
 
