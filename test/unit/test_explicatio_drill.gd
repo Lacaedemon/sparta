@@ -822,8 +822,40 @@ func test_the_cells_reach_the_far_corner_of_a_turned_mans_lane() -> void:
 	assert_gt(floori(corner.dot(right) / cell), floori(pos.dot(right) / cell) + 1,
 		"precondition: the corner lies past the next cell over")
 	var cells: Dictionary = u._explicatio_cells(PackedVector2Array([pos, corner]), cell)
-	assert_true(u._explicatio_cell_men(cells, pos, pos, cell, clear).has(1),
-		"the man at the corner of his lane is among the men read")
+	assert_true(u._explicatio_cell_men(cells, pos, pos, cell, clear,
+			u.soldier_body_radius()).has(1), "the man at the corner of his lane is among the men read")
+
+
+## And its rear corner: in a shield wall (cells and pitch 6.75 wu, lane 5.75 wu each side), a man
+## a file pitch off his line, just into a cell along the block's facing and turned the most the
+## cells allow for, has the rear corner of his lane, a body radius behind him on the far side of
+## his line, two cells behind him; a man of another file standing there is among the men read.
+func test_the_cells_reach_the_rear_corner_of_a_turned_mans_lane() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var clear: float = u.explicatio_lane_clear()
+	var cell: float = maxf(u.rank_pitch_wu(), clear)
+	var r: float = u.soldier_body_radius()
+	assert_almost_eq(cell, 6.75, 0.001, "precondition: 6.75 wu cells")
+	var front: Vector2 = u.facing.normalized()
+	var right := Vector2(-front.y, front.x)
+	var pos: Vector2 = front * 0.1 + right * (0.5 * cell)
+	var level: Vector2 = pos + right * u.file_pitch_wu()
+	var worst: Vector2 = pos
+	for sign in [-1.0, 1.0]:
+		var own_front: Vector2 = front.rotated(sign * Unit.EXPLICATIO_TILT_MAX)
+		var own_right := Vector2(-own_front.y, own_front.x)
+		var side: float = signf((level - pos).dot(own_right))
+		var across: float = (level - pos).dot(own_right) + side * (clear - 0.01)
+		var corner: Vector2 = pos - own_front * (r - 0.01) + own_right * across
+		if corner.dot(front) < worst.dot(front):
+			worst = corner
+	assert_lt(floori(worst.dot(front) / cell), floori(pos.dot(front) / cell) - 1,
+		"precondition: the rear corner lies past the cell behind him")
+	var cells: Dictionary = u._explicatio_cells(PackedVector2Array([pos, worst]), cell)
+	assert_true(u._explicatio_cell_men(cells, pos, level, cell, clear, r).has(1),
+		"the man at the rear corner of his lane is among the men read")
 
 
 ## A man coming up an interval that has not yet opened where he is goes on following when a man

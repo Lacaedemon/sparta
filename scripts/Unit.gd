@@ -6466,7 +6466,8 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		var own_front: Vector2 = _sim_soldier_facing[i].normalized()
 		var level: Vector2 = _explicatio_places[i] \
 				+ own_front * (bodies[i] - _explicatio_places[i]).dot(own_front)
-		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], level, reach, clear)
+		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], level, reach, clear,
+				soldier_body_radius())
 		var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(bodies[i],
 				_sim_soldier_facing[i], _explicatio_places[i], bodies, near, _sim_soldier_file, f,
 				clear, rank_pitch_wu(), soldier_body_radius())
@@ -6510,20 +6511,24 @@ func _explicatio_cells(bodies: PackedVector2Array, cell: float) -> Dictionary:
 
 
 ## The men of `cells` (_explicatio_cells, `cell` wu wide) in the cells around a man at `pos`
-## whose place's line passes level with him at `place`, his lane `clear` wide each side of it
-## and reaching `cell` ahead: every cell that lane could touch for a man whose own facing is
-## turned up to EXPLICATIO_TILT_MAX off the block's. Along, from a cell behind him to two cells
-## ahead. Across, out from the nearer and the farther of him and that line by the lane's far
-## corner, `cell` sin(EXPLICATIO_TILT_MAX) + `clear` across from the line, in whole cells.
+## whose place's line passes level with him at `place`, his lane `clear` wide each side of it,
+## from `behind` behind him to `cell` ahead: every cell that lane could touch for a man whose own
+## facing is turned up to EXPLICATIO_TILT_MAX off the block's. Across, out from the nearer and
+## the farther of him and that line by the lane's far corner, `cell` sin(EXPLICATIO_TILT_MAX) +
+## `clear` across from the line, in whole cells. Along, from the cell of the lane's rearmost point
+## to that of its foremost: a lane corner stands `clear` + d (d his distance off his line)
+## across his own front, which a turn of up to EXPLICATIO_TILT_MAX carries (`clear` + d)
+## sin(EXPLICATIO_TILT_MAX) along the block's, behind him past `behind` and ahead past `cell`.
 func _explicatio_cell_men(cells: Dictionary, pos: Vector2, place: Vector2, cell: float,
-		clear: float) -> PackedInt32Array:
+		clear: float, behind: float) -> PackedInt32Array:
 	var front: Vector2 = facing.normalized()
 	var right: Vector2 = SoldierFollow.right_of(front)
 	var out_cells: int = ceili((cell * sin(EXPLICATIO_TILT_MAX) + clear) / cell)
 	var a0: int = floori(minf(pos.dot(right), place.dot(right)) / cell) - out_cells
 	var a1: int = floori(maxf(pos.dot(right), place.dot(right)) / cell) + out_cells
-	var l0: int = floori(pos.dot(front) / cell) - 1
-	var l1: int = floori(pos.dot(front) / cell) + 2
+	var sway: float = (clear + absf((place - pos).dot(right))) * sin(EXPLICATIO_TILT_MAX)
+	var l0: int = floori((pos.dot(front) - behind - sway) / cell)
+	var l1: int = floori((pos.dot(front) + cell + sway) / cell)
 	var out := PackedInt32Array()
 	for x in range(a0, a1 + 1):
 		for y in range(l0, l1 + 1):
