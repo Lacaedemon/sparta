@@ -77,7 +77,8 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   "The files next the middle section stand fast, and the right wing turne faces to the Target, the left to the Pike, and moue on till the first distance recouered",
   each wing turning inward, against Aelian's text.
   For a phalanx closed to a wing the note agrees with the text:
-  "The right-wing-corner-file stand firme; the rest turne faces to the Target, and proceede to your first distance."
+  "The right-wing-corner-file stand firme;
+  the rest turne faces to the Target, and proceede to your first distance."
   The sim builds both readings of the middle (see the inward reading below).
 
 - **The names.**

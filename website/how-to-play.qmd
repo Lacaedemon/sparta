@@ -1277,6 +1277,40 @@ Every variant works with both the half-file drill and the drill in which every s
   and every file leader whose file stays keeps the ground he stood on while the new files come up between them.
   A block already in tight order, a shield wall, a testudo or a square has no closer order to take, and is not given the order.
 
+::: {#fig-explicatio-inward .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/explicatio_inward.jpg">
+  <source src="media/explicatio_inward.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+The inward reading: a block of 64 infantry, 8 files of 8, doubles to 16 files of 4.
+Each wing's rear half-files step toward the middle into their intervals.
+Only the right-hand middle file stands, so the left flank steps out 5 files and the right 3,
+and the front rank keeps the line it stood on.
+:::
+
+::: {#fig-explicatio-same-ground .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/explicatio_same_ground.jpg">
+  <source src="media/explicatio_same_ground.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+On the same ground: a block of 48 infantry in loose order, 6 files of 8, doubles to 12 files of 4
+and closes into normal order as the rear half-files come up between its files.
+The line keeps its length but for half a file's spacing on one flank,
+and its file leaders keep the ground they stood on.
+:::
+
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
 about the middle of the block, the files next to the middle standing, so both flanks step
 outward (by the same amount when the files are even). Press <kbd>Shift+B</kbd> to

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/explicatio-inward-1971.json",
+  "caption": "The explicatio read inward, as Bingham's 1616 note on Aelian 33 has it: a block of 64 infantry, 8 files of 8, doubles to 16 files of 4, and each wing's rear half-files step toward the middle into their intervals and come up them behind their half-file leaders. Both middle intervals open between the two middle files, so only the right-hand one stands: the left flank steps out 5 files and the right 3, where the default (outward, Aelian's text) steps each out 4, and the front rank keeps the line it stood on. The other readings built here (spear side, shield side, and the same ground, which closes the block one order of spacing so the line keeps its length) have clips of their own in demos/inputs. No key chooses a reading yet; the demo script sets the reading the B key deals.",
+  "fixed_fps": 30,
+  "max_frames": 320,
+  "fps": 12,
+  "width": 720
+}

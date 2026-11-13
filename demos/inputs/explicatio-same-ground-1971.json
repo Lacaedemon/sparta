@@ -1,0 +1,29 @@
+{
+  "_comment": "A lone block of 48 Infantry (6 files of 8) in open order (loose, 36 wu pitch) facing west, doubled to 12 files of 4 by the half-file explicatio on the same ground (Asclepiodotus 10.17, Aelian 29.3): the line keeps its length and the block closes into compact order (normal, 18 wu pitch, Asclepiodotus 4.1) as the rear half of each file comes up between the files, which keep their ground. The front rank keeps its line at x 554. Its left (south) flank stands at y 610 and its right (north) flank gains half the old pitch, 18 wu (y 430 to 412), where the default, lengthening, would open the line from 180 wu across to 396. So the block's position ends at (581.03, 511.0): forward of where it stood, since its depth halves and its ranks close, and 9 wu north. The nearest two men came 15.9 wu apart, at tick 332. The drill ends by tick 622. Measured 2026-11-13 on FULL 2-tick dumps from the order to tick 760, seed run 0; the drill plays out identically on seed runs 0 to 4 (no enemy, no roll). On main, which has no readings, the script's explicatio block is not read and B deals the default drill, so the position expect fails there. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd, whose explicatio block sets the readings the B key deals (tools/demo/DemoExplicatio.gd); world coordinates; physics ticks (60/s).",
+  "seed": "19714",
+  "drill": true,
+  "explicatio": {"drill": "half_file", "ground": "same_ground"},
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 680, "y": 520, "count": 48, "frontage": 6, "formation": 2, "facing": [-1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 520.0, "zoom": 1.9}
+  ],
+  "steps": [
+    {"tick": 18, "click": [680, 520]},
+    {"tick": 48, "key": "B"}
+  ],
+  "state": [8, 50, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720],
+  "expect": [
+    {"tick": 50, "uid": 0, "field": "frontage", "value": 12},
+    {"tick": 50, "uid": 0, "field": "formation", "value": "NORMAL"},
+    {"tick": 50, "uid": 0, "field": "file_pitch", "value": 18.0},
+    {"tick": 120, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 180, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 240, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 600, "uid": 0, "field": "front_rank_line", "value": [-554.0, -554.0], "tol": 4.5},
+    {"tick": 660, "uid": 0, "field": "front_rank_line", "value": [-554.0, -554.0], "tol": 4.5},
+    {"tick": 720, "uid": 0, "field": "front_rank_line", "value": [-554.0, -554.0], "tol": 4.5},
+    {"tick": 720, "uid": 0, "field": "position", "value": [581.03, 511.0], "tol": 2.25}
+  ]
+}
