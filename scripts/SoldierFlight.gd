@@ -38,12 +38,14 @@ static func prepare(frame: int, units: Array, terrain: Array, path_field: Object
 		_perception.prepare(frame, units, terrain, path_field)
 
 
-## The weighted sum of directions toward the foes man `i` of `unit` perceives (ZERO when he
-## perceives none, perception is off, or nothing prepared it this frame).
-static func threat(unit: Unit, i: int, frame: int) -> Vector2:
+## What man `i` of `unit` perceives (ManPerception.perceive's answer), out to his unit's whole
+## sight_range: a man running from foes still sees the ones ahead of him, so the fog's routing cut
+## does not apply. Nothing when perception is off or nothing prepared it this frame.
+static func perceived(unit: Unit, i: int, frame: int) -> Dictionary:
 	if not perceive_threats or frame != _frame:
-		return Vector2.ZERO
-	return _perception.perceive(unit, i, frame)["threat"]
+		return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
+				"nearest_distance": INF}
+	return _perception.perceive(unit, i, frame)
 
 
 ## The unit direction from `pos` toward the refuge `unit`'s men know.
@@ -66,12 +68,12 @@ static func refuge_direction(unit: Unit, pos: Vector2) -> Vector2:
 	return Vector2.UP if unit.team == 0 else Vector2.DOWN
 
 
-## His own direction: away from what he perceives, toward his refuge (rout_refuge_weight
+## His own direction: away from the `threat` he perceives, toward his refuge (rout_refuge_weight
 ## against the summed threat, whose terms each weigh at most 1).
-static func own_direction(unit: Unit, i: int, frame: int) -> Vector2:
+static func own_direction(unit: Unit, i: int, threat: Vector2) -> Vector2:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
 	var refuge: Vector2 = refuge_direction(unit, pos)
-	var d: Vector2 = refuge * unit.rout_refuge_weight - threat(unit, i, frame)
+	var d: Vector2 = refuge * unit.rout_refuge_weight - threat
 	return d.normalized() if d.length_squared() > 0.000001 else refuge
 
 

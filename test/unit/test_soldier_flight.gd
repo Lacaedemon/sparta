@@ -47,8 +47,8 @@ func test_the_lines_refuge_is_the_nearest_friendly_unit() -> void:
 func test_with_perception_off_a_man_runs_for_his_refuge() -> void:
 	var a := _unit(0, Vector2(500, 500))
 	SoldierFlight.perceive_threats = false
-	assert_eq(SoldierFlight.threat(a, 0, Engine.get_physics_frames()), Vector2.ZERO, "no threat")
-	assert_eq(SoldierFlight.own_direction(a, 0, Engine.get_physics_frames()), Vector2.UP,
+	assert_eq(SoldierFlight.perceived(a, 0, Engine.get_physics_frames())["threat"], Vector2.ZERO, "no threat")
+	assert_eq(SoldierFlight.own_direction(a, 0, Vector2.ZERO), Vector2.UP,
 			"his own direction is his refuge")
 
 
@@ -57,10 +57,10 @@ func test_a_man_runs_away_from_a_crowd_of_foes_on_his_refuge_side() -> void:
 	var foes := _unit(1, Vector2(500, 440), 60)
 	var frame: int = Engine.get_physics_frames() + 1000
 	SoldierFlight.prepare(frame, [a, foes], [], null)
-	var t: Vector2 = SoldierFlight.threat(a, 0, frame)
+	var t: Vector2 = SoldierFlight.perceived(a, 0, frame)["threat"]
 	assert_lt(t.y, -1.0, "he perceives the crowd to his north, weighing more than his refuge")
-	assert_gt(SoldierFlight.own_direction(a, 0, frame).y, 0.0, "so he runs south, away from it")
-	assert_eq(SoldierFlight.threat(a, 0, frame + 1), Vector2.ZERO,
+	assert_gt(SoldierFlight.own_direction(a, 0, t).y, 0.0, "so he runs south, away from it")
+	assert_eq(SoldierFlight.perceived(a, 0, frame + 1)["threat"], Vector2.ZERO,
 			"a frame nothing prepared perceives nothing")
 
 
@@ -68,7 +68,7 @@ func test_a_man_who_perceives_nothing_he_can_flee_from_runs_for_his_refuge() -> 
 	var a := _unit(0, Vector2(500, 500))
 	a.rout_refuge_weight = 0.0
 	SoldierFlight.perceive_threats = false
-	assert_eq(SoldierFlight.own_direction(a, 0, Engine.get_physics_frames()), Vector2.UP,
+	assert_eq(SoldierFlight.own_direction(a, 0, Vector2.ZERO), Vector2.UP,
 			"a zero pull and no threat still leave him his refuge's direction")
 
 
@@ -122,7 +122,7 @@ func test_the_column_reading_heads_for_the_place_behind_the_mate() -> void:
 
 func test_a_routed_man_builds_his_run_at_his_own_acceleration_and_faces_it() -> void:
 	var u := _unit(0, Vector2(500, 500), 12)
-	u.state = Unit.State.ROUTING
+	u._rout()
 	SoldierFlight.perceive_threats = false
 	var accel: float = maxf(u.accel, SoldierBodies.BODY_ACCEL_FLOOR)
 	SoldierFlightStep.step(u, u._sim_soldier_pos.size(), {}, TICK)
@@ -143,3 +143,25 @@ func test_a_man_takes_his_line_from_whichever_file_mate_is_ahead() -> void:
 	u._sim_soldier_pos[6] = u._sim_soldier_pos[0] + Vector2(0, -40)   # man 6 runs out in front
 	assert_eq(SoldierFlightStep._mate_ahead(u, 0, Vector2.UP, mates), 6, "man 0 now follows man 6")
 	assert_eq(SoldierFlightStep._mate_ahead(u, 6, Vector2.UP, mates), -1, "and man 6 follows nobody")
+
+
+func test_a_routed_man_looks_round_once_a_reaction_time_on_a_tick_of_his_own() -> void:
+	var u := _unit(0, Vector2(500, 500), 12)
+	u._rout()
+	SoldierFlight.perceive_threats = false
+	var period: int = u.rout_reaction_ticks()
+	assert_eq(period, roundi(Unit.ROUT_REACTION_TIME * Engine.physics_ticks_per_second),
+			"his reaction time at the physics rate")
+	u._sim_flight_dir.resize(12)
+	u._sim_flight_dir.fill(Vector2.RIGHT)   # each man still runs the way he last chose
+	SoldierFlightStep.step(u, 12, {}, TICK)
+	var frame: int = Engine.get_physics_frames()
+	var looked: int = 0
+	for i in range(12):
+		if (frame + i) % period == 0:
+			looked += 1
+			assert_eq(u._sim_flight_dir[i], Vector2.UP, "man %d looked round: his refuge" % i)
+		else:
+			assert_eq(u._sim_flight_dir[i], Vector2.RIGHT, "man %d keeps his last choice" % i)
+	assert_eq(looked, ceili(12.0 / period) if 12 % period != 0 else 12 / period,
+			"the men look round on ticks of their own, spread across the period")

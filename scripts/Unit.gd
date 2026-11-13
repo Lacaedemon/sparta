@@ -160,6 +160,9 @@ var _cached_combat_profile: Dictionary = {}
 # How strongly a routed man's refuge pulls against the foes he perceives (SoldierFlight.
 # own_direction), on the scale of one perceived foe at his elbow.
 @export var rout_refuge_weight: float = ROUT_REFUGE_WEIGHT
+# How long a routed man takes to look round and choose his way again, in seconds
+# (SoldierFlightStep; rout_reaction_ticks).
+@export var rout_reaction_time: float = ROUT_REACTION_TIME
 # Whether a rallied unit's men are dealt places from where they stand (RallyDeal.STAND) or
 # walk back to their own places in their files (RallyDeal.OWN); see _rally.
 @export var rally_deal: int = RallyDeal.STAND
@@ -1413,6 +1416,11 @@ var rout_time: float = ROUT_TIME
 # round their flank (UnitFormation.apply_traverse_flank_arcs). Caller-configurable, defaulting to
 # UnitFormation.TRAVERSE_ARC_CLEARANCE, with rout_time's set-before-_ready contract.
 var traverse_arc_clearance: float = UnitFormation.TRAVERSE_ARC_CLEARANCE
+# Default for rout_reaction_time: a simple reaction to a visual stimulus takes about 0.2 s
+# (R. J. Kosinski, "A Literature Review on Reaction Time", Clemson University, 2013, puts the
+# mean for young adults at about 180 to 200 ms). A man choosing where to flee reacts at least
+# that slowly, so this is a floor, not a fit.
+const ROUT_REACTION_TIME: float = 0.2
 # Defaults for rout_herding and rout_refuge_weight (see those).
 const ROUT_HERDING: float = 0.4
 const ROUT_REFUGE_WEIGHT: float = 1.0
@@ -1834,6 +1842,10 @@ var _cycle_recharging: bool = false
 # own, so its aggregate record runs from its centre at this pace, which builds to flee_speed()
 # at `accel` (_process_rout). Close-tier routers do not read it.
 var _far_flee_pace: float = 0.0
+# Each routed man's chosen way, index-aligned with the bodies (SoldierFlightStep): the direction
+# he runs in until he next looks round, or ZERO while he stands cornered and fights
+# (SoldierCornered). Empty outside a rout; SoldierMelee.reap trims a dead man's entry.
+var _sim_flight_dir: PackedVector2Array = PackedVector2Array()
 # True from a rally until its grid is laid out where its men have pulled up
 # (_reform_where_men_stand): while it holds, each man still running slows on his own
 # (SoldierBodies.pull_up_rallied) and `position` reads the men, as for a router. Set by _rally,
@@ -1986,6 +1998,10 @@ func _physics_process(delta: float) -> void:
 		# was at the break, it would keep the router's bodies colliding as if still pressed
 		# against the enemy it has fled.
 		_refresh_enemy_contact()
+		# A cornered man strikes at his unit's own cadence (SoldierCornered.fight).
+		_attack_cd = maxf(0.0, _attack_cd - delta)
+		if _attack_cd <= 0.0 and SoldierCornered.fight(self):
+			_start_attack_cd(melee_attack_interval())
 		# A far-tier router is billed at the pace it carried into this tick, as a close-tier
 		# router's men are (SoldierBodies.step), so a rally on this tick does not drop the bill.
 		_tick_far_stamina(delta)
@@ -10250,6 +10266,12 @@ func stamina_band() -> int:
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 
 
+## How many ticks a routed man takes to look round again: rout_reaction_time at the physics rate,
+## never under one tick.
+func rout_reaction_ticks() -> int:
+	return maxi(1, roundi(rout_reaction_time * Engine.physics_ticks_per_second))
+
+
 ## Signed stamina change per second for man `i` from his own pace, the speed his body carries
 ## (StaminaFlow.band_for_speed against this unit's walk, jog and sprint paces): a routed man
 ## runs at his own pace, not the regiment's. A man with no body reads as resting.
@@ -11050,6 +11072,7 @@ func _rout() -> void:
 	_approach_velocity = Vector2.ZERO
 	_current_speed = 0.0
 	_rally_pending = false
+	_sim_flight_dir = PackedVector2Array()
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -11259,6 +11282,7 @@ func _rally() -> void:
 ## (deal_slots_where_men_stand); with OWN each keeps his own place in his own file.
 func _reform_where_men_stand() -> void:
 	_rally_pending = false
+	_sim_flight_dir = PackedVector2Array()
 	_fold_grid_lag()
 	_formation_angle = 0.0
 	_absorbed_fold = 0.0
@@ -12116,6 +12140,7 @@ func to_snapshot_dict() -> Dictionary:
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
 		"far_flee_pace": _far_flee_pace, "rally_pending": _rally_pending,
+		"sim_flight_dir": _sim_flight_dir.duplicate(),
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"march_target_frac": _march_target_frac,
 		"march_stopped_ticks": _march_stopped_ticks,
@@ -12135,7 +12160,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rearguard_delay_sec": rearguard_delay_sec,
 		"rout_time": rout_time, "rout_refuge": rout_refuge, "rout_follow": rout_follow,
 		"rout_herding": rout_herding, "rout_refuge_weight": rout_refuge_weight,
-		"rally_deal": rally_deal,
+		"rally_deal": rally_deal, "rout_reaction_time": rout_reaction_time,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
 		"combat_wheel_rate": _combat_wheel_rate, "combat_wheel_offset": _combat_wheel_offset,
@@ -12397,6 +12422,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
 	_far_flee_pace = float(d.get("far_flee_pace", _far_flee_pace))
 	_rally_pending = bool(d.get("rally_pending", _rally_pending))
+	_sim_flight_dir = PackedVector2Array(d.get("sim_flight_dir", PackedVector2Array()))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
@@ -12417,6 +12443,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_herding = float(d.get("rout_herding", rout_herding))
 	rout_refuge_weight = float(d.get("rout_refuge_weight", rout_refuge_weight))
 	rally_deal = int(d.get("rally_deal", rally_deal))
+	rout_reaction_time = float(d.get("rout_reaction_time", rout_reaction_time))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))
 	combat_reface_snap_turn = float(d.get("combat_reface_snap_turn", combat_reface_snap_turn))

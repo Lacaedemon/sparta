@@ -1,5 +1,5 @@
 extends GutTest
-## What a routed man's perception costs (SoldierFlight.threat over ManPerception) on the
+## What a routed man's perception costs (SoldierFlight.perceived over ManPerception) on the
 ## cannae_scale clip. A measurement, not an assertion: it runs only when
 ## SPARTA_MEASURE_ROUTER_PERCEPTION=1, so the normal suite skips it.
 ##

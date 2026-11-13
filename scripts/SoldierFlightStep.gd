@@ -4,13 +4,15 @@ extends RefCounted
 ## slowed by the ground under him (PathField.speed_at), and changes his velocity no faster than
 ## his own acceleration allows: there is no slot, no anchor and no flight of the unit's to keep
 ## pace with. Near impassable terrain he veers along the face he is running at
-## (SoldierBodies.router_terrain_avoid). He faces the way he runs. Called by SoldierBodies.step
-## in place of the slot arrival, after the bodies are resized and before the terrain backstop.
+## (SoldierBodies.router_terrain_avoid). He faces the way he runs. He looks round only once a
+## reaction time (Unit.rout_reaction_ticks), on a tick of his own, and runs the way he then chose
+## until he looks again (Unit._sim_flight_dir); a man who finds no way to run stands and fights
+## (SoldierCornered). Called by SoldierBodies.step in place of the slot arrival, after the bodies
+## are resized and before the terrain backstop.
 
 
-## How far ahead along his own line a routed man looks for the way round terrain, in world
-## units: past any block rect, so the way round is judged to beyond the rock, not to a point on
-## it. A solver reach rather than a gameplay quantity, tuned in wu.
+## How far along his own line a routed man judges the way round terrain: past any block rect,
+## not to a point on it. A solver reach rather than a gameplay quantity, tuned in wu.
 const LOOK_AHEAD: float = 10000.0
 
 
@@ -26,15 +28,21 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	var field: PathField = PathField.active
 	var top: float = unit.flee_speed()
 	var cap_floor: float = top * unit.superphysical_speed_frac
+	var period: int = unit.rout_reaction_ticks()
+	var grown: Array[Rect2] = guard["grown"] if not guard.is_empty() else ([] as Array[Rect2])
+	_size_choices(unit, n)
 	for i in range(n):
 		var pos: Vector2 = unit._sim_soldier_pos[i]
 		var vel: Vector2 = unit._sim_body_vel[i]
-		var own: Vector2 = SoldierFlight.own_direction(unit, i, frame)
-		var mate: int = _mate_ahead(unit, i, own, mates)
-		var dir: Vector2 = SoldierFlight.with_mate(unit, i, own, mate, pitch)
-		var pace: float = top * (field.speed_at(pos) if field != null else 1.0)
-		var desired: Vector2 = dir * pace + unit._sim_steer[i]
-		if not guard.is_empty() and guard["inside"][i] == 0:
+		if (frame + i) % period == 0:
+			_look_round(unit, i, frame, grown)
+		var own: Vector2 = unit._sim_flight_dir[i]
+		var desired: Vector2 = unit._sim_steer[i]
+		if own != Vector2.ZERO:
+			var mate: int = _mate_ahead(unit, i, own, mates)
+			var dir: Vector2 = SoldierFlight.with_mate(unit, i, own, mate, pitch)
+			desired += dir * top * (field.speed_at(pos) if field != null else 1.0)
+		if own != Vector2.ZERO and not guard.is_empty() and guard["inside"][i] == 0:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel, pos + own * LOOK_AHEAD,
 					desired, guard["grown"], body_accel, delta)
 		var pre: float = vel.length()
@@ -44,9 +52,34 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		unit._sim_body_vel[i] = new_vel
 		unit._sim_soldier_pos[i] = pos + new_vel * delta
 		if new_vel.length_squared() > SoldierBodies.REST_SPEED * SoldierBodies.REST_SPEED:
-			unit._sim_soldier_facing[i] = new_vel.normalized()
+			if own != Vector2.ZERO:   # a man standing to fight keeps facing his foe
+				unit._sim_soldier_facing[i] = new_vel.normalized()
 			unit._render_dirty = true
 	SimOps.add(SimOps.BODY_STEP, n)
+
+
+## One chosen direction per man; a man with none yet runs for his refuge until he looks round.
+static func _size_choices(unit: Unit, n: int) -> void:
+	var have: int = unit._sim_flight_dir.size()
+	if have == n:
+		return
+	unit._sim_flight_dir.resize(n)
+	for i in range(have, n):
+		unit._sim_flight_dir[i] = SoldierFlight.refuge_direction(unit, unit._sim_soldier_pos[i])
+
+
+## Man `i` looks round: he chooses his way from what he perceives, or, finding none, turns to
+## the foe nearest him (ZERO in _sim_flight_dir: he stands and fights).
+static func _look_round(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
+	var seen: Dictionary = SoldierFlight.perceived(unit, i, frame)
+	var own: Vector2 = SoldierFlight.own_direction(unit, i, seen["threat"])
+	if SoldierCornered.is_cornered(unit, i, own, seen, grown):
+		var foe: Unit = seen["nearest_unit"]
+		var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
+		if to_foe.length_squared() > 0.0:
+			unit._sim_soldier_facing[i] = to_foe.normalized()
+		own = Vector2.ZERO
+	unit._sim_flight_dir[i] = own
 
 
 ## The file-mate ahead of man `i` along `own`: of the men in front of and behind him in his
