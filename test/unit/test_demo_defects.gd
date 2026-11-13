@@ -286,6 +286,21 @@ func test_a_pursuing_unit_is_judged_for_men_on_one_spot_but_not_for_its_shape() 
 			"nor is a rallied bunch whose men still pull up from their flight")
 
 
+func test_a_pursuing_unit_s_facing_is_not_judged_for_flutter() -> void:
+	# Its facing is its aim at a quarry whose men scatter, not a formed block's facing.
+	var slots: Array = _grid(6, 4, SPACING)
+	var snaps: Array = []
+	for k in range(12):
+		var a: float = 0.05 if k % 2 == 0 else -0.05
+		snaps.append(_snapshot(k * 2, slots.duplicate(), slots, false, "MOVING", [sin(a), cos(a)]))
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "facing_flutter")["pass"]),
+			"setup: the same flips on a formed block flutter")
+	for snap in snaps:
+		snap["units"][0]["pursuing"] = true
+	assert_true(bool(_verdict(DemoDefects.analyze(snaps), "facing_flutter")["pass"]),
+			"a pursuing unit's aim is not judged")
+
+
 func test_samples_adjacent_to_an_engagement_flip_are_exempt() -> void:
 	# The transition window: a block charging into contact legitimately compresses
 	# in the sampled moment just before `engaged` flips. The same compression far

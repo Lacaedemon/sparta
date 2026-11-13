@@ -713,12 +713,14 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
 				MISSLOT_MAX_FRAC, follow_error_mask(s, mask, true), MIN_SUSTAIN, true))
 
-	# Facing whipsaw while marching.
+	# Facing whipsaw while marching. A unit riding a router down has no formed facing to judge:
+	# its facing is its aim at a quarry whose men scatter (SoldierPursuitStep).
 	var moving_angles: Array = []
 	var flutter_angles: Array = []
 	var flutter_ticks: Array = []
+	var pursuing: Array = s.get("pursuing", [])
 	for i in range(n):
-		if s["moving"][i]:
+		if s["moving"][i] and not (i < pursuing.size() and bool(pursuing[i])):
 			moving_angles.append(s["facing_angle"][i])
 			if not (bool(s["engaged"][i]) or bool(s["in_enemy_contact"][i])):
 				flutter_angles.append(s["facing_angle"][i])
