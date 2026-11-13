@@ -1007,13 +1007,17 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 ## block's depth runs back from there. Centring the blocks on the line instead let a deep
 ## block reach half its depth toward the enemy -- a default cavalry squadron, 960 wu deep,
 ## reached past the terrain between the lines and into the enemy's own cavalry. The front
-## rank is the layout's front rank, so a partial rear rank never moves the front.
-## A just-spawned block has no men yet (the first physics tick seeds them), so the front is read
-## from its layout (Unit.layout_front_depth): spawn data, the headcount and pitches the men are
-## about to be seeded from, used once to place the block and never a point any man is steered to.
+## rank is the farthest slot of the block's layout along the facing, so a partial rear rank
+## never moves the front. A just-spawned block has no men yet (the first physics tick seeds
+## them), so there is nothing to measure: the layout is spawn data, the places the men are about
+## to be seeded on, read once to place the block and never a point any man is steered to. It is
+## read the way the seeding will read it, so the men start exactly where the block was dressed.
 func _dress_front_on_line(u: Unit) -> void:
-	if u.soldiers > 0:
-		u.position -= u.facing * u.layout_front_depth()
+	var front: float = -INF
+	for slot in u.soldier_world_slots(u.soldiers):
+		front = maxf(front, (slot - u.position).dot(u.facing))
+	if is_finite(front):
+		u.position -= u.facing * front
 
 
 ## A loadout entry's own half-width in a spawn line: its per-type FILE pitch (metres to wu;

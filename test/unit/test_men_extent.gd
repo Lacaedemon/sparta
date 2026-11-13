@@ -90,12 +90,3 @@ func test_a_block_with_no_men_reads_its_layout() -> void:
 	u.set_frontage(10, 60.0)
 	assert_almost_eq(u.block_centre_offset().length(), 60.0, 0.01,
 			"the ordered anchor shift is the footprint centre before any man exists")
-
-
-func test_layout_front_depth_is_the_farthest_slot_along_the_facing() -> void:
-	for facing in [Vector2.DOWN, Vector2.UP, Vector2.RIGHT, Vector2(1.0, 1.0).normalized()]:
-		var u: Unit = _block(37, facing)
-		var farthest: float = -INF
-		for slot in u.soldier_world_slots(u.soldiers):
-			farthest = maxf(farthest, (slot - u.position).dot(u.facing))
-		assert_almost_eq(u.layout_front_depth(), farthest, 0.01, "facing %s" % facing)

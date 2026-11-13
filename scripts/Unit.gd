@@ -5748,18 +5748,6 @@ func _layout_span() -> Vector3:
 			float(maxi(0, ranks - 1)) * depth_pitch * 0.5)
 
 
-## How far the layout's front rank stands ahead of `position` along the facing: the two end
-## files of the front rank (_layout_span), laid out at the block's current rotation. Spawn data,
-## for a block with no men yet; Battle's spawn line dresses the front on it.
-func layout_front_depth() -> float:
-	var span: Vector3 = _layout_span()
-	var angle: float = soldier_block_world_angle()
-	var front: float = -INF
-	for x in [span.x, span.y]:
-		front = maxf(front, Vector2(x, -span.z).rotated(angle).dot(facing))
-	return front
-
-
 ## How far the layout reaches from `position` (or, with `about_footprint`, from the layout's
 ## own centre, the anchor shift) to its farthest corner: the reach a block with no men reports
 ## where MenExtent.reach reports the men's.
