@@ -458,8 +458,8 @@ func test_the_held_flank_rides_the_replay() -> void:
 	var centred: Dictionary = Replay.ReplayOrderEntryRef.build(5, [1], Vector2.ZERO, -4, 0, 0, 18,
 			INF, 0, 0.0, -1, 0, 0, -1, -1, 0, HALF_FILE)
 	assert_false(centred.has("explicatio_held"), "a widen about the middle records none")
-	var decoder := preload("res://scripts/ReplayDecoder.gd")
-	assert_eq(decoder._decode_order({"units": [1], "explicatio_held": -1})["explicatio_held"], -1,
+	var Decoder := preload("res://scripts/ReplayDecoder.gd")
+	assert_eq(Decoder._decode_order({"units": [1], "explicatio_held": -1})["explicatio_held"], -1,
 		"playback reads it back")
 
 
@@ -486,7 +486,7 @@ func test_a_unit_widening_on_the_march_is_not_dealt_the_drill() -> void:
 ## A block that has just halted, with every second file still three quarters of a rank pitch
 ## short of its slots, does the drill from where its men stand: before, a man more than
 ## REFORM_SETTLE_EPS_RESHAPE off his slot sent the block to main's lateral deal. It ends, doubled,
-## with nobody coming onto anybody.
+## with no two men within a body radius of each other (this build measured 5.27 wu).
 func test_a_block_widened_as_it_halts_does_the_drill_from_where_its_men_stand() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
@@ -507,7 +507,7 @@ func test_a_block_widened_as_it_halts_does_the_drill_from_where_its_men_stand() 
 		"precondition: a man stands %.2f wu off his slot" % unsettled)
 	_battle.enqueue_file_double([u.uid], 1)
 	assert_true(u.explicatio_drill_active(), "the halted block does the drill")
-	var floor_wu: float = 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
+	var floor_wu: float = u.soldier_body_radius()
 	var walk: Dictionary = await _walk(u, DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
 	assert_eq(UnitFormation.frontage(u), 18, "the files doubled")
@@ -751,6 +751,47 @@ func test_a_man_in_his_lane_holds_him_back_and_a_settled_one_shuts_it() -> void:
 	u._advance_explicatio_drill()
 	assert_eq(u._explicatio_shut[h], 1, "that man settled, the lane is shut")
 	assert_eq(u._explicatio_following[h], 0, "and he stops following where he stands")
+
+
+## The cells each man's lane is read from (_explicatio_cells, _explicatio_cell_men) hold every
+## man who stands in it: over a drill, every tenth tick, the room read from the cells matches
+## lane_blockers handed every man of the block, with the men facing the block's way and with each
+## man's facing turned a little off it, alternately each way.
+func test_the_cells_hold_every_man_in_a_lane() -> void:
+	for tilt in [0.0, 0.2]:
+		var units: Array = await _stage([_spearmen()])
+		var u: Unit = units[0]
+		_battle.enqueue_file_double([u.uid], 1)
+		var everyone := PackedInt32Array(range(u.soldiers))
+		var checked: int = 0
+		var blocked: int = 0
+		var mismatched: int = 0
+		for t in range(DRILL_TICKS):
+			await get_tree().physics_frame
+			if not u.explicatio_drill_active():
+				break
+			if t % 10 != 0:
+				continue
+			for i in range(u.soldiers):
+				u._sim_soldier_facing[i] = u.facing.rotated(tilt if i % 2 == 0 else -tilt)
+			u._explicatio_follow_frame = -1
+			assert_true(u._refresh_explicatio_follow(u.soldiers), "precondition: a plan")
+			for i in range(u.soldiers):
+				if _stays(u, i):
+					continue
+				var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(
+						u._sim_soldier_pos[i], u._sim_soldier_facing[i], u._explicatio_places[i],
+						u._sim_soldier_pos, everyone, u._sim_soldier_file, u._sim_soldier_file[i],
+						u.explicatio_lane_clear(), u.rank_pitch_wu(), u.soldier_body_radius())
+				checked += 1
+				if not lane.is_empty():
+					blocked += 1
+				if (u._explicatio_rooms[i] == 0.0) != (not lane.is_empty()):
+					mismatched += 1
+		assert_gt(blocked, 0, "tilt %.1f: precondition: men stood in lanes" % tilt)
+		assert_eq(mismatched, 0, "tilt %.1f: of %d lanes read, %d differed" % [tilt, checked,
+				mismatched])
+		await _free_battle()
 
 
 ## A man coming up an interval that has not yet opened where he is goes on following when a man
@@ -1001,7 +1042,8 @@ func test_a_duplicatio_after_the_drill_takes_the_roles_away() -> void:
 ## while the line was still opening, overshoot, and step back, the front running up to 5.0 wu
 ## ahead.
 func test_the_alternate_rank_drill_keeps_its_columns() -> void:
-	for anchor in [UnitFormation.Anchor.CENTRE, UnitFormation.Anchor.RIGHT]:
+	for anchor in [UnitFormation.Anchor.CENTRE, UnitFormation.Anchor.RIGHT,
+			UnitFormation.Anchor.LEFT]:
 		var units: Array = await _stage([_spearmen()])
 		var u: Unit = units[0]
 		var floor_wu: float = u.soldier_body_radius()
@@ -1034,10 +1076,10 @@ func test_the_drill_rides_the_order_and_the_replay() -> void:
 	assert_eq(entry["explicatio"], ALTERNATE_RANK, "the replay entry names the drill")
 	var plain: Dictionary = Replay.ReplayOrderEntryRef.build(5, [1], Vector2.ZERO, -4, 0, 0, 18)
 	assert_false(plain.has("explicatio"), "a plain resize records no drill")
-	var decoder := preload("res://scripts/ReplayDecoder.gd")
-	assert_eq(decoder._decode_order({"units": [1], "explicatio": ALTERNATE_RANK})["explicatio"],
+	var Decoder := preload("res://scripts/ReplayDecoder.gd")
+	assert_eq(Decoder._decode_order({"units": [1], "explicatio": ALTERNATE_RANK})["explicatio"],
 		ALTERNATE_RANK, "playback reads the drill back")
-	assert_false(decoder._decode_order({"units": [1]}).has("explicatio"),
+	assert_false(Decoder._decode_order({"units": [1]}).has("explicatio"),
 		"a replay from before the drill plays back no drill")
 	var step := Order.new_file_double(1, ALTERNATE_RANK)
 	assert_eq(Order.from_dict(step.to_dict()).explicatio_drill, ALTERNATE_RANK,
@@ -1267,8 +1309,8 @@ func test_a_man_steps_onto_the_line_before_closing_along_it() -> void:
 
 ## A man at (0, 0) of file 0, facing south, comes up the line x = 0 to (0, 40): the men in his
 ## lane are those of other files less than `clear` off it, from a body radius behind him to a rank
-## pitch (9) ahead. `clear` is a body's width (9) at a 9 wu pitch or in a loose order, the pitch
-## less the settle distance (5.75) in a 6.75 wu shield wall.
+## pitch (9) ahead. `clear` is the lesser of a body's width and the pitch less the settle
+## distance: 9 in a loose order (here), 8 at the 9 wu pitch, 5.75 in a 6.75 wu shield wall.
 func test_lane_blockers_are_the_men_in_his_lane() -> void:
 	var f := Vector2(0, 1)
 	var line := Vector2(0, 40)
@@ -1321,14 +1363,17 @@ func test_a_drill_with_no_guide_left_says_so_and_ends() -> void:
 	assert_almost_eq(u.position.y, reading.y, 0.01, "the grid is laid on the men")
 
 
-## The drill reads the room off the men's bodies, not the pitch, so it plays out in a looser and
-## a closer order than the 9 wu pitch the other tests stand at: it ends, the files doubled, with
-## no two men within a body radius of each other in normal order, which stands the Spearmen at
-## an 18 wu pitch. In a shield wall, at 6.75 wu, closer than two bodies' radii, the bound is the
-## demo scan's overlap floor (2.25 wu): this build measured 3.75 wu there, for the reason
-## test_no_two_men_come_onto_each_other gives.
-func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
-	for mode in [Unit.FORMATION_NORMAL, Unit.FORMATION_SHIELD_WALL]:
+## The drill reads the room off the men's bodies, not the pitch, so it plays out in close order
+## (the Spearmen's own, a 9 wu pitch), in a looser and in a closer order: it ends, the files
+## doubled. Its lane is the lesser of a body's width and the pitch less REFORM_SETTLE_EPS: 8 wu at
+## the 9 wu pitch, 9 wu in normal order's 18 wu pitch, 5.75 wu in a shield wall's 6.75 wu. In
+## normal order no two men come within a body radius of each other; in close order and in the
+## shield wall, closer than two bodies' radii, the bound is the demo scan's overlap floor (2.25 wu),
+## for the reason test_no_two_men_come_onto_each_other gives.
+func test_the_drill_plays_out_in_close_loose_order_and_a_shield_wall() -> void:
+	var lanes := {Unit.FORMATION_TIGHT: 8.0, Unit.FORMATION_NORMAL: 9.0,
+			Unit.FORMATION_SHIELD_WALL: 5.75}
+	for mode in [Unit.FORMATION_TIGHT, Unit.FORMATION_NORMAL, Unit.FORMATION_SHIELD_WALL]:
 		var units: Array = await _stage([_spearmen()])
 		var u: Unit = units[0]
 		u.set_formation(mode)
@@ -1339,18 +1384,15 @@ func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
 		assert_almost_eq(u.follow_line_width(),
 				minf(u.file_pitch_wu(), 2.0 * u.soldier_body_radius()), 0.001,
 				"mode %d: a man clears his line by a body's width, or the pitch if closer" % mode)
-		var lane_clear: float = 2.0 * u.soldier_body_radius() if mode == Unit.FORMATION_NORMAL \
-				else u.file_pitch_wu() - Unit.REFORM_SETTLE_EPS
-		assert_almost_eq(u.explicatio_lane_clear(), lane_clear, 0.001,
-			"mode %d: the lane is a body's width wide in open order, the pitch less the settle " % mode
-			+ "distance in a shield wall")
+		assert_almost_eq(u.explicatio_lane_clear(), float(lanes[mode]), 0.001,
+			"mode %d: the lane's half-width" % mode)
 		_battle.enqueue_file_double([u.uid], 1)
 		assert_true(u.explicatio_drill_active(), "mode %d: the widen is the drill" % mode)
 		var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "mode %d: the drill ended" % mode)
 		assert_eq(UnitFormation.frontage(u), 2 * files, "mode %d: the files doubled" % mode)
-		# TODO(#1974): one body radius in the shield wall too, which measures 3.75 wu, once men
-		# avoid each other body to body.
+		# TODO(#1974): one body radius in close order and the shield wall too, which measure
+		# 4.44 and 3.75 wu, once men avoid each other body to body.
 		var floor_wu: float = u.soldier_body_radius() if mode == Unit.FORMATION_NORMAL \
 				else 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
 		assert_gte(walk["closest"], floor_wu,

@@ -89,7 +89,7 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   its companies in single file, and unfolding them into line as they go.
   At the word "Companies in twos" "the captains-of-ten came into line",
   and at "Companies in fours" the captains of five.
-  It is a drill done on the march (#1967).
+  It is a drill done on the march ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
   Xenophon does not say on which side the rear parts come up, or that the front halts:
   that each captain leads his part up beside the part ahead of it is an inference from "came into line".
 
@@ -140,7 +140,8 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   He steps out of his file before he comes up,
   and comes up only while nobody of another file stands in his lane,
   from level with him to a rank ahead,
-  within a body's width of his place's line (or within a file pitch, where the files stand closer than a body's width).
+  within the lesser of a body's width and the file pitch less the reform settle distance of his place's line
+  (8 wu at the 9 wu pitch of close order, a body's width in open order).
   The men of his column behind him do the same.
   Only a man with the role leads: the head of an interval without it stays where he is.
 
@@ -164,8 +165,8 @@ and so does a block whose grid stands turned from its men's facing, as an about-
 since its file leaders stand behind its men and its files would cross
 ([#1968](https://github.com/Lacaedemon/sparta/issues/1968)).
 The turn-and-unfold combo's widen doubles the turned block's files against the width it had before the turn,
-so it is the drill only for a block as deep as it was wide (#1967).
-A man held off his place by terrain, rather than by another regiment, keeps the drill running (#1967).
+so it is the drill only for a block as deep as it was wide ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
+A man held off his place by terrain, rather than by another regiment, keeps the drill running ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
 
 ## Game Design and Mechanics Framework
 

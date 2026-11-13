@@ -37,9 +37,10 @@ static func steer_point(pos: Vector2, facing: Vector2, target: Vector2, line_wid
 ## line through `line`: of the men `candidates` (indices into `positions`), those of a file other
 ## than `own_file` (`files`, index-aligned with `positions`; his own file follows him in column)
 ## less than `clear` off that line across his front, from level with him (`behind` back) to
-## `reach` ahead of him along it. `clear` is what he needs: a body's width, so that two bodies
-## pass side by side without touching, or the file pitch where the files stand closer than that,
-## as near as the line will ever let them. He comes up only while the lane is empty.
+## `reach` ahead of him along it. `clear` is what he needs: the lesser of a body's width, so that
+## two bodies pass side by side without touching, and the file pitch less the distance the men
+## stand on their places to, as near as the line will ever let them (Unit.explicatio_lane_clear).
+## He comes up only while the lane is empty.
 static func lane_blockers(pos: Vector2, facing: Vector2, line: Vector2,
 		positions: PackedVector2Array, candidates: PackedInt32Array, files: PackedInt32Array,
 		own_file: int, clear: float, reach: float, behind: float) -> PackedInt32Array:

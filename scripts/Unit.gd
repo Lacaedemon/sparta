@@ -6461,8 +6461,12 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		var f: int = _sim_soldier_file[i]
 		if UnitFormation.explicatio_file_stays(f, _explicatio_lane_split):
 			continue
-		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], _explicatio_places[i],
-				reach)
+		# His place's line where it passes level with him, along his own facing: a man turned a
+		# little off the block's facing has his line pass level with him well off his place's.
+		var own_front: Vector2 = _sim_soldier_facing[i].normalized()
+		var level: Vector2 = _explicatio_places[i] \
+				+ own_front * (bodies[i] - _explicatio_places[i]).dot(own_front)
+		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], level, reach)
 		var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(bodies[i],
 				_sim_soldier_facing[i], _explicatio_places[i], bodies, near, _sim_soldier_file, f,
 				clear, rank_pitch_wu(), soldier_body_radius())
@@ -6478,15 +6482,12 @@ func _refresh_explicatio_follow(count: int) -> bool:
 
 
 ## How far off a man's way in an explicatio another file's man must stand for him not to stand
-## in it: a body's width, so that two bodies pass side by side without touching; or, where the
-## files stand at a body's width or closer, the file pitch less REFORM_SETTLE_EPS, since the men
-## beside his line will stand no farther off it than the pitch, and on their places only to within
-## that distance.
+## in it: the lesser of a body's width, so that two bodies pass side by side without touching,
+## and the file pitch less REFORM_SETTLE_EPS, since the men beside his line will stand no farther
+## off it than the pitch, and on their places only to within that distance. 8 wu at the 9 wu
+## pitch of close order, 9 wu (a body) in open order, 5.75 wu in a 6.75 wu shield wall.
 func explicatio_lane_clear() -> float:
-	var body: float = 2.0 * soldier_body_radius()
-	if file_pitch_wu() > body:
-		return body
-	return file_pitch_wu() - REFORM_SETTLE_EPS
+	return minf(2.0 * soldier_body_radius(), file_pitch_wu() - REFORM_SETTLE_EPS)
 
 
 ## `bodies` filed into square cells `cell` wu wide in the block's own frame (its facing and its
@@ -6504,11 +6505,11 @@ func _explicatio_cells(bodies: PackedVector2Array, cell: float) -> Dictionary:
 
 
 ## The men of `cells` (_explicatio_cells, `cell` wu wide) in the cells around a man at `pos`
-## stepping to his place at `place`: every cell his lane this tick could touch, from a cell
-## behind him to two cells ahead (his lane reaches `cell` ahead), and across from a cell outside
-## the nearer of him and his place's line to a cell outside the farther, so a man of another
-## file a lane's clearance off it is among them however his own facing differs a little from
-## the block's.
+## whose place's line passes level with him at `place`: every cell his lane this tick could
+## touch, from a cell behind him to two cells ahead (his lane reaches `cell` ahead), and across
+## from a cell outside the nearer of him and that line to a cell outside the farther, so a man of
+## another file a lane's clearance off it is among them however his own facing differs a little
+## from the block's.
 func _explicatio_cell_men(cells: Dictionary, pos: Vector2, place: Vector2,
 		cell: float) -> PackedInt32Array:
 	var front: Vector2 = facing.normalized()
@@ -6546,6 +6547,8 @@ func _take_up_explicatio_guide(count: int) -> bool:
 		_explicatio_stand_file = f
 		_explicatio_stand_point = _sim_soldier_pos[leader_of[f]]
 	return true
+
+
 ## Whom man `i` follows this tick (SoldierFollow): the index of that man, SoldierFollow.STAND or
 ## HOLD for a man who follows nobody but keeps to his place, or SoldierFollow.NOT_FOLLOWING for a
 ## man who keeps to his slot: every man when no explicatio is under way, and in one, a man who
