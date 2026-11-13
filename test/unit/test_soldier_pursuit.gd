@@ -43,7 +43,11 @@ func test_a_unit_after_a_router_is_pursuing() -> void:
 func test_each_rider_rides_at_the_runner_nearest_him_not_the_routed_unit_s_centre() -> void:
 	var pair: Array = _split_rout()
 	var p: Unit = pair[1]
-	SoldierPursuitStep.step(p, 1, {}, TICK)
+	p._sim_flight_dir = PackedVector2Array([Vector2.RIGHT])   # his last look sent him east
+	for _k in range(p.rout_reaction_ticks() + 1):   # a tick of his own to look round comes up
+		await get_tree().physics_frame
+		SoldierPursuitStep.step(p, 1, {}, TICK)
+		p._sim_soldier_pos[0] = AT + Vector2(-300, 200)   # hold him where he stood
 	assert_almost_eq(p._sim_flight_dir[0].x, 0.0, 0.0001, "straight at the west runner above him")
 	assert_almost_eq(p._sim_flight_dir[0].y, -1.0, 0.0001, "not toward the empty centre to his east")
 	assert_lt(p._sim_body_vel[0].y, 0.0, "and he rides off after him")

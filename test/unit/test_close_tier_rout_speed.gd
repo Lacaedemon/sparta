@@ -226,6 +226,39 @@ func test_a_router_with_the_enemy_on_its_refuge_side_never_stalls_and_goes_round
 			"and none runs into the enemy line (closest %.1f wu)" % closest)
 
 
+func test_a_unit_riding_a_router_down_keeps_its_men() -> void:
+	# The routed unit is the pursuer's only near enemy; its other enemy stands far off. The tier
+	# pass counts the quarry, so the pursuer stays in the close tier and its riders keep chasing.
+	Replay.forced_seed = 12345
+	_battle = load("res://scenes/Battle.tscn").instantiate()
+	_battle.all_teams_control = true
+	_battle.terrain = []
+	_battle.scenario = [
+		{"team": 0, "type": "Infantry", "count": 12, "x": 700.0, "y": 1250.0, "facing": [0, -1]},
+		{"team": 0, "type": "Spearmen", "count": 40, "x": 700.0, "y": 100.0, "facing": [0, 1]},
+		{"team": 1, "type": "Cavalry", "count": 12, "x": 700.0, "y": 1400.0, "facing": [0, -1]},
+	]
+	add_child(_battle)
+	await get_tree().physics_frame
+	var router: Unit = null
+	var pursuer: Unit = null
+	for u in get_tree().get_nodes_in_group("units"):
+		var unit: Unit = u as Unit
+		if unit.team == 1:
+			pursuer = unit
+		elif str(unit.unit_name).begins_with("Infantry"):
+			router = unit
+	_rout_and_hold(router)
+	_battle._apply_order_cmd({"units": [pursuer.uid], "x": router.position.x,
+			"y": router.position.y, "target": router.uid})
+	var far: bool = false
+	for t in range(120):
+		await _advance_ticks(1)
+		far = far or pursuer.tier == FormationTier.FAR
+	assert_true(SoldierPursuitStep.is_pursuing(pursuer), "setup: the cavalry ride the router down")
+	assert_false(far, "the pursuer kept its men for the whole chase")
+
+
 func test_a_router_clear_of_every_enemy_is_not_in_enemy_contact() -> void:
 	# A router never runs _think(), where _in_enemy_contact is recomputed, so the rout path
 	# must refresh it: left as it was when the unit broke, a router that has got clear would
