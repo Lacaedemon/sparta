@@ -6466,7 +6466,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		var own_front: Vector2 = _sim_soldier_facing[i].normalized()
 		var level: Vector2 = _explicatio_places[i] \
 				+ own_front * (bodies[i] - _explicatio_places[i]).dot(own_front)
-		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], level, reach)
+		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], level, reach, clear)
 		var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(bodies[i],
 				_sim_soldier_facing[i], _explicatio_places[i], bodies, near, _sim_soldier_file, f,
 				clear, rank_pitch_wu(), soldier_body_radius())
@@ -6479,6 +6479,11 @@ func _refresh_explicatio_follow(count: int) -> bool:
 				moving = true
 		_explicatio_shut[i] = 0 if moving else 1
 	return true
+
+
+## The most a man's own facing is taken to turn off the block's while an explicatio runs, for the
+## cells his lane is read from (_explicatio_cell_men): a quarter of a radian, about 14 degrees.
+const EXPLICATIO_TILT_MAX: float = 0.25
 
 
 ## How far off a man's way in an explicatio another file's man must stand for him not to stand
@@ -6505,17 +6510,18 @@ func _explicatio_cells(bodies: PackedVector2Array, cell: float) -> Dictionary:
 
 
 ## The men of `cells` (_explicatio_cells, `cell` wu wide) in the cells around a man at `pos`
-## whose place's line passes level with him at `place`: every cell his lane this tick could
-## touch, from a cell behind him to two cells ahead (his lane reaches `cell` ahead), and across
-## from a cell outside the nearer of him and that line to a cell outside the farther, so a man of
-## another file a lane's clearance off it is among them however his own facing differs a little
-## from the block's.
-func _explicatio_cell_men(cells: Dictionary, pos: Vector2, place: Vector2,
-		cell: float) -> PackedInt32Array:
+## whose place's line passes level with him at `place`, his lane `clear` wide each side of it
+## and reaching `cell` ahead: every cell that lane could touch for a man whose own facing is
+## turned up to EXPLICATIO_TILT_MAX off the block's. Along, from a cell behind him to two cells
+## ahead. Across, out from the nearer and the farther of him and that line by the lane's far
+## corner, `cell` sin(EXPLICATIO_TILT_MAX) + `clear` across from the line, in whole cells.
+func _explicatio_cell_men(cells: Dictionary, pos: Vector2, place: Vector2, cell: float,
+		clear: float) -> PackedInt32Array:
 	var front: Vector2 = facing.normalized()
 	var right: Vector2 = SoldierFollow.right_of(front)
-	var a0: int = floori(minf(pos.dot(right), place.dot(right)) / cell) - 1
-	var a1: int = floori(maxf(pos.dot(right), place.dot(right)) / cell) + 1
+	var out_cells: int = ceili((cell * sin(EXPLICATIO_TILT_MAX) + clear) / cell)
+	var a0: int = floori(minf(pos.dot(right), place.dot(right)) / cell) - out_cells
+	var a1: int = floori(maxf(pos.dot(right), place.dot(right)) / cell) + out_cells
 	var l0: int = floori(pos.dot(front) / cell) - 1
 	var l1: int = floori(pos.dot(front) / cell) + 2
 	var out := PackedInt32Array()

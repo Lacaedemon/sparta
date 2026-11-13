@@ -140,7 +140,7 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   He steps out of his file before he comes up,
   and comes up only while nobody of another file stands in his lane,
   from level with him to a rank ahead,
-  within the lesser of a body's width and the file pitch less the reform settle distance of his place's line
+  within the lesser of a body's width and the file pitch less the reform settle distance, measured from his place's line
   (8 wu at the 9 wu pitch of close order, a body's width in open order).
   The men of his column behind him do the same.
   Only a man with the role leads: the head of an interval without it stays where he is.

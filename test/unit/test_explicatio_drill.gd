@@ -794,6 +794,38 @@ func test_the_cells_hold_every_man_in_a_lane() -> void:
 		await _free_battle()
 
 
+## The cells a man's lane is read from reach its far corner for a man turned the most the cells
+## allow for (Unit.EXPLICATIO_TILT_MAX): at the close-order pitch (cells 9 wu, lane 8 wu each side),
+## a man standing on his line just short of a cell's edge, turned that far, has the far corner of
+## his lane, a rank ahead and a lane's width across, past the next cell over; a man of another
+## file standing there is among the men read.
+func test_the_cells_reach_the_far_corner_of_a_turned_mans_lane() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	var cell: float = maxf(u.rank_pitch_wu(), u.explicatio_lane_clear())
+	var clear: float = u.explicatio_lane_clear()
+	assert_almost_eq(cell, 9.0, 0.001, "precondition: 9 wu cells")
+	var front: Vector2 = u.facing.normalized()
+	var right := Vector2(-front.y, front.x)
+	var pos: Vector2 = right * (cell - 0.1) + front * (0.5 * cell)
+	var own_front: Vector2 = front.rotated(-Unit.EXPLICATIO_TILT_MAX)
+	var own_right := Vector2(-own_front.y, own_front.x)
+	if own_right.dot(right) < 0.0:
+		own_right = -own_right
+	var corner: Vector2 = pos + own_front * cell + own_right * (clear - 0.01)
+	if corner.dot(right) < pos.dot(right) + clear:
+		own_front = front.rotated(Unit.EXPLICATIO_TILT_MAX)
+		own_right = Vector2(-own_front.y, own_front.x)
+		if own_right.dot(right) < 0.0:
+			own_right = -own_right
+		corner = pos + own_front * cell + own_right * (clear - 0.01)
+	assert_gt(floori(corner.dot(right) / cell), floori(pos.dot(right) / cell) + 1,
+		"precondition: the corner lies past the next cell over")
+	var cells: Dictionary = u._explicatio_cells(PackedVector2Array([pos, corner]), cell)
+	assert_true(u._explicatio_cell_men(cells, pos, pos, cell, clear).has(1),
+		"the man at the corner of his lane is among the men read")
+
+
 ## A man coming up an interval that has not yet opened where he is goes on following when a man
 ## of another regiment presses on him: the man beside him, not the press, holds him back, and
 ## leaving the follow mode would walk him up the interval before it opened.
