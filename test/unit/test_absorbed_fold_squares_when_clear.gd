@@ -48,7 +48,7 @@ func _max_slot_shift(a: PackedVector2Array, b: PackedVector2Array) -> float:
 
 ## The farthest any slot may move in one tick of a bounded grid turn, with 1% slack.
 func _per_tick_bound(u: Unit) -> float:
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	return 1.01 * u.bounded_turn_rate(radius) * DT * u.soldier_block_extent()
 
 
@@ -96,7 +96,7 @@ func test_each_tick_turns_the_fold_by_a_bounded_step() -> void:
 	var u := _make_block()
 	_absorb_reface(u)
 	u._in_enemy_contact = false
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var bound: float = 1.0001 * u.bounded_turn_rate(radius) * DT
 	var worst := 0.0
 	for _i in range(600):
@@ -174,7 +174,7 @@ func test_a_pivot_at_the_full_rate_the_same_way_leaves_no_room() -> void:
 	var u := _make_block()
 	var absorbed: float = _absorb_reface(u)
 	u._in_enemy_contact = false
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	u._facing_turn_step = -signf(absorbed) * u.bounded_turn_rate(radius) * DT
 	u._is_facing_turning = true
 	u._advance_grid_lag(DT)

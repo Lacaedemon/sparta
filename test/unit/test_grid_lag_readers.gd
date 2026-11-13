@@ -41,6 +41,13 @@ func _stand_resquare(u: Unit, fold: float, lag: float) -> void:
 	u._grid_lag_resquare = true
 
 
+## The same, with the men standing on the grid where it is: the footprint is read off the men,
+## in the grid's frame.
+func _stand_resquare_with_men(u: Unit, fold: float, lag: float) -> void:
+	_stand_resquare(u, fold, lag)
+	u.seed_sim_soldiers()
+
+
 ## The swept width (plus body radius) of `u`'s grid turned `turn` off its heading, marching
 ## along `dir`.
 func _swept(u: Unit, turn: float, dir: Vector2) -> float:
@@ -74,7 +81,7 @@ func test_terrain_clearance_covers_every_angle_a_large_lag_still_turns_through()
 	# stands 60 degrees off and turns back through every angle in between.
 	var u := _unit()
 	var lag: float = deg_to_rad(60.0)
-	_stand_resquare(u, 0.0, lag)
+	_stand_resquare_with_men(u, 0.0, lag)
 	var travel: Vector2 = u.facing.orthogonal()
 	var expected: float = _sampled_max(u, 0.0, lag, travel)
 	assert_gt(expected, _swept(u, 0.0, travel) + 10.0,
@@ -85,7 +92,7 @@ func test_terrain_clearance_covers_every_angle_a_large_lag_still_turns_through()
 
 func test_terrain_clearance_reaches_the_corner_when_the_lag_turns_through_a_diagonal() -> void:
 	var u := _unit()
-	_stand_resquare(u, 0.0, PI * 0.5)
+	_stand_resquare_with_men(u, 0.0, PI * 0.5)
 	var travel: Vector2 = u.facing.orthogonal()
 	assert_almost_eq(u.terrain_clearance(travel), u.corner_clearance(), CLEAR_EPS,
 			"a quarter-turn lag sweeps through the diagonal, so it clears the corner man")
@@ -96,13 +103,13 @@ func test_terrain_clearance_for_a_small_residue_is_about_the_folds_swept_width()
 	var u := _unit()
 	var travel: Vector2 = u.facing.orthogonal()
 	var square: float = _swept(u, 0.0, travel)
-	_stand_resquare(u, 0.0, deg_to_rad(2.0))
+	_stand_resquare_with_men(u, 0.0, deg_to_rad(2.0))
 	var residue: float = u.terrain_clearance(travel)
 	assert_lt(residue, u.corner_clearance() - 20.0, "far below the corner man's clearance")
 	assert_almost_eq(residue, _sampled_max(u, 0.0, deg_to_rad(2.0), travel), 0.05,
 			"the widest swept width over the 2 degrees left")
 	assert_almost_eq(residue, square, 5.0, "within a few wu of the fold's own swept width")
-	_stand_resquare(u, 0.0, 0.0001)
+	_stand_resquare_with_men(u, 0.0, 0.0001)
 	assert_almost_eq(u.terrain_clearance(travel), square, 0.05,
 			"and it closes onto the fold's width without a jump")
 
