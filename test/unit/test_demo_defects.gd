@@ -280,6 +280,10 @@ func test_a_pursuing_unit_is_judged_for_men_on_one_spot_but_not_for_its_shape() 
 		snap["units"][0]["soldiers_full"]["pos"] = press
 	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "overlap")["pass"]),
 			"riders on one spot fail while they pursue")
+	for snap in formed:
+		snap["units"][0]["rally_halting"] = true   # rallied men still pulling up on their own
+	assert_true(bool(_verdict(DemoDefects.analyze(formed), "blob")["pass"]),
+			"nor is a rallied bunch whose men still pull up from their flight")
 
 
 func test_samples_adjacent_to_an_engagement_flip_are_exempt() -> void:

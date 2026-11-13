@@ -543,13 +543,16 @@ static func judged_mask(s: Dictionary) -> Array:
 ## Which samples are judged for a formation's shape (blob, follow error, misslot, crossing
 ## routes): judged_mask(), less the samples where the unit rides a router down
 ## (SoldierPursuitStep): each of its men then chases the runner nearest him, off any place, as a
-## routed man runs off his. A transcript dumped before the `pursuing` field existed reads none.
+## routed man runs off his. So are the samples where a rallied unit's men still pull up from their
+## flight (`rally_halting`, Unit.shedding_flight): each slows along his own run, and the unit has
+## no grid until they have stopped. A transcript dumped before a field existed reads none.
 static func shape_mask(s: Dictionary) -> Array:
 	var mask: Array = judged_mask(s)
-	var pursuing: Array = s.get("pursuing", [])
-	for i in range(mini(mask.size(), pursuing.size())):
-		if bool(pursuing[i]):
-			mask[i] = false
+	for key in ["pursuing", "rally_halting"]:
+		var off: Array = s.get(key, [])
+		for i in range(mini(mask.size(), off.size())):
+			if bool(off[i]):
+				mask[i] = false
 	return mask
 
 
