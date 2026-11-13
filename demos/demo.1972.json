@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/men-footprint-side-step-1972.json",
+  "caption": "A deep infantry block doubles its files and then side-steps toward the hill. The footprint an order is checked against is the room the men fill where they stand now, read off their positions rather than off the slot grid, so the files still strung out from the reshape stop at the hill's edge and no man ends up on the rock.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 20,
+  "width": 640
+}
