@@ -6,11 +6,9 @@ extends RefCounted
 ##
 ## Sources. Routed men made for a known place of safety, and not all for the same one: after
 ## Delium "some made for Delium and the sea, some for Oropus, and others for Mount Parnes"
-## (Thucydides 4.96.7). They crowded and trampled each other where the way narrowed (Xenophon,
-## Hellenica 4.4.11-12, at the Long Walls of Corinth; Arrian, Anabasis 2.11.3, the Persian
-## horse at Issus). The crowd rule is the herding term of D. Helbing, I. Farkas and T. Vicsek,
-## "Simulating dynamical features of escape panic", Nature 407 (2000) 487-490: a panicking
-## person's direction mixes his own with that of the people near him, by a weight p. The
+## (Thucydides 4.96.7); they crowded where the way narrowed (Xenophon, Hellenica 4.4.11-12;
+## Arrian, Anabasis 2.11.3). The crowd rule is the herding term of D. Helbing, I. Farkas and
+## T. Vicsek, "Simulating dynamical features of escape panic", Nature 407 (2000) 487-490. The
 ## sources fix neither the refuge nor the crowd rule, so each reading is a named variant.
 const ManPerceptionRef = preload("res://scripts/ManPerception.gd")
 
@@ -66,15 +64,6 @@ static func refuge_direction(unit: Unit, pos: Vector2) -> Vector2:
 			return (best.position - pos).normalized()
 	# Team 0 deploys from the top edge and team 1 from the bottom, so a man's camp lies that way.
 	return Vector2.UP if unit.team == 0 else Vector2.DOWN
-
-
-## His own direction: away from the `threat` he perceives, toward his refuge (rout_refuge_weight
-## against the summed threat, whose terms each weigh at most 1).
-static func own_direction(unit: Unit, i: int, threat: Vector2) -> Vector2:
-	var pos: Vector2 = unit._sim_soldier_pos[i]
-	var refuge: Vector2 = refuge_direction(unit, pos)
-	var d: Vector2 = refuge * unit.rout_refuge_weight - threat
-	return d.normalized() if d.length_squared() > 0.000001 else refuge
 
 
 ## His direction once he takes a line from `mate` (a file-mate's body index, or -1): `own`

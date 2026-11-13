@@ -157,8 +157,8 @@ var _cached_combat_profile: Dictionary = {}
 # routed man takes from the file-mate ahead of him. 0.4 lies inside the range of p over which
 # Helbing, Farkas and Vicsek (Nature 407, 2000) found mixed individual and herd behaviour.
 @export var rout_herding: float = ROUT_HERDING
-# How strongly a routed man's refuge pulls against the foes he perceives (SoldierFlight.
-# own_direction), on the scale of one perceived foe at his elbow.
+# How strongly a routed man's refuge pulls against the foes he perceives
+# (SoldierFlightWay.choose), on the scale of one perceived foe at his elbow.
 @export var rout_refuge_weight: float = ROUT_REFUGE_WEIGHT
 # How long a routed man takes to look round and choose his way again, in seconds
 # (SoldierFlightStep; rout_reaction_ticks).

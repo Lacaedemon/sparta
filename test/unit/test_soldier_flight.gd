@@ -48,7 +48,7 @@ func test_with_perception_off_a_man_runs_for_his_refuge() -> void:
 	var a := _unit(0, Vector2(500, 500))
 	SoldierFlight.perceive_threats = false
 	assert_eq(SoldierFlight.perceived(a, 0, Engine.get_physics_frames())["threat"], Vector2.ZERO, "no threat")
-	assert_eq(SoldierFlight.own_direction(a, 0, Vector2.ZERO), Vector2.UP,
+	assert_eq(SoldierFlightWay.choose(a, 0, Vector2.ZERO), Vector2.UP,
 			"his own direction is his refuge")
 
 
@@ -59,7 +59,8 @@ func test_a_man_runs_away_from_a_crowd_of_foes_on_his_refuge_side() -> void:
 	SoldierFlight.prepare(frame, [a, foes], [], null)
 	var t: Vector2 = SoldierFlight.perceived(a, 0, frame)["threat"]
 	assert_lt(t.y, -1.0, "he perceives the crowd to his north, weighing more than his refuge")
-	assert_gt(SoldierFlight.own_direction(a, 0, t).y, 0.0, "so he runs south, away from it")
+	assert_gt(SoldierFlightWay.choose(a, 0, t).dot(-t.normalized()), 0.7,
+			"so he runs away from it, round it toward his refuge, never into it")
 	assert_eq(SoldierFlight.perceived(a, 0, frame + 1)["threat"], Vector2.ZERO,
 			"a frame nothing prepared perceives nothing")
 
@@ -68,7 +69,7 @@ func test_a_man_who_perceives_nothing_he_can_flee_from_runs_for_his_refuge() -> 
 	var a := _unit(0, Vector2(500, 500))
 	a.rout_refuge_weight = 0.0
 	SoldierFlight.perceive_threats = false
-	assert_eq(SoldierFlight.own_direction(a, 0, Vector2.ZERO), Vector2.UP,
+	assert_eq(SoldierFlightWay.choose(a, 0, Vector2.ZERO), Vector2.UP,
 			"a zero pull and no threat still leave him his refuge's direction")
 
 

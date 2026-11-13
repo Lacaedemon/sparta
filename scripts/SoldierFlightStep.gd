@@ -72,7 +72,7 @@ static func _size_choices(unit: Unit, n: int) -> void:
 ## the foe nearest him (ZERO in _sim_flight_dir: he stands and fights).
 static func _look_round(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
 	var seen: Dictionary = SoldierFlight.perceived(unit, i, frame)
-	var own: Vector2 = SoldierFlight.own_direction(unit, i, seen["threat"])
+	var own: Vector2 = SoldierFlightWay.choose(unit, i, seen["threat"], grown)
 	if SoldierCornered.is_cornered(unit, i, own, seen, grown):
 		var foe: Unit = seen["nearest_unit"]
 		var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]

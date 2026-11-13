@@ -96,7 +96,11 @@ func test_cornered_men_strike_the_foes_within_reach() -> void:
 
 
 func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() -> void:
-	var pair: Array = _router_and_foes([Vector2(0, -20), Vector2(-20, 0), Vector2(20, 0)])
+	# Foes all round him, whichever way he would choose to run.
+	var ring: Array[Vector2] = []
+	for k in range(8):
+		ring.append(Vector2.UP.rotated(k * PI / 4.0) * (20.0 if k == 0 else 22.0))
+	var pair: Array = _router_and_foes(ring)
 	var r: Unit = pair[0]
 	var f: Unit = pair[1]
 	r._rout()
@@ -111,7 +115,8 @@ func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() 
 			"facing the foe nearest him")
 	SoldierFlightStep.step(r, 1, {}, TICK)
 	assert_almost_eq(r._sim_body_vel[0].length(), 0.0, 0.001, "and does not run")
-	f._sim_soldier_pos[1] = AT + Vector2(-400, 0)   # the left opens
+	for k in range(1, 8):   # all but the nearest foe draw off
+		f._sim_soldier_pos[k] = AT + Vector2.UP.rotated(k * PI / 4.0) * 400.0
 	SoldierFlightStep._look_round(r, 0, frame, [] as Array[Rect2])
 	assert_ne(r._sim_flight_dir[0], Vector2.ZERO, "when he next looks round he runs again")
 	assert_gt(period, 0, "sanity: he looks round every %d ticks" % period)

@@ -44,8 +44,19 @@ plausibly still in view.
 A broken unit is no longer a formation: each of its men flees on his own.
 He runs away from the enemy soldiers he can see around him
 and toward his refuge, his own side's back edge of the field, where its camp lies,
-so where the enemy he sees stands between him and that edge, he runs from them first
+so where the enemy he sees stands between him and that edge,
+he runs away from them and round them on one side toward it,
+never into them and never standing still in front of them
 (@fig-router-runs-from-foes).
+He goes round on the side of his refuge where fewer of them stand,
+or the side not shut by rock,
+and keeps to that side until he next looks round.
+He looks round about every fifth of a second, a man's reaction time,
+and runs the way he then chose in between.
+A man who finds his way ahead and to either side shut within his weapon's reach,
+by rock or by enemy soldiers,
+turns to the enemy soldier nearest him and fights,
+and runs again once a way opens.
 He also takes part of his line from the man of his file running ahead of him,
 so the rout streams away as a crowd rather than scattering at random.
 The unit's flag and marker stand at the centre of its fleeing men,
@@ -68,8 +79,9 @@ and the nearest friendly unit as another, as a variant.
 ```
 
 A broken cavalry squadron (blue) with a block of infantry standing between it and its own
-back edge. Each rider sees the infantry ahead of him and runs away from them, south, with
-the riders of his file, rather than into the block on the way to his refuge.
+back edge. Each rider sees the infantry ahead of him and runs away from them and round them,
+the riders on each side of the squadron's centre round their own side, rather than into the
+block or standing still in front of it.
 :::
 
 A routing man runs faster than he marches.

@@ -24,6 +24,11 @@ const READOUT_EPS := 0.01
 const ACCEL_SLACK := 1.0
 # The router attacked across its line of flight: the enemy stands on its refuge side.
 const ACROSS_WATCH_TICKS := 120
+# The refuge-beyond-the-enemy staging: ticks for the run to build up, then ticks watched.
+# A man who first ran for his refuge, toward the enemy, has to stop and turn, which at a
+# Cavalry rider's acceleration takes a few seconds; the watch's last STALL_END_TICKS judge him.
+const STALL_WATCH_TICKS := 600
+const STALL_END_TICKS := 60
 # The caught-router staging: a slow router (move_speed set low, so its flee pace is under a
 # walking pursuer's) routed out of contact with a pursuer 130 wu behind it.
 const CAUGHT_ROUTER_MOVE_SPEED := 15.0
@@ -185,6 +190,40 @@ func test_a_router_runs_from_the_foes_it_perceives_not_into_them() -> void:
 			+ " (moved %.1f wu)" % seeing)
 	assert_lt(blind, 0.0, "blind to it, they would run north for their refuge (moved %.1f wu)"
 			% blind)
+
+
+## A router whose refuge lies beyond an enemy line: no man ends up standing still in front of
+## the enemy (where his refuge's pull and the enemy's push would balance), and no man runs into
+## the enemy line on the way round it.
+func test_a_router_with_the_enemy_on_its_refuge_side_never_stalls_and_goes_round() -> void:
+	var pair: Array = await _spawn_pair([
+		{"team": 0, "type": "Cavalry", "count": 24, "x": 700.0, "y": 1650.0, "facing": [0, -1]},
+		{"team": 1, "type": "Infantry", "count": 160, "x": 700.0, "y": 1150.0, "facing": [0, 1]},
+	])
+	var router: Unit = pair[0]
+	var line: Unit = pair[1]
+	assert_not_null(router, "the router deployed")
+	if router == null or line == null:
+		return
+	_rout_and_hold(router)
+	var slowest: float = INF
+	var closest: float = INF
+	for t in range(STALL_WATCH_TICKS):
+		await _advance_ticks(1)
+		assert_eq(router.state, Unit.State.ROUTING, "setup: still routing on the field")
+		if router.state != Unit.State.ROUTING:
+			return
+		for i in range(router._sim_soldier_pos.size()):
+			if i < router._sim_flight_dir.size() and router._sim_flight_dir[i] == Vector2.ZERO:
+				continue   # a man standing cornered to fight is not stalled
+			if t >= STALL_WATCH_TICKS - STALL_END_TICKS:
+				slowest = minf(slowest, router._sim_body_vel[i].length())
+			for p in line._sim_soldier_pos:
+				closest = minf(closest, router._sim_soldier_pos[i].distance_to(p))
+	assert_gt(slowest, router.jog_speed, "no man ends up below a jog in front of the enemy"
+			+ " (slowest %.1f wu/s)" % slowest)
+	assert_gt(closest, router.soldier_body_radius() + line.soldier_body_radius(),
+			"and none runs into the enemy line (closest %.1f wu)" % closest)
 
 
 func test_a_router_clear_of_every_enemy_is_not_in_enemy_contact() -> void:
