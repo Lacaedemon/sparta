@@ -26,7 +26,8 @@ const ACCEL_SLACK := 1.0
 const ACROSS_WATCH_TICKS := 120
 # The refuge-beyond-the-enemy staging: ticks for the run to build up, then ticks watched.
 # A man who first ran for his refuge, toward the enemy, has to stop and turn, which at a
-# Cavalry rider's acceleration takes a few seconds; the watch's last STALL_END_TICKS judge him.
+# Cavalry rider's acceleration takes a few seconds; the watch's last STALL_END_TICKS judge him,
+# against a walk: a man standing still in front of the enemy is the failure.
 const STALL_WATCH_TICKS := 600
 const STALL_END_TICKS := 60
 # The caught-router staging: a slow router (move_speed set low, so its flee pace is under a
@@ -220,7 +221,7 @@ func test_a_router_with_the_enemy_on_its_refuge_side_never_stalls_and_goes_round
 				slowest = minf(slowest, router._sim_body_vel[i].length())
 			for p in line._sim_soldier_pos:
 				closest = minf(closest, router._sim_soldier_pos[i].distance_to(p))
-	assert_gt(slowest, router.jog_speed, "no man ends up below a jog in front of the enemy"
+	assert_gt(slowest, router.walk_speed, "no man ends up below a walk in front of the enemy"
 			+ " (slowest %.1f wu/s)" % slowest)
 	assert_gt(closest, router.soldier_body_radius() + line.soldier_body_radius(),
 			"and none runs into the enemy line (closest %.1f wu)" % closest)
