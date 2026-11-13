@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/router-runs-from-foes-1949.json",
+  "caption": "Bottom-up routing: a routed unit flees as individual men. A broken squadron of 24 Cavalry (blue) has a block of infantry standing between it and its own rear edge, where it would run for refuge. Each rider perceives the infantry ahead of him and runs away from them, south, taking his line partly from the file-mates running ahead of him, instead of the whole squadron fleeing north along one fixed heading into the block, as it did before. The squadron's position is just the centre of its riders; there is no slot grid or flight anchor while it runs.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 720
+}

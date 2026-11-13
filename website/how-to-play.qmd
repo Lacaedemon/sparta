@@ -206,23 +206,11 @@ only keeping pace with it, though he still walks onto it no faster than his usua
 march that slows gives none. Only those orderly marches give that extra acceleration. A
 combat approach --- the march of an attack or support order, a charge or a pursuit ---
 gives none, and neither does an **in-haste** move order (a triple- or quadruple-click).
-A rout gives its own extra instead,
-and only to a man more than 3 m off his place
-(all of it from 6 m out):
-the rate at which what he follows is changing ---
-his place's own movement as the flight speeds up and the block turns,
-plus any sidestep he takes to keep off a friendly block he is pressed against ---
-capped at twice his usual rate,
-and only while that is not slowing down.
-So a man left behind as the flight swings round keeps up better:
-on the two demo clips that show it,
-a rider a hill's face held back for a moment
-([Tactics](tactics.qmd#fig-deep-router-close-start-hill))
-and the leading riders of a block whose flight bends round a long wall
-(@fig-router-bends-round-wall),
-no rider ends more than 6 m (one rank of a cavalry block) from his place,
-against up to 9.6 m before.
-A block whose men all keep within 3 m of their places flees as before.
+A routed man has no place to keep up with, so he needs no such extra:
+he runs on his own at his own rate
+([Tactics](tactics.qmd#morale-routing)),
+and a man whose run meets a wall or a hill veers along it and goes round
+(@fig-router-bends-round-wall).
 
 ::: {#fig-router-bends-round-wall .demo}
 
@@ -1648,9 +1636,9 @@ and accelerate to full speed on contact.
    Morale matters as much as numbers (see [Tactics](tactics.qmd)).
 4. **Navigate terrain** --- the field has two terrain patches: a **dark-green forest**
    (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
-   right. Units route around the hill automatically, whether under your orders or
-   fleeing a rout --- and a routing unit boxed in with no way around stands to fight
-   instead. See [Tactics → Terrain](tactics.qmd#terrain).
+   right. Units route around the hill automatically under your orders, and a routing
+   man veers along its face and goes round it.
+   See [Tactics → Terrain](tactics.qmd#terrain).
    A unit will not march a whole block onto ground it cannot stand on, so an order
    to a point on the hill, or too close to the edge of the field, is **amended or
    refused** rather than carried out blindly.

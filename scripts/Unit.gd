@@ -10227,8 +10227,8 @@ func combat_profile() -> Dictionary:
 	return _cached_combat_profile
 
 
-## Flee pace while routing (move_speed * FLEE_SPEED_MULTIPLIER), shared by the movement
-## step (_process_rout) and the stamina pace classification (stamina_band).
+## Flee pace while routing (move_speed * FLEE_SPEED_MULTIPLIER): a routed man's top pace
+## (SoldierFlightStep), and a far-tier router's (_far_flight) and its stamina band.
 func flee_speed() -> float:
 	return move_speed * FLEE_SPEED_MULTIPLIER
 
