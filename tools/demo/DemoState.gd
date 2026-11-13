@@ -512,6 +512,30 @@ static func soldier_arrays(u: Node) -> Dictionary:
 		"prone": rounded_floats(u._sim_prone),
 		"stamina": rounded_floats(u._sim_soldier_stamina),
 		"broken": broken,
+		"relations": relations(u),
+	}
+
+
+## Who each man follows and dresses on (DemoRelations.plan), read off the unit's grid as laid
+## out before any traverse arc or corridor bends it, so it holds for every layout. A square's
+## grid is isotropic at the file pitch. The offsets and the dress offsets dump as (right, behind)
+## pairs; the leaders and the dressing men as indices into the same arrays, -1 for none.
+static func relations(u: Node) -> Dictionary:
+	var local: PackedVector2Array = u.formation_slots(u.soldiers, false, false)
+	var rank_pitch: float = u.file_pitch_wu() if u.in_square() else u.rank_pitch_wu()
+	var plan: Dictionary = DemoRelations.plan(local, -1.0 if u._formation_mirror_x else 1.0,
+			u.file_pitch_wu(), rank_pitch)
+	var offsets: Array = []
+	for o in plan["offsets"]:
+		offsets.append(vec2_pair(o))
+	var dress_offsets: Array = []
+	for o in plan["dress_offsets"]:
+		dress_offsets.append(vec2_pair(o))
+	return {
+		"leaders": Array(plan["leaders"]),
+		"offsets": offsets,
+		"dress": Array(plan["dress"]),
+		"dress_offsets": dress_offsets,
 	}
 
 

@@ -346,7 +346,7 @@ fi
     printf '\n'
   fi
   if [ -n "${GITHUB_RUN_ID:-}" ]; then
-    printf '\n<sub>A candidate row quotes the PR side'\''s worst value against the metric'\''s threshold (a floor for overlap and blob, a ceiling for shape residual, misslotted and the rest, in the analyzer'\''s own direction per metric), then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
+    printf '\n<sub>A candidate row quotes the PR side'\''s worst value against the metric'\''s threshold (a floor for overlap and blob, a ceiling for follow error, misslotted and the rest, in the analyzer'\''s own direction per metric), then the merge-base'\''s value, so an exemption reason can cite CI'\''s own numbers. The changed clips'\'' transcripts on both sides and every analyzer JSON are attached to this run as the artifact `website-demo-diff-%s`.</sub>\n' "$GITHUB_RUN_ID"
   fi
 } >> "$OUT_MD"
 

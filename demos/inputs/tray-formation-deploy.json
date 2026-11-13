@@ -27,15 +27,5 @@
     {"tick": 840, "uid": 0, "field": "state", "value": "IDLE"},
     {"tick": 840, "uid": 1, "field": "state", "value": "IDLE"},
     {"tick": 840, "uid": 2, "field": "state", "value": "IDLE"}
-  ],
-  "defect_exemptions": {
-    "shape_residual": {
-      "uids": [
-        0,
-        1,
-        2
-      ],
-      "reason": "Soldier grids expand into 2D tray formation placement, transiently deforming before settling on the new file width. Measured on the density re-pin."
-    }
-  }
+  ]
 }

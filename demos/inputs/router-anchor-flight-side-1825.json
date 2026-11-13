@@ -21,9 +21,9 @@
   "frames": [300, 600, 760],
   "state": [10, 200, 400, 460, 500, 560, 600, 660, 720, 740, 750, 760, 770, 780, 790, 800, 810, 820, 830, 840, 850, 860, 870, 880],
   "defect_exemptions": {
-    "shape_residual": {
+    "follow_error": {
       "uids": [1],
-      "reason": "The infantry pursuer (uid 1) follows the router with its grid still scrambled from the fight, from the tick contact breaks (732 on this seed) to the clip's end. Dense 2-tick FULL dumps, every exemption removed, Windows, measured 2026-11-07: on main 1d0d7705 seeds 0 to 4 read 23.97, 19.56, 24.47, 26.13 and 19.17, and on the fix 580995c5 25.70, 19.70, 27.58, 24.18 and 19.65, against 6.75. On this seed on the fix it passes over ticks 2 to 700 and reads 22.40 over ticks 700 to 760, 25.61 over 760 to 820 and 25.70 over 820 to 880. It is not caused by the router's anchor: main fails the same way. Tracked as #1824, a pursuer deforming at the edge of a router's contact range."
+      "reason": "follow_error, the relational successor of shape_residual, reads uid1 27.61 against 6.75 on this tree (dense 2-tick FULL dump, Windows, seed 0, measured 2026-11-13); the slot-based shape_residual this exemption was written against read uid1 25.7. Original reason: The infantry pursuer (uid 1) follows the router with its grid still scrambled from the fight, from the tick contact breaks (732 on this seed) to the clip's end. Dense 2-tick FULL dumps, every exemption removed, Windows, measured 2026-11-07: on main 1d0d7705 seeds 0 to 4 read 23.97, 19.56, 24.47, 26.13 and 19.17, and on the fix 580995c5 25.70, 19.70, 27.58, 24.18 and 19.65, against 6.75. On this seed on the fix it passes over ticks 2 to 700 and reads 22.40 over ticks 700 to 760, 25.61 over 760 to 820 and 25.70 over 820 to 880. It is not caused by the router's anchor: main fails the same way. Tracked as #1824, a pursuer deforming at the edge of a router's contact range."
     }
   },
   "expect": [
