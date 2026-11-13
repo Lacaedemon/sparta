@@ -647,26 +647,17 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 
 	# Sustained super-physical soldier speed (index-aligned samples only). A routing
 	# unit's top pace is its flee pace (Unit.flee_speed(): move_speed *
-	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step
+	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierFlightStep
 	# measures a router's body-speed ceiling from it. An interval is held to that flee-pace
 	# cap when its START sample is routing: the men carry their flight speed into the
 	# interval, and a router that rallies inside it was running at flee pace up to then. A unit
 	# that only starts routing at the interval's end spent that interval under its ordinary
-	# gaits, and its flight then builds up at its own accel from no more than the speed it
-	# was already carrying away from the enemy (Unit._rout's seed, zero for a FIGHTING
-	# unit), so over that interval its sprint ceiling still applies. A rallied unit whose
-	# anchor is still coasting to a stop on its flight (rally_halting at the interval's start)
-	# keeps the router's flee-pace ceiling: men the rally re-paired onto other slots catch up
-	# at the pace the block was fleeing at while the anchor already brakes below its sprint
-	# (morale_recovery: a man at 110.7 wu/s with the anchor at 77). That 110.7 is the flight's
-	# own pace, not one gained in the halt: on the last routing samples (ticks 346-354) the
-	# anchor itself covers 3.69 wu per 2 ticks, 110.7 wu/s, the 104 wu/s Infantry flee pace
-	# (1.3 x 80) plus the body coupling's pull -- the few percent test_close_tier_rout_speed.gd
-	# allows (SPEED_TOLERANCE_FRAC 0.1; here 6.4%). It sits well under the flee-pace cap
-	# (80 x 1.15 x 1.3 = 119.6 wu/s, plus 0.42 wu/s of 2-tick quantization margin).
-	# rally_halting is only true while the anchor still carries speed, so the allowance ends
-	# when it stops and cannot excuse a spike in the re-form that follows
-	# (Unit.is_rally_halting).
+	# gaits, and each man's flight then builds up at his own accel from the speed he was
+	# carrying, so over that interval its sprint ceiling still applies. A rallied unit whose men
+	# still carry their flight's speed (rally_halting, Unit.shedding_flight, at the interval's
+	# start) keeps the router's flee-pace ceiling: each man sheds that speed at his braking rate
+	# rather than all at once, and the allowance ends once none of them is faster than his own
+	# steering could make him.
 	var halting: Array = s.get("rally_halting", [])
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER

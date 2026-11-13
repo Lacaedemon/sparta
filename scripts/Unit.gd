@@ -147,15 +147,22 @@ var _cached_combat_profile: Dictionary = {}
 # acceleration (SoldierBodies.march_accel_budget), so a march that changes sharply in one
 # tick cannot hand its men an unbounded kick.
 @export var march_share_max_accel_mult: float = SoldierBodies.MARCH_SHARE_MAX_ACCEL_MULT
-# The most extra acceleration a routing body takes from the change in its own feed-forward
-# (SoldierBodies.flight_accel_share), as a multiple of its own acceleration, so a flight
-# that swings its direction in one tick cannot hand its men an unbounded kick.
-@export var flight_share_max_accel_mult: float = SoldierBodies.FLIGHT_SHARE_MAX_ACCEL_MULT
-# How far off his own slot (wu) a routing body must stand to take that share
-# (SoldierBodies.march_share_frac): none within flight_share_from_wu, all of it from
-# flight_share_full_wu out.
-@export var flight_share_from_wu: float = SoldierBodies.FLIGHT_SHARE_FROM_WU
-@export var flight_share_full_wu: float = SoldierBodies.FLIGHT_SHARE_FULL_WU
+# Which refuge this unit's routed men run for (SoldierFlight.Refuge: EDGE, their own rear edge,
+# or LINES, the nearest formed friendly unit).
+@export var rout_refuge: int = SoldierFlight.Refuge.EDGE
+# How a routed man takes his line from the file-mate running ahead of him (SoldierFlight.Follow:
+# HERD, COLUMN or ALONE).
+@export var rout_follow: int = SoldierFlight.Follow.HERD
+# Helbing's herding weight p (SoldierFlight.with_mate), 0 to 1: how much of his direction a
+# routed man takes from the file-mate ahead of him. 0.4 lies inside the range of p over which
+# Helbing, Farkas and Vicsek (Nature 407, 2000) found mixed individual and herd behaviour.
+@export var rout_herding: float = ROUT_HERDING
+# How strongly a routed man's refuge pulls against the foes he perceives (SoldierFlight.
+# own_direction), on the scale of one perceived foe at his elbow.
+@export var rout_refuge_weight: float = ROUT_REFUGE_WEIGHT
+# Whether a rallied unit's men are dealt places from where they stand (RallyDeal.STAND) or
+# walk back to their own places in their files (RallyDeal.OWN); see _rally.
+@export var rally_deal: int = RallyDeal.STAND
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
@@ -679,8 +686,8 @@ const QUARTER_REDEAL_ASPECT_EPS: float = 1.0e-6   # solver epsilon
 # threshold (_square_fold_for_order, _advance_grid_lag). A rout zeroes it.
 var _contact_clear_time: float = RESQUARE_CONTACT_CLEAR_TIME
 # The rate (rad/s, signed like an angle) _advance_grid_lag turned the slot grid about the anchor
-# this tick, and carries to the next. SoldierBodies.step feeds it forward to a non-routing
-# unit's bodies the way it feeds a router's _flight_turn_rate. Zero while no lag is left.
+# this tick, and carries to the next. SoldierBodies.step feeds it forward to the unit's
+# bodies. Zero while no lag is left.
 var _grid_lag_rate: float = 0.0
 # The net turn of the in-place drill leaves -- QUARTER_TURN (a Q/E drill, or a lateral pivot's
 # legs) and ABOUT_FACE (a V drill, or a rear move's turn) -- that have settled into
@@ -1331,21 +1338,6 @@ var _under_fire_can_reply: bool = false
 # attack target: see the disengage comment below) or otherwise not actively fighting --
 # contact is a physical fact, not a gameplay choice; see docs/individual-collision-design.md.
 var _in_enemy_contact: bool = false
-# Whether couple() anchors this router as one in enemy contact (position_anchor_indices).
-# Recomputed with _in_enemy_contact by _refresh_enemy_contact, and the same while the router
-# has not left contact in its current rout; after that it comes back only within
-# router_contact_reentry_frac of the range, or to an enemy fighting the router, measured both
-# from `position` and from where its front-rank anchor would settle it. Only the anchor reads
-# it: every physical-contact reader keeps _in_enemy_contact.
-var _router_anchor_contact: bool = false
-# Whether this router has left anchor contact since it routed: set on the routing tick
-# _router_anchor_contact falls, cleared by _rout().
-var _router_left_contact: bool = false
-# Whether this router's front ranks are still the ones in the melee it broke from: armed
-# once, when it routs (_arm_router_front_in_melee), and cleared for the rest of that rout
-# once its heading lands on its flight line or it leaves enemy contact
-# (_update_router_front_in_melee). Read through router_front_in_melee().
-var _router_front_in_melee: bool = false
 
 var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
@@ -1421,40 +1413,20 @@ var rout_time: float = ROUT_TIME
 # round their flank (UnitFormation.apply_traverse_flank_arcs). Caller-configurable, defaulting to
 # UnitFormation.TRAVERSE_ARC_CLEARANCE, with rout_time's set-before-_ready contract.
 var traverse_arc_clearance: float = UnitFormation.TRAVERSE_ARC_CLEARANCE
-# The half-angle (rad) of the front arc, off the heading, inside which an enemy in contact
-# makes a unit that routs break with its front in the melee (_arm_router_front_in_melee):
-# 60 degrees, so a contact on a flank or behind does not count. A caller-configurable
-# parameter defaulting to ROUTER_FRONT_ARC, with rout_time's set-before-_ready contract.
-const ROUTER_FRONT_ARC: float = PI / 3.0
-var router_front_arc: float = ROUTER_FRONT_ARC
+# Defaults for rout_herding and rout_refuge_weight (see those).
+const ROUT_HERDING: float = 0.4
+const ROUT_REFUGE_WEIGHT: float = 1.0
+# How a rally deals its men their places (rally_deal). STAND: from where they stand, as a
+# Spartan line re-formed with whoever was beside a man (Xenophon, Constitution of the
+# Lacedaemonians 11.7). OWN: each to his own place in his own file, as Vegetius has the
+# centuries' standards marked so that no man strays from his own in the confusion of battle
+# (Epitoma rei militaris 2.13).
+enum RallyDeal { STAND, OWN }
 # The slot grid's turn off the heading (rad, grid_fold) past which its front ranks stand behind
 # the men's heading rather than ahead of it: a quarter-turn, plus 0.01 rad so a grid turned
 # exactly a quarter-turn, whose front ranks are a flank, does not count. near_front_reversed
 # ranks toward the grid's rear past it.
 const QUARTER_TURN_PAST: float = PI * 0.5 + 0.01
-# The turn (rad) of a router's slot grid off its heading (grid_fold) past which couple() anchors
-# it on the men ahead of its centre along the heading rather than on the grid's front ranks
-# (position_anchor_on_heading): QUARTER_TURN_PAST, past which those front ranks trail the
-# router's centre along its flight. At a quarter-turn or less they are a flank or lie ahead: the
-# router-reentry-settle-1913 squadron routs with its grid turned exactly a quarter-turn, and its
-# grid's front ranks stood 6.9 wu ahead of its centroid (measured 2026-11-06 on main 1d0d7705).
-# A caller-configurable parameter defaulting to ROUTER_HEADING_ANCHOR_FOLD, with rout_time's
-# set-before-_ready contract.
-const ROUTER_HEADING_ANCHOR_FOLD: float = QUARTER_TURN_PAST
-var router_heading_anchor_fold: float = ROUTER_HEADING_ANCHOR_FOLD
-# The share of the melee contact range inside which a router that has already left enemy
-# contact in its current rout anchors as one in contact again (_router_anchor_contact). It
-# still leaves at the full range, and its physical contact (_in_enemy_contact) keeps the full
-# range throughout. Without the gap a router at the edge of contact range flips in and out of
-# contact every tick or two, and its couple() anchor flips with it between its front ranks
-# and its whole block. In the stagings measured such a router came back into contact as far
-# out as 0.956 of the range, so 0.9 asks for over twice that depth. An enemy fighting the
-# router keeps the full range. Both of the re-entry test's measures, from `position` and from
-# the front-rank anchor's settling point (_refresh_enemy_contact), take the same share.
-# A caller-configurable parameter defaulting to ROUTER_CONTACT_REENTRY_FRAC, with rout_time's
-# set-before-_ready contract.
-const ROUTER_CONTACT_REENTRY_FRAC: float = 0.9
-var router_contact_reentry_frac: float = ROUTER_CONTACT_REENTRY_FRAC
 # How much of a foot block's own slot footprint (soldier_block_half_extents, per axis) its
 # cavalry target's centre must lie inside, with the block in enemy contact, for a small combat
 # re-face to be folded into _formation_angle rather than turn the slot grid
@@ -1803,11 +1775,11 @@ var _current_speed: float = 0.0
 var current_speed: float:
 	get: return _current_speed
 # The march velocity SoldierBodies.step fed forward to this unit's unengaged bodies on its
-# last step (_approach_velocity, or _flee_velocity while routing). From this velocity the
+# last step (_approach_velocity). From this velocity the
 # step reads the rate the march velocity changed at since then, in speed or in heading
 # (capped at march_share_max_accel_mult times the body's own acceleration;
 # SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly) that
-# is not a rout, and only when the march speed did not fall, does the step grant that much
+# is not a rout (a routed unit's men run on their own), and only when the march speed did not fall, does the step grant that much
 # extra acceleration to each unengaged body, on top of its own body_accel, scaled by how
 # far the body stands off its slot (SoldierBodies.march_share_frac: none within
 # march_share_from_pitches, half a file pitch by default, all of it from
@@ -1815,15 +1787,6 @@ var current_speed: float:
 # still gains on it while the march speeds up or swings round without losing speed (see
 # march_accel_budget for how exactly that is judged).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
-# Each soldier body's feed-forward on SoldierBodies.step's last step while routing: the
-# flight velocity, his slot's turning velocity and any friendly-contact steering, recorded in
-# that form for an engaged body too (whose own feed-forward is the steering alone), so a man
-# leaving the engaged tier is not read as a jump. Empty after any step that was not routing,
-# after SoldierBodies.seed, and after either tier change (TierTransition.demote, promote).
-# SoldierMelee.reap trims a dead man's entry with his body, so each survivor keeps his own.
-# The step reads each unengaged man's change in it as extra acceleration
-# (SoldierBodies.flight_accel_share), and none on a step whose headcount it does not match.
-var _body_flight_ff_prev: PackedVector2Array = PackedVector2Array()
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's
 # peel) marched in good time (not a hasty MOVE). Only such a march grants its unengaged
@@ -1867,52 +1830,13 @@ var _separation_velocity: Vector2 = Vector2.ZERO
 # _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
 # to CYCLE_CHARGE_STANDOFF. Meaningful only while order_mode == ORDER_CYCLE_CHARGE.
 var _cycle_recharging: bool = false
-# Transient intra-tick flag:
-# true when the unit moved at flee speed during _process_rout,
-# so stamina_band can bill the flight at sprint pace even if _rally transitioned to IDLE.
-var _moved_while_routing: bool = false
-# The flee pace the unit actually ran on that move (its _flee_pace at the time), kept beside
-# _moved_while_routing so the same tick's stamina bill reads the speed run even after a
-# rally has cleared _flee_pace.
-var _moved_while_routing_pace: float = 0.0
-# A routing unit's live flight pace (world units/s). _process_rout ramps it toward
-# flee_speed() at `accel`, the same build-up a march takes, rather than starting the anchor
-# at full flight: the soldier bodies only gain speed at their own bounded acceleration, so
-# an anchor that leapt to flee pace would run ahead of them, the body coupling would pull
-# it back, and the block would trail its slots by tens of world units until they caught up.
-# Seeded by _rout() from the speed the unit was already carrying away from the enemy.
-var _flee_pace: float = 0.0
-# This tick's flight velocity (flee direction * _flee_pace), set by _process_rout: the
-# routing counterpart of _approach_velocity. SoldierBodies.step feeds it forward to a
-# router's unengaged bodies so they run with the fleeing anchor; without it they only
-# chase their slots on the jog-capped arrival term, and the body coupling drags the anchor
-# back to them. Read only while state == ROUTING.
-var _flee_velocity: Vector2 = Vector2.ZERO
-# The rate (rad/s, signed like an angle) _turn_flight_toward turned this router's heading,
-# and with it the slot grid about the anchor, this tick: zero while the flight runs
-# straight. SoldierBodies.step feeds the turn forward with the march (each slot's own
-# velocity about the anchor), so the men turn with their slots instead of chasing them on
-# the arrival term. Read only while state == ROUTING.
-var _flight_turn_rate: float = 0.0
-# True when this tick's _flight_step fell back to the anchor's own margin (_rout_clearance)
-# because the block's swept width would carry it off the field beside the terrain. Set by
-# every _flight_step call and read by _process_rout in the same tick, so it carries nothing
-# from tick to tick.
-var _flight_step_narrow: bool = false
-# True from a rally until the anchor has pulled up from the flight it handed over (see _rally
-# and is_rally_halting). Cleared by _tick_idle_coast once the anchor stops, or the moment the
-# unit locomotes, fights, or carries a held march; and by _rout() -- whichever comes first.
-var _rally_halt: bool = false
-# True from a rally until its re-square has run (see _advance_rally_resquare): the coast stops,
-# the heading turns onto the ranks, then the ranks re-square. Cleared by _finish_rally_resquare
-# and by _rout().
-var _rally_resquare_pending: bool = false
-# True once an enemy has called a pending rally re-square off (_drop_rally_resquare_near_enemy),
-# until the fold it left is squared: by the heading turn a fresh order makes first
-# (_square_cancelled_rally_fold), or by the re-square resuming once the enemy has stayed clear.
-# Cleared by _rout(). _rally_clear_ticks counts the ticks the enemy has stayed clear.
-var _rally_fold_unsquared: bool = false
-var _rally_clear_ticks: int = 0
+# A far-tier router's flight pace (world units/s): a far-tier unit has no men to flee on their
+# own, so its aggregate record runs from its centre at this pace, which builds to flee_speed()
+# at `accel` (_process_rout). Close-tier routers do not read it.
+var _far_flee_pace: float = 0.0
+# Whether this unit has rallied since it last routed: set by _rally, cleared by _rout. Only
+# shedding_flight() reads it, for the state dump; nothing in the sim does.
+var _rallied: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -2049,8 +1973,6 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
-	_moved_while_routing = false
-	_moved_while_routing_pace = 0.0
 	_body_march_orderly = false
 
 	# Before the rout branch below returns, so a routing tick records ROUTING as the
@@ -2062,11 +1984,11 @@ func _physics_process(delta: float) -> void:
 		# was at the break, it would keep the router's bodies colliding as if still pressed
 		# against the enemy it has fled.
 		_refresh_enemy_contact()
+		# A far-tier router is billed at the pace it carried into this tick, as a close-tier
+		# router's men are (SoldierBodies.step), so a rally on this tick does not drop the bill.
+		_tick_far_stamina(delta)
 		_process_rout(delta)
-		_update_router_front_in_melee()
-		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
-			_separate(delta)   # routers still shoulder past anyone in their path
-			_tick_far_stamina(delta)
+		if state != State.DEAD:   # escaped (DEAD -> freed); else still routing, or rallied (IDLE)
 			# The engaged latch decays here too: a router is not FIGHTING, so its front leaves
 			# the engaged tier ENGAGED_LINGER after the break, as the latch's contract says.
 			# Skipping it froze the latch for the whole rout, holding the router's front on
@@ -2093,7 +2015,6 @@ func _physics_process(delta: float) -> void:
 	_is_facing_turning = false
 	_facing_turn_step = 0.0
 
-	_cut_rally_halt_on_enemy()
 	_think(delta)
 	_advance_grid_lag(delta)
 	_tick_intermixing(delta)
@@ -2169,7 +2090,6 @@ func _physics_process(delta: float) -> void:
 	# overlap (see REORDER_MOMENTUM_DOT_MIN). A genuinely idle unit already has
 	# _current_speed == 0, so the decay is a no-op for it either way.
 	_tick_idle_coast(delta)
-	_advance_rally_resquare(delta)
 
 	_tick_far_stamina(delta)
 	# Whatever this tick did to the block (a casualty reshape, the ranks closing, a rally
@@ -2185,7 +2105,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## The idle coast-to-stop _physics_process runs every non-routing tick (see the comment at
-## its call site for why it runs when it does), and the end of a rally's halt.
+## its call site for why it runs when it does).
 func _tick_idle_coast(delta: float) -> void:
 	if not _moved_last_frame and state != State.FIGHTING \
 			and not _held_march_continues_travel():
@@ -2201,15 +2121,6 @@ func _tick_idle_coast(delta: float) -> void:
 		if travel_dir == Vector2.ZERO and _current_speed > 0.0:
 			travel_dir = facing
 		_current_speed = move_toward(_current_speed, 0.0, idle_brake_rate() * delta)
-		# A rally can come anywhere inside retreat_bounds, the margin past the field edge a
-		# router may flee into, so the halt is held to that rather than snapped onto the field
-		# (_begin_rally_halt only hands over a coast that stops inside it).
-		var coast_bounds: Rect2 = retreat_bounds if is_rally_halting() else field_bounds
-		# The halt is the anchor's pull-up and nothing after it: once the anchor stops, the
-		# men walk the rest of the way onto their slots under the ordinary idle caps and
-		# acceleration, like any other idle re-form.
-		if _current_speed <= 0.0:
-			_rally_halt = false
 		# Terrain-scaled, matching _move_to's own effective_speed -- a unit coasting to a
 		# stop in a forest carries proportionally less real velocity, just like one still
 		# under active order control, so downstream consumers (the march feed-forward, the
@@ -2220,12 +2131,8 @@ func _tick_idle_coast(delta: float) -> void:
 		_approach_velocity = travel_dir * (_current_speed * terrain_speed)
 		if _current_speed > 0.0 and travel_dir != Vector2.ZERO:
 			position += travel_dir * (_current_speed * terrain_speed * delta)
-			position.x = clampf(position.x, coast_bounds.position.x, coast_bounds.end.x)
-			position.y = clampf(position.y, coast_bounds.position.y, coast_bounds.end.y)
-	else:
-		# Locomoting, fighting, or carrying a held march's momentum: whatever the unit does
-		# now, it is no longer pulling up from a rally.
-		_rally_halt = false
+			position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+			position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
 
 
 ## Replace the orders queue with a single fresh order (a plain, non-append order): interrupts
@@ -2243,9 +2150,6 @@ func set_current_order(order: Order) -> void:
 	# local X (frontage anchors, resize grips, the relief corridor) means the same flank it
 	# does for any other block. The mirror is baked into the assignment rather than dropped:
 	# dropping it would carry every off-centre man to the other flank.
-	# A rally still waiting to re-square does so first, so the mirror its re-square arms is
-	# baked here with any other.
-	_finish_rally_resquare()
 	_bake_formation_mirror()
 
 
@@ -3218,51 +3122,11 @@ func fresh_pick_allowed(candidate: Unit) -> bool:
 ## physical fact, so a router still pressed against an enemy keeps colliding with it, and one
 ## that has got clear stops.
 ##
-## For a router it also recomputes _router_anchor_contact, which couple()'s anchor reads in
-## place of _in_enemy_contact. Once the router has left anchor contact in its current rout it
-## comes back only within router_contact_reentry_frac of the range, so a router at the edge
-## of the range switches anchors once rather than every tick or two. An enemy that is fighting
-## the router (_fighting_me) is measured at the full range instead of the share.
-##
-## Either way re-entry is measured twice, and must pass both: from `position`, and from where the
-## contact anchor it would switch to would settle the router (contact_anchor_offset): its front
-## ranks, or the men ahead along its heading once its grid is turned past
-## router_heading_anchor_fold (position_anchor_on_heading).
-## `position` alone is not enough, because the whole-block anchor the router is on moves it: once
-## the router's men stand off their slots, the two anchors settle the block far apart, the glide
-## toward the whole block carries `position` back inside the share (or, for an enemy fighting
-## the router, the range), and the front-rank anchor that re-entry then picks carries it out
-## past the range again. On main cf24ad95 (measured 2026-11-06) the router-reentry-settle-1913
-## staging switched anchors 5 times in the 300 ticks after its rout that way, against once with
-## the second measure. Before the combat-wheel change merged, on main a37af5c0, the
-## router-contact-edge-1801 staging on its perturbed seed run 1 did the same 21 times, with the
-## two settling points 54 to 86 wu apart at the switches; that run no longer flickers on
-## cf24ad95. The second measure applies to an enemy fighting the router too: in that run on
-## a37af5c0 the pursuer turned to fighting as `position` glided up to it, and a variant of
-## 7cd40cfc that measured a fighting enemy from `position` alone still switched 7 times. So a
-## fought router that has left anchor contact, and whose front ranks would settle it beyond the
-## full range of its pursuer, such as one caught from behind with its leading ranks run ahead of
-## their slots, stays on its whole block: anchoring on those ranks would carry `position` out
-## past the range, where it leaves anchor contact again. Only the anchor reads this. Its
-## physical contact (_in_enemy_contact), and so its body contact and the melee, keep the full
-## range from `position`. In the seeds 0 to 4 hash sweep of every clip in demos/inputs on
-## a37af5c0 (246, 7cd40cfc against a37af5c0) that 1801 run was the only one whose re-entries
-## the second measure changed, and in the sweep of every clip in demos/inputs on cf24ad95 (247,
-## dc15400a against cf24ad95) none changed.
-##
 ## The range is the pair's melee contact range plus MeleeFrontLine.contact_extension, so two
 ## blocks front to front come into contact as their front ranks come within reach, and a block
 ## on another's flank or rear as its front rank reaches that block's end file or rear rank,
 ## not after their ranks have walked into each other.
 func _refresh_enemy_contact() -> void:
-	var routing: bool = state == State.ROUTING
-	var was_anchor_contact: bool = _router_anchor_contact
-	var reentering: bool = routing and _router_left_contact and not was_anchor_contact
-	var anchor_contact: bool = false
-	# Where the re-entry test measures from, as an offset from `position`: computed once, on the
-	# first enemy it is needed for (contact_anchor_offset).
-	var reentry_offset := Vector2.ZERO
-	var reentry_offset_known: bool = false
 	_in_enemy_contact = false
 	var contact_candidates: Array = get_tree().get_nodes_in_group("units")
 	contact_candidates.append_array(get_tree().get_nodes_in_group("routers"))
@@ -3277,99 +3141,8 @@ func _refresh_enemy_contact() -> void:
 			if not MeleeFrontLine.within_contact(self, u, c_dist, dist_sq):
 				continue
 			_in_enemy_contact = true
-			if not routing:
-				break
-			# As within_contact: the positions within the base range, or the gap the extension
-			# measures (MeleeFrontLine.last_gap) within the extended one, both shrunk on re-entry.
-			var frac: float = router_contact_reentry_frac if reentering and not _fighting_me(u) \
-					else 1.0
-			var a_dist: float = (c_dist + MeleeFrontLine.contact_extension(self, u)) * frac
-			var gap: Vector2 = MeleeFrontLine.last_gap
-			var base_sq: float = c_dist * c_dist * frac * frac
-			if not (dist_sq <= base_sq or gap.length_squared() <= a_dist * a_dist):
-				continue
-			if reentering:
-				# Re-entry also measures from where the contact anchor it would switch to (its front
-				# ranks, or the men ahead along its heading: _contact_anchor_indices) would settle
-				# the router: `position` alone is moved by the whole-block anchor it is on.
-				if not reentry_offset_known:
-					reentry_offset = contact_anchor_offset()
-					reentry_offset_known = true
-				# Translating last_gap is exact when either block takes no front-line extension
-				# (cavalry, missile troops or a far-tier block: MeleeFrontProfile.eligible), since
-				# the gap is then the positions' alone. Otherwise it keeps the extension's shift
-				# and weight as measured from `position`, which depend on where the blocks stand:
-				# an approximation, not a re-measurement.
-				var settled_gap: Vector2 = gap - reentry_offset
-				if not ((u.position - position - reentry_offset).length_squared() <= base_sq \
-						or settled_gap.length_squared() <= a_dist * a_dist):
-					continue
-			anchor_contact = true
 			break
 	SimOps.add(SimOps.REGIMENT_CHECK, contact_checks)
-	if routing:
-		_router_anchor_contact = anchor_contact
-		if was_anchor_contact and not anchor_contact:
-			_router_left_contact = true
-
-
-## Whether `enemy` is fighting this unit: FIGHTING, with this unit as its target.
-func _fighting_me(enemy: Unit) -> bool:
-	return enemy.state == State.FIGHTING and enemy.target_enemy == self
-
-
-## Arm router_front_in_melee() as this unit routs. It is armed when ANY enemy regiment within
-## melee contact range (the same test _refresh_enemy_contact uses) stands inside the front arc,
-## within router_front_arc of the heading: the unit broke facing that enemy, so its front ranks
-## are the ones in the melee. Every contact enemy is checked, so the result does not depend on
-## group order, and a contact only on a flank (outside the arc) or behind does not arm it.
-## Nor is it armed when the heading is already on the flee heading (its front ranks are its
-## flight-side ranks), or more than FACING_SNAP_ABSORB_THRESHOLD off it: that first flight
-## turn snaps and folds at once (_turn_flight_toward), so the heading lands on the flight on
-## the router's first tick and no bounded turn keeps its front in the melee. "Front" here is
-## the side the heading points to. The snap keeps the grid's fold, so the grid's own front
-## ranks stay toward the enemy. Past router_heading_anchor_fold the anchor reads the heading
-## side too, the men ahead along it (position_anchor_on_heading), its flight-side men; a snap
-## that leaves the grid at or under that fold keeps the grid's front ranks as its anchor.
-func _arm_router_front_in_melee() -> void:
-	_router_front_in_melee = false
-	if not is_inside_tree() or facing == Vector2.ZERO:
-		return
-	var heading: float = facing.angle()
-	var off_flight: float = absf(angle_difference(heading, _flee_heading().angle()))
-	if off_flight <= FLIGHT_HEADING_EPS or off_flight > FACING_SNAP_ABSORB_THRESHOLD:
-		return
-	var candidates: Array = get_tree().get_nodes_in_group("units")
-	candidates.append_array(get_tree().get_nodes_in_group("routers"))
-	for u in candidates:
-		if not (u is Unit) or u == self or u.team == team or u.state == State.DEAD:
-			continue
-		var c_dist: float = maxf(attack_range, u.attack_range) + RADIUS + u.RADIUS
-		var dist_sq: float = position.distance_squared_to(u.position)
-		if not MeleeFrontLine.within_contact(self, u, c_dist, dist_sq):
-			continue
-		# The bearing of the gap the contact test measured (MeleeFrontLine.toward).
-		var to_enemy: Vector2 = MeleeFrontLine.toward(self, u)
-		if to_enemy == Vector2.ZERO:
-			continue
-		if absf(angle_difference(heading, to_enemy.angle())) <= router_front_arc:
-			_router_front_in_melee = true
-			return
-
-
-## Called each routing tick after the flight has turned the heading (_process_rout): clear
-## router_front_in_melee() for the rest of the rout once the router leaves enemy contact or
-## its heading lands on its flight line, when its front ranks become its flight-side ranks.
-## Never re-armed within a rout, so an enemy passing alongside cannot switch it back and forth.
-func _update_router_front_in_melee() -> void:
-	if not _router_front_in_melee:
-		return
-	if not _in_enemy_contact:
-		_router_front_in_melee = false
-		return
-	if _flee_velocity != Vector2.ZERO \
-			and absf(angle_difference(facing.angle(), _flee_velocity.angle())) <= FLIGHT_HEADING_EPS:
-		_router_front_in_melee = false
 
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
@@ -3383,7 +3156,6 @@ func _think(delta: float) -> void:
 	# actually read it.
 	SimOps.bump(SimOps.UNIT_THINK)
 	_refresh_enemy_contact()
-	_drop_rally_resquare_near_enemy()   # before anything below turns the unit
 
 	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
@@ -4116,17 +3888,24 @@ func arrival_brake_rate() -> float:
 	return minf(decel, maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR))
 
 
-## The rate the idle coast-to-stop sheds speed with: the orderly arrival brake, except while a
-## rallied unit pulls up from its flight (is_rally_halting), at rally_halt_brake_rate().
+## The rate the idle coast-to-stop sheds speed with: the orderly arrival brake.
 func idle_brake_rate() -> float:
-	return rally_halt_brake_rate() if is_rally_halting() else arrival_brake_rate()
+	return arrival_brake_rate()
 
 
-## True while a rallied unit's anchor is still coasting to a stop on the flight its rally
-## handed over. Only while it still carries speed: the men's settle after the anchor stops is
-## an ordinary idle re-form, held to the ordinary caps.
-func is_rally_halting() -> bool:
-	return _rally_halt and state == State.IDLE and _current_speed > 0.0
+## Whether this unit has rallied since it last routed and one of its men still carries more of
+## his flight's speed than his own steering can give him (his top pace times
+## superphysical_speed_frac): he is still shedding it at his braking rate (SoldierBodies.step).
+## A readout for the state dump, whose speed check allows such a man his flee pace; nothing in
+## the sim reads it.
+func shedding_flight() -> bool:
+	if not _rallied or state == State.ROUTING:
+		return false
+	var cap_sq: float = pow(move_speed * superphysical_speed_frac, 2.0)
+	for v in _sim_body_vel:
+		if v.length_squared() > cap_sq:
+			return true
+	return false
 
 
 ## Whether the current order is a genuine click-count-driven run/sprint MOVE -- too urgent
@@ -4678,7 +4457,6 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		# (via is_maneuver_turning()) -- the squared body never eases onto its new slots.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_release_streaming_router()
 		return true
 	# MULTIPLE_ENGAGE, once genuinely fighting 2+ distinct adjacent enemy units at once: hold
 	# the current facing instead of turning to bring the front to bear on whichever single foe
@@ -4692,28 +4470,11 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	if order_mode == ORDER_MULTIPLE_ENGAGE and _adjacent_engaged_enemy_units().size() >= 2:
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
-		_release_streaming_router()
 		return true
 	# FLANKING_MANEUVER, while in active melee combat with the enemy: hold the line facing so the unit
 	# maintains its forward engagement while the outer wings envelop the enemy flanks,
 	# rather than rotating off-axis as wing soldier collisions jostle.
 	if order_mode == ORDER_FLANKING_MANEUVER and state == State.FIGHTING:
-		if _engage_turn_target != Vector2.ZERO:
-			_settle_engage_turn()
-		_release_streaming_router()
-		return true
-	# A routing target streaming out through this block: hold the current facing, as the
-	# stances above do. The bearing from this anchor to a point within the block's own reach
-	# names no front, so following it (each tick's small correction snaps unabsorbed) swings
-	# the whole slot grid round while the men, held in contact, stay where they are -- the
-	# block is then left with its slots turned away from its men and has to wheel back once
-	# it is free. Holding moves neither the facing nor _formation_angle, so nothing is left
-	# for a later reform to undo; once the router is out of reach the ordinary re-face
-	# (turn-in-place for a large swing) brings the front round.
-	# TODO(#1793): the hold has no bound in time, so a router that lingers among the ranks
-	# keeps the block's front off it for as long as it stays, and the block lands fewer blows
-	# on it than one that turned onto it would.
-	if _router_streaming_through(enemy_unit):
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
@@ -4916,35 +4677,6 @@ func _enemy_inside_own_footprint(enemy_unit: Unit) -> bool:
 	return absf(local.x) <= half.x and absf(local.y) <= half.y
 
 
-## Whether `enemy_unit` is a ROUTING regiment streaming out through this block. It starts
-## doing so when its centre lies within the block's own reach (soldier_block_extent, the
-## slot grid's circumradius around the anchor) without leading this anchor along its own
-## line of flight, and keeps doing so (_streaming_router_uid) until it is out of that reach,
-## stops routing, or this block leaves the fight: a router that has worked its way just past
-## the anchor is still among the ranks, and a bearing taken from a few world units behind it
-## swings as wildly as one taken from in front. A router that leads the anchor from the
-## start is being ridden down from behind: it is ahead of this block on a steady bearing,
-## and the ordinary re-face keeps the front on it. Holding the facing there instead keeps a
-## pursuit's front off its quarry -- in the rout_rally clip, whose cavalry rides inside its
-## router's reach, the router then outlives the clip and the troop's own shape breaks up.
-## A router with no flight velocity has no line of flight to lead along, so it counts as
-## streaming through.
-func _router_streaming_through(enemy_unit: Unit) -> bool:
-	if enemy_unit == null or enemy_unit.state != State.ROUTING:
-		_release_streaming_router()
-		return false
-	var reach: float = soldier_block_extent()
-	var offset: Vector2 = enemy_unit.position - position
-	if offset.length_squared() > reach * reach:
-		_release_streaming_router()
-		return false
-	if _streaming_router_uid != enemy_unit.uid:
-		if offset.dot(enemy_unit._flee_velocity) > 0.0:
-			return false
-		_streaming_router_uid = enemy_unit.uid
-	return true
-
-
 ## Whether this is a foot block and `enemy_unit` a cavalry unit whose centre lies inside the
 ## block's own slot footprint, scaled by melee_reface_fold_footprint_scale:
 ## soldier_block_half_extents (the slot grid's half-width and half-depth, padded by a mark
@@ -4960,8 +4692,8 @@ func _router_streaming_through(enemy_unit: Unit) -> bool:
 ## A troop of horse riding through foot, or into other horse, keeps its own front to follow.
 ## A troop on the cycle-charge stance does not count: it rides in, strikes and peels back out
 ## by design, so its bearing does name the front it will come from again. A ROUTING enemy does
-## not count either: one streaming out through the ranks holds the facing itself
-## (_router_streaming_through), and one ridden down from behind lies ahead on a steady bearing.
+## not count either: its men run each his own way, and one ridden down from behind lies ahead
+## on a steady bearing.
 ## A far-tier block has no bodies on its slots, so nothing to keep, and a scale of 0 or less
 ## turns the test off.
 func _cavalry_inside_foot_footprint(enemy_unit: Unit) -> bool:
@@ -4973,11 +4705,6 @@ func _cavalry_inside_foot_footprint(enemy_unit: Unit) -> bool:
 	var half: Vector2 = soldier_block_half_extents() * melee_reface_fold_footprint_scale
 	var local: Vector2 = (enemy_unit.position - position).rotated(-soldier_block_world_angle())
 	return absf(local.x) <= half.x and absf(local.y) <= half.y
-
-
-## Let go of the streaming-router latch.
-func _release_streaming_router() -> void:
-	_streaming_router_uid = -1
 
 
 ## Finish an engage turn-in-place: fold the rotation into _formation_angle (so the men keep
@@ -7313,12 +7040,6 @@ var _engage_turn_start_facing: Vector2 = Vector2.ZERO
 # is_instance_valid/State.DEAD itself before reading it, same as every other target_enemy use.
 var _engage_turn_old_files: int = 0
 var _engage_turn_enemy: Unit = null
-# The uid of the routing regiment this block has seen streaming out through its own ranks,
-# or -1: _router_streaming_through holds the block's facing against it until it is out of
-# the block's reach or stops routing. Cleared as well when the block leaves the engaged tier
-# (tick_engaged), takes a new order (start_order_response) or routes itself (_rout), or when
-# a stance's own facing hold takes over in _face_for_action.
-var _streaming_router_uid: int = -1
 # Beyond this heading offset (radians) an engage/attack re-face turns in place gradually
 # instead of snapping. Below it a small correction snaps, keeping close-quarters combat
 # responsive; only a large swing (roughly a quarter-turn or more) turns the men in place.
@@ -9870,12 +9591,6 @@ func tick_engaged(delta: float) -> void:
 		_engaged_linger = ENGAGED_LINGER
 	else:
 		_engaged_linger = maxf(0.0, _engaged_linger - delta)
-		# The streaming-router latch lives as long as the fight that set it, and the engaged
-		# latch is this block's own measure of that: a tick or two out of FIGHTING inside the
-		# melee keeps it, so a router already past the anchor is not met afresh (and faced) on
-		# re-entry, while a block that has left the fight lets it go.
-		if _engaged_linger <= 0.0:
-			_release_streaming_router()
 
 
 ## True while this regiment is in the engaged tier (its front ranks run the full
@@ -10113,12 +9828,8 @@ func contact_soldier_indices(count: int) -> PackedInt32Array:
 ## or without a cache. The cost this does add is that one bounded heap selection -- the same
 ## O(n log k) shape the melee tier's own selection already runs, and below the benchmark's
 ## noise floor in practice.
-##
-## A router whose front ranks are the ones in the melee (router_front_in_melee) has none: its
-## engaged latch outlives the break, and holding its front men back from the flight's
-## feed-forward would leave them standing in the fight while the rest of the block runs.
 func body_tier_soldier_indices(count: int) -> PackedInt32Array:
-	if not is_engaged() or count <= 0 or router_front_in_melee():
+	if not is_engaged() or count <= 0:
 		return PackedInt32Array()
 	return _select_near_front_indices(count, grid_front_forward(), body_tier_cap(count))
 
@@ -10162,8 +9873,7 @@ func body_tier_cap(count: int) -> int:
 ## the grid's rear rank too
 ## stopped every blow of a rear attack once the defender had turned about
 ## (test_melee_side_contact_battle's rear case lost 0 men against 7 with the strikers alone
-## reversed) and carried a router pressed beside a hill into fighting to the death
-## (test_router_breaks_from_contact).
+## reversed).
 ##
 ## `max_selected` bounds how many indices come back; -1 (the default) means "no bound", the
 ## historical behaviour every caller but body_tier_soldier_indices() still wants. A bound is
@@ -10333,105 +10043,12 @@ func near_front_soldier_indices(count: int) -> PackedInt32Array:
 ## fix closed for a fighting regiment's charge -- see docs/individual-collision-design.md.
 ## See near_front_soldier_indices' own docstring for the re-verification history behind this
 ## gate.
-##
-## A router whose front ranks are the ones in the melee (router_front_in_melee) gets none, so
-## couple() tracks its whole block: anchoring on the men the melee holds would hold the whole
-## router in the fight. A router caught from behind still anchors on its front ranks, which
-## are then its flight-side ranks, the ones farthest from the pursuer. A rout keeps the grid's
-## fold, so a router whose flight turn snapped has its grid's front ranks toward the enemy it
-## broke from, behind it; a router folded that far anchors on the men ahead along its heading
-## instead (position_anchor_on_heading).
-## A router reads its anchor contact (_router_anchor_contact) here in place of
-## _in_enemy_contact, so one at the edge of contact range switches anchors once.
 func position_anchor_indices(count: int) -> PackedInt32Array:
-	var in_contact: bool = _router_anchor_contact if state == State.ROUTING else _in_enemy_contact
-	if not (is_engaged() or in_contact):
-		return PackedInt32Array()
-	return _contact_anchor_indices(count)
-
-
-## The selection position_anchor_indices returns while this unit is fighting or anchored as one
-## in contact: none for a router with its front in the melee, the wider contact selection for
-## a Square or an unstable transition, the men ahead along the heading for a router whose grid is
-## folded off it (position_anchor_on_heading), and the live near-front ranks otherwise.
-func _contact_anchor_indices(count: int) -> PackedInt32Array:
-	if router_front_in_melee():
+	if not (is_engaged() or _in_enemy_contact):
 		return PackedInt32Array()
 	if in_square() or _position_anchor_unstable():
 		return contact_soldier_indices(count)
-	if position_anchor_on_heading():
-		return heading_anchor_soldier_indices(count)
 	return near_front_soldier_indices(count)
-
-
-## Whether couple() anchors this unit on the men ahead of its centre along its heading
-## (heading_anchor_soldier_indices), each measured against his own slot
-## (SoldierBodies.anchor_drift), rather than on the grid's front ranks measured against the
-## front slots. True for a router whose slot grid is turned more than router_heading_anchor_fold
-## off its heading, unless Square/Schiltron or an unstable block (_position_anchor_unstable)
-## takes the wider contact selection instead.
-## A rout keeps the grid's fold, so after a flight turn that snapped (_turn_flight_toward) the
-## grid's front ranks are the ones toward the enemy the router broke from, and once the grid is
-## past a quarter-turn anchoring on them anchors it on its trailing men. Every other unit, and
-## a router whose grid stands nearer its heading, keeps the grid's front: anchoring a folded
-## testudo on its rear ranks instead made it flick about every tick
-## (near_front_soldier_indices).
-## TODO(#1938): a flight turn that snaps by 75 degrees up to router_heading_anchor_fold
-## leaves the router anchored on its grid's front ranks, which are then a flank that can still
-## be pressed and can fall behind its centre as the block stretches.
-func position_anchor_on_heading() -> bool:
-	if state != State.ROUTING or in_square() or _position_anchor_unstable():
-		return false
-	return absf(wrapf(grid_fold(), -PI, PI)) > router_heading_anchor_fold
-
-
-## The ANCHOR_RANKS-worth of live bodies farthest ahead of `position` along the heading: the
-## position anchor of a router folded off its heading (position_anchor_on_heading). The men
-## face the heading, so these are the ones running ahead, whichever grid ranks they stand in.
-func heading_anchor_soldier_indices(count: int) -> PackedInt32Array:
-	var cutoff: int = mini(count, formation_files(count) * ANCHOR_RANKS)
-	return UnitFormation.live_front_indices(_sim_soldier_pos, cutoff, position, facing)
-
-
-## How far from `position` couple() would settle this unit if it anchored as one in contact
-## (_contact_anchor_indices): that selection's drift off its slots (SoldierBodies.anchor_drift).
-## Zero when the selection is empty, so the whole block is anchored either way, or while the slot
-## grid and the bodies differ in size. It is measured from the bodies and the grid's shape, so it
-## is the same whichever anchor couple() reads now.
-func contact_anchor_offset() -> Vector2:
-	var n: int = _sim_soldier_pos.size()
-	var indices: PackedInt32Array = _contact_anchor_indices(n)
-	if indices.is_empty():
-		return Vector2.ZERO
-	var slots: PackedVector2Array = soldier_world_slots(soldiers)
-	if slots.size() != n:
-		return Vector2.ZERO
-	return SoldierBodies.anchor_drift(self, indices, slots)
-
-
-## Whether this unit is a router whose front ranks are the ones in the melee it broke from
-## rather than its flight-side ranks. The rule:
-## - It is armed once, as the unit routs, when any enemy in melee contact stands within
-##   router_front_arc of its heading and its heading is neither already on its flee heading
-##   nor so far off it that the first flight turn snaps (_arm_router_front_in_melee). A unit breaks facing the enemy it fought, and its flight
-##   heading turns off that enemy at a bounded rate (_turn_flight_toward).
-## - It holds until the heading lands on the flight line or the router leaves enemy contact,
-##   and is never re-armed within that rout (_update_router_front_in_melee), so an enemy
-##   passing alongside cannot switch it back and forth.
-## While it holds, the router's men all run, with none held back as an engaged front
-## (body_tier_soldier_indices), and the block is anchored on all of them
-## (position_anchor_indices). Otherwise its front ranks are its flight-side ranks and the
-## rules for those apply: a router caught from behind anchors on them, and one fleeing
-## straight into the enemy it broke from keeps its engaged front on the melee line. A router
-## whose grid is folded off its heading anchors on the men ahead along the heading
-## (position_anchor_on_heading), so its anchor stays on its flight-side men all the same.
-func router_front_in_melee() -> bool:
-	return state == State.ROUTING and _router_front_in_melee
-
-
-# The angle (rad) under which a router's heading counts as on its flight line
-# (router_front_in_melee); a solver tolerance, matching _rotate_facing_toward's own.
-const FLIGHT_HEADING_EPS: float = 0.001
 
 
 ## The `count` formation SLOTS (not live bodies) that count as "the front" (or, for
@@ -10630,13 +10247,21 @@ func march_target_full_speed() -> float:
 func stamina_band() -> int:
 	if state == State.FIGHTING:
 		return StaminaFlow.BAND_REST
-	# A router is billed at the pace it is actually running: the flight builds up from a
-	# standstill, so the first seconds of a rout are not yet a flat-out sprint.
-	if _moved_while_routing:
-		return StaminaFlow.band_for_speed(_moved_while_routing_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+	# A far-tier router is billed at its aggregate flight's pace; a close-tier router's men are
+	# each billed at their own (man_stamina_flow_per_s).
 	if state == State.ROUTING:
-		return StaminaFlow.band_for_speed(_flee_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+		return StaminaFlow.band_for_speed(_far_flee_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+
+
+## Signed stamina change per second for man `i` from his own pace, the speed his body carries
+## (StaminaFlow.band_for_speed against this unit's walk, jog and sprint paces): a routed man
+## runs at his own pace, not the regiment's. A man with no body reads as resting.
+func man_stamina_flow_per_s(i: int) -> float:
+	var speed: float = _sim_body_vel[i].length() if i >= 0 and i < _sim_body_vel.size() else 0.0
+	return StaminaFlow.flow_per_s(StaminaFlow.band_for_speed(speed, walk_speed, jog_speed,
+			move_speed, ARRIVE_SPEED_EPSILON), stamina_rest_regen_per_s, stamina_walk_regen_per_s,
+			stamina_jog_drain_per_s, stamina_sprint_drain_per_s)
 
 
 ## Signed stamina change per second every soldier of this regiment sees from its pace
@@ -11127,10 +10752,7 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 ## motion fields onto the unit. The unit holds its current action for
 ## order_response_delay seconds before executing the new order.
 func start_order_response() -> void:
-	_finish_rally_resquare()   # before the reform below reads the fold
-	_square_cancelled_rally_fold()
 	_order_response_timer = order_response_delay
-	_release_streaming_router()   # a fresh order is a fresh action; no fight's latch carries
 	# A move/attack order squares a folded unit back to its heading, so it marches as a proper
 	# line rather than crabbing sideways, without swinging the slot grid under the men in one
 	# tick except for a quarter fold, a far-tier block, or a near-quarter fold on a block that is
@@ -11328,8 +10950,6 @@ func _fold_engage_turn_in_progress() -> void:
 ## stands. A re-square already turning out (_grid_lag_resquare) is kept: it is a lag behind the
 ## heading, which the drill turns along with the fold, so it squares only its own residue.
 func _start_atomic_response() -> void:
-	_finish_rally_resquare()   # a drill turns the block from a squared grid, not a rally's fold
-	_square_cancelled_rally_fold()
 	_resquare_pending = false
 	_order_response_timer = maxf(_order_response_timer, atomic_response_delay)
 
@@ -11419,65 +11039,48 @@ func _remove_from_play() -> void:
 func _rout() -> void:
 	if state == State.ROUTING:
 		return
-	_release_streaming_router()
-	# The flight builds up from whatever speed the unit was already carrying AWAY from the
-	# enemy -- the component of its travel velocity along its flee heading, read before
-	# anything below clears the orders. A unit caught advancing (or in a melee its charge
-	# carried it into) is moving toward the enemy, so it starts the flight from a standstill,
-	# never at speed in the opposite direction; one already falling back keeps that pace. A
-	# FIGHTING unit starts from a standstill outright: its _approach_velocity can still hold
-	# the lean-in toward its opponent until the first strike spends it.
+	# A routed unit is no formation: each man runs on his own (SoldierFlightStep), from the speed
+	# his own body carries, so the unit keeps no travel of its own. A far-tier unit has no men,
+	# and its aggregate record starts its flight (_far_flight) from whatever speed it was already
+	# carrying toward its refuge: none for a FIGHTING unit, whose _approach_velocity can still
+	# hold the lean-in toward its opponent until the first strike spends it.
 	if state == State.FIGHTING:
-		_flee_pace = 0.0
+		_far_flee_pace = 0.0
 	else:
-		_flee_pace = clampf(_approach_velocity.dot(_flee_heading()), 0.0, flee_speed())
-	_flee_velocity = Vector2.ZERO
-	# The flight replaces whatever travel the unit had: _process_rout returns before the idle
-	# decay, so a pre-rout velocity left here would sit frozen through the rout and coast the
-	# anchor off along it on the rallied unit's first idle tick, away from its bodies.
+		_far_flee_pace = clampf(_approach_velocity.dot(SoldierFlight.refuge_direction(self, position)),
+				0.0, flee_speed())
+	# _process_rout returns before the idle decay, so a pre-rout velocity left here would sit
+	# frozen through the rout and coast the rallied unit off along it on its first idle tick.
 	_approach_velocity = Vector2.ZERO
 	_current_speed = 0.0
-	_rally_halt = false
+	_rallied = false
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
 	has_move_target = false
 	# A rout drops every in-progress maneuver: clear_orders interrupts the current order
 	# (any in-place turn, wheel, or the rear-move march parked on it dies with the queue,
-	# taking any REFORM leaf hold with it; unit.facing stays at its current angle).
+	# taking any REFORM leaf hold with it).
 	clear_orders()
 	_reform_on_arrival = false
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
 	_engage_turn_enemy = null
 	_pin_down_exposure_cd = 0.0        # a rout ends the exposure window instead of freezing it open
-	# The rout leaves the slot grid where the men stand. It keeps the fold (an engage re-face, a
-	# half-turn or a drill leaves one), since dropping it would swing the grid about the anchor
-	# under the men. It bakes an armed mirror the way a fresh order does, since clearing the flag
-	# would send every off-centre man's slot to the other flank. The rally squares the fold to
-	# the heading (see _rally). The drill record still goes: the rally squares the fold by its
-	# angle alone, whatever turns made it. The flight's first heading, still in contact, turns
-	# onto the flight at a bounded rate like any later flight turn (see _turn_flight_toward). A
-	# grid still trailing a small heading correction (_grid_lag) is folded in where it stands,
-	# and an order's re-square still waiting on contact is dropped with the order.
+	# The men leave the grid: nothing lays them out or steers them onto it while they run, and
+	# the rally deals the grid afresh from where they stand (_rally). What the grid carried is
+	# settled here so nothing reads it stale: a lag still trailing the heading is folded in, a
+	# re-square waiting on contact is dropped with the order, and an armed mirror is baked.
 	_fold_grid_lag()
 	_resquare_pending = false
-	_absorbed_fold = 0.0   # the rally squares the whole fold
+	_absorbed_fold = 0.0
 	_contact_clear_time = 0.0   # a router's ticks do not count it (_advance_grid_lag)
 	_bake_formation_mirror()
-	_arm_router_front_in_melee()
-	_router_left_contact = false
-	_router_anchor_contact = _in_enemy_contact
 	_drill_turn_fold = 0.0
-	_rally_resquare_pending = false
-	_rally_fold_unsquared = false
 	clear_couple_transit()             # the flight scatters the walkers; nothing is in transit
 	_rout_timer = rout_time
-	# Deliberately no `_shattered = false` here: a fresh rout starts "broken"
-	# (recoverable) only when it wasn't already permanently shattered by a
-	# prior _stop_rout_and_fight(). That call returns the unit to State.IDLE
-	# (so it can fight again), and a later morale collapse can route back
-	# through here -- leaving `_shattered` untouched is what keeps that
-	# "fights to the death" guarantee from being quietly undone.
+	# Deliberately no `_shattered = false` here: a fresh rout starts "broken" (recoverable)
+	# only when it wasn't already permanently shattered, and leaving `_shattered` untouched is
+	# what keeps that guarantee from being quietly undone by a later morale collapse.
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
@@ -11499,59 +11102,21 @@ func _rout() -> void:
 	queue_redraw()
 
 
-## The direction a router flees in before terrain detours: toward its own back edge
-## (team 0 started at the top of the field, team 1 at the bottom).
-func _flee_heading() -> Vector2:
-	return Vector2.UP if team == 0 else Vector2.DOWN
-
-
+## One routing tick of the unit itself. Its men flee on their own (SoldierFlightStep, run by
+## Battle's soldier tick), and `position` reads their centroid (SoldierBodies.couple); a far-tier
+## unit, which has no men, runs its aggregate flight instead (_far_flight). The unit escapes once
+## every man has left retreat_bounds (_fled_clear). Morale, the rally and the shatter stay the
+## regiment's own, as morale does everywhere in the sim.
 func _process_rout(delta: float) -> void:
-	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Route around
-	# impassable terrain via PathField.next_step() if available (same as _move_to does).
-	# If trapped with no escape path, fall back to fighting to the death.
-	var flee: Vector2 = _flee_heading()
-
-	# Check for viable escape path using PathField (like _move_to does).
-	# If trapped in terrain with no escape route, stop routing and fight instead.
-	if PathField.active != null and _is_escape_path_blocked(flee):
-		_stop_rout_and_fight()
-		return
-
-	# Route around terrain: consult PathField for the next safe step. Unlike _move_to's
-	# explicit destination, fleeing has no fixed target -- just a direction -- so this
-	# goes through next_step_fleeing(), which clips the far-off candidate point to the
-	# field's own grid bounds first (mirroring has_escape_route() above). An unclipped
-	# point 1000px out lands off the grid for virtually every real position, which A*
-	# can never reach regardless of terrain -- silently defeating this whole detour.
-	# _flight_step rounds terrain with the block's own swept width, so the men running on the
-	# anchor's flanks pass the terrain too, not just the anchor.
-	var step: Vector2 = position + flee * 1000.0
-	if PathField.active != null:
-		step = _flight_step(flee)
-
-	# next_step() returns an absolute world-space point, not a direction -- subtract
-	# position first (as _move_to() does) before normalizing.
-	var to: Vector2 = step - position
-	var dir: Vector2 = to.normalized()
-	_turn_flight_toward(dir, delta)
-	_flee_pace = move_toward(_flee_pace, flee_speed(), accel * delta)
-	# The heading turns onto the step, but the anchor travels along the face its leading
-	# rank is about to meet (_flight_front_veer).
-	if PathField.active != null and not _flight_step_narrow:
-		dir = _flight_front_veer(dir, step, delta)
-	_flee_velocity = dir * _flee_pace
-	var next: Vector2 = position + _flee_velocity * delta
-	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
-			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
+	if tier == FormationTier.FAR:
+		if not _far_flight(delta):
+			return
+	elif _fled_clear():
 		_escape()
 		return
-	position = next
-	_moved_while_routing = true
-	_moved_while_routing_pace = _flee_pace
 
-	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing (the movement
-	# above already ran), with no morale recovery and no rally check ever again. The only
-	# way out from here is _escape() (handled above).
+	# A SHATTERED unit has lost its nerve for good: it just keeps fleeing, with no morale
+	# recovery and no rally check ever again. The only way out from here is _escape().
 	if _shattered:
 		queue_redraw()
 		return
@@ -11564,7 +11129,7 @@ func _process_rout(delta: float) -> void:
 		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
 
 	# Rally the moment morale recovers past the threshold, provided contact is broken and
-	# enough men remain — the unit needn't run out the full timer or reach the edge.
+	# enough men remain -- the unit needn't run out the full timer or reach the edge.
 	# Note: a unit that enters routing with morale already >= rally_morale_threshold rallies
 	# on the first call here (a one-tick rout). In practice routing is triggered by depleted
 	# morale so this is dormant; keep it in mind if non-morale rout triggers are ever added.
@@ -11586,70 +11151,50 @@ func _process_rout(delta: float) -> void:
 		_shatter()
 
 
-## Turn a router's heading onto its flight direction `dir`. A turn past
-## FACING_SNAP_ABSORB_THRESHOLD snaps as _face_dir always did (the fold absorbs it, so the
-## slot grid stays where the men stand). A smaller turn -- the flight's first heading as the
-## block breaks from a melee, or the flight bending round terrain -- would rotate the whole
-## slot grid about the anchor in one tick, swinging a deep block's corner slots hundreds of
-## world units off the men running on them; instead the heading turns the way a body arrives
-## on its slot (SoldierBodies.step): its turn rate builds and sheds at bounded_turn_accel()
-## and never exceeds bounded_turn_rate() (bounded_turn_step), and it eases to a stop on
-## `dir`. So the block's farthest slot
-## never moves sideways faster, or changes that pace faster, than the man on it can follow.
-## The anchor itself still travels along `dir` (see _process_rout), so the flight keeps the
-## path the step chose. _flight_turn_rate carries the turn from tick to tick, and
-## SoldierBodies.step feeds it forward to the bodies. The turn is bounded the same way in
-## enemy contact, so a router breaking from a melee keeps its front toward the enemy for a
-## while: its men still run at the flight's pace because, while its front ranks are in the
-## melee (router_front_in_melee), none of them is held back as an engaged front and the block
-## is not anchored on them. Folding the turn into _formation_angle instead would
-## leave a deep block running obliquely across its own grid, so its swept width across the
-## heading, the terrain margin its flight step rounds terrain with (_rout_step_clearance),
-## would grow, and the step could swing onto a detour on the next tick.
-func _turn_flight_toward(dir: Vector2, delta: float) -> void:
-	var diff: float = angle_difference(facing.angle(), dir.angle())
-	if absf(diff) > FACING_SNAP_ABSORB_THRESHOLD:
-		_flight_turn_rate = 0.0
-		_face_dir(dir)
-		return
-	# TODO(#1788): a bounded turn in contact once let the pursuer's press carry the anchor into
-	# block terrain (catalog trapped_routing, before the rout kept its slots); the mechanism is
-	# undiagnosed, and test_router_breaks_from_contact.gd watches that staging.
-	if diff == 0.0 or delta <= 0.0:
-		_flight_turn_rate = 0.0
-		return
-	var radius: float = _formation_local_half_extents().length()
-	_flight_turn_rate = bounded_turn_step(_flight_turn_rate, diff, bounded_turn_rate(radius),
-			bounded_turn_accel(radius), delta)
-	var turn: float = _flight_turn_rate * delta
-	if signf(turn) == signf(diff) and absf(turn) >= absf(diff):
-		# Lands on the heading this tick: turn exactly the rest of the way.
-		_flight_turn_rate = diff / delta
-		_face_dir(dir)
-		return
-	facing = Vector2.from_angle(facing.angle() + turn)
-	_render_dirty = true
+## Whether every man of this close-tier router has left retreat_bounds, the field plus the
+## margin a router may flee into. A unit with no bodies reads its `position` instead.
+func _fled_clear() -> bool:
+	if _sim_soldier_pos.is_empty():
+		return not retreat_bounds.has_point(position)
+	for p in _sim_soldier_pos:
+		if retreat_bounds.has_point(p):
+			return false
+	return true
+
+
+## A far-tier router's aggregate flight: far tier keeps one record per formation and no men, so
+## the record runs from its centre toward the refuge its men know (SoldierFlight.
+## refuge_direction) at a pace that builds to flee_speed() at `accel`. Returns false once the
+## step would leave retreat_bounds, after escaping.
+func _far_flight(delta: float) -> bool:
+	_far_flee_pace = move_toward(_far_flee_pace, flee_speed(), accel * delta)
+	var next: Vector2 = position + SoldierFlight.refuge_direction(self, position) \
+			* _far_flee_pace * delta
+	if next.x < retreat_bounds.position.x or next.x > retreat_bounds.end.x \
+			or next.y < retreat_bounds.position.y or next.y > retreat_bounds.end.y:
+		_escape()
+		return false
+	position = next
+	return true
 
 
 ## One tick of a bounded turn still `diff` (rad) off its target: the turn rate moves from
 ## `rate` toward the fastest rate that can still stop on the target at `turn_accel` (sqrt(2 a d),
 ## the profile a body arrives on its slot with), capped at `max_rate`, and changes by at most
-## `turn_accel` * `delta`. Returns this tick's rate. Shared by a router's heading turn
-## (_turn_flight_toward) and the slot grid's turn after a small heading correction
-## (_advance_grid_lag).
+## `turn_accel` * `delta`. Returns this tick's rate. Used by the slot grid's turn after a small
+## heading correction (_advance_grid_lag) and a small combat re-face's wheel.
 static func bounded_turn_step(rate: float, diff: float, max_rate: float, turn_accel: float,
 		delta: float) -> float:
 	var wanted: float = signf(diff) * minf(max_rate, sqrt(2.0 * turn_accel * absf(diff)))
 	return move_toward(rate, wanted, turn_accel * delta)
 
 
-## The fastest a block's slot grid turns at a bounded rate (rad/s): a router's heading
-## (_turn_flight_toward), or any block's grid after a small heading correction
-## (_advance_grid_lag). It is the rate at which the farthest slot (the block's corner, at
-## _formation_local_half_extents().length() from the anchor) sweeps sideways at jog_speed, the
-## pace a body's arrival term closes on a moving slot at (SoldierBodies.step caps arrival at
-## jog_speed). INF for a block with no extent. `radius` lets a caller that already holds that
-## corner radius pass it in instead of paying for a second O(soldiers) slot walk.
+## The fastest a block's slot grid turns at a bounded rate (rad/s), after a small heading
+## correction (_advance_grid_lag). It is the rate at which the farthest slot (the block's
+## corner, at _formation_local_half_extents().length() from the anchor) sweeps sideways at
+## jog_speed, the pace a body's arrival term closes on a moving slot at (SoldierBodies.step caps
+## arrival at jog_speed). INF for a block with no extent. `radius` lets a caller that already
+## holds that corner radius pass it in instead of paying for a second O(soldiers) slot walk.
 func bounded_turn_rate(radius: float = -1.0) -> float:
 	if radius < 0.0:
 		radius = _formation_local_half_extents().length()
@@ -11664,14 +11209,6 @@ func bounded_turn_accel(radius: float = -1.0) -> float:
 	if radius < 0.0:
 		radius = _formation_local_half_extents().length()
 	return maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR) / radius if radius > 0.0 else INF
-
-
-## Drop the flight state a router carries (_flee_pace, _flee_velocity) on the way out of
-## ROUTING into play, so a later rout starts clean and nothing reads a stale flight.
-func _clear_flight() -> void:
-	_flee_pace = 0.0
-	_flee_velocity = Vector2.ZERO
-	_flight_turn_rate = 0.0
 
 
 ## Whether a routed unit recovers rather than shatters when its rout times out:
@@ -11699,19 +11236,20 @@ func _can_rally() -> bool:
 
 
 ## Recover from a rout: the unit reforms under the player's control at low,
-## fragile morale and rejoins the fightable units — the inverse of the state/group
+## fragile morale and rejoins the fightable units -- the inverse of the state/group
 ## changes _rout() made. It can be re-ordered, and can break again, from here.
+## It re-forms from its men where they stand (_reform_where_men_stand); each man then walks to
+## his place under the ordinary arrival, shedding the run he still carries no faster than his
+## braking rate (SoldierBodies.step).
 func _rally() -> void:
 	state = State.IDLE
 	# Keep whatever nerve the unit steadied to while fleeing, but never below the fragile
-	# floor — a unit that rallies the instant its timer expires still reforms shaken.
+	# floor -- a unit that rallies the instant its timer expires still reforms shaken.
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
-	# The re-square waits for the coast to stop and the heading to turn (see
-	# _advance_rally_resquare), so the coast's terrain check sweeps the block as it flew.
-	_rally_resquare_pending = true
-	_begin_rally_halt()
-	_clear_flight()
+	_far_flee_pace = 0.0
+	_rallied = true
+	_reform_where_men_stand()
 	# The orders queue (route legs included) was already dropped by _rout()'s
 	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")
@@ -11719,269 +11257,43 @@ func _rally() -> void:
 	queue_redraw()
 
 
-## Square a rallying unit's slot grid to its heading without sending the men across the block.
-## The fold it carries here is whatever it held when it broke (_rout keeps it) plus every
-## flight turn _face_dir's snap-absorb took in. That can be any angle, and dropping an arbitrary
-## fold swings the grid about the anchor under the men, so the heading first takes the part of
-## the fold off its nearer whole or half turn (_turn_heading_onto_fold_half). A quarter-turn
-## left in the fold would still swing a block that is not square through a different footprint,
-## so the heading takes that too, turning by up to a quarter-turn. reform_ranks() then drops
-## what is left, holding ground: nothing ordered a countermarch, so the ranks re-square where the
-## men are standing. A half-turn fold arms the depth reflection instead of point-reflecting the
-## whole block.
-## A half-turn's hold-ground reflection keeps a file-major block's men within a rank pitch of
-## their ground, but in the row-major and square layouts, when the short rank is centred under
-## the middle files, it sends the outer files' men to the other end of their file, the whole
-## depth of the block. Those two layouts are dealt again instead, column by column
-## (UnitFormation.pair_slots_by_column) from the slots the men held before the re-square, so no
-## man's slot moves more than a rank pitch, and the walkers are judged against those slots, as
-## reform_ranks judges its own. A block whose old slots could only be read by dealing them from
-## the bodies (_slot_body_deal_pending) keeps the deal reform_ranks makes from where the men stand
-## (see _apply_row_slot_reflection and _apply_square_slot_reflection).
-## The heading turn here is a one-tick turn of every man's facing (the grid stays put). A rally
-## normally reaches this through _advance_rally_resquare, which has already turned the heading at
-## a bounded rate, so the turn here is empty; a fresh order that interrupts that turn, and a
-## trapped router that stands to fight (_stop_rout_and_fight), take the rest at once.
-func _rally_resquare() -> void:
-	_turn_heading_onto_fold_half()
-	var files: int = maxi(1, formation_files(soldiers))
-	var half_turn: bool = absf(absf(wrapf(_formation_angle, -PI, PI)) - PI) < 0.01
-	var deal: bool = half_turn and (in_square() or not _effective_file_major_reform())
-	# Read before the re-square, unless the read would deal the assignment from the bodies
-	# (_slot_body_deal_pending: a frontage reshape, or any rebuild of a square or file-major
-	# assignment). A row-major close-up over a regiment-path loss, or a gain given the tail
-	# cells, reads no body: the read settles it first (formation_slots), so the column deal below
-	# starts from the closed-up slots. The men have not walked to those yet, so the walkers are then not judged
-	# against them (main measured a capture over a pending close-up dragging the anchor 4.4 wu,
-	# see _slot_deal_pending), and transit arms nothing.
-	var slots_before := PackedVector2Array()
-	var settled_rebuild: bool = false
-	if deal and not _slot_body_deal_pending(soldiers, files):
-		settled_rebuild = _slot_deal_pending(soldiers, files)
-		slots_before = soldier_world_slots(soldiers)   # settles that close-up or extension first
-	if not reform_ranks(true) or not deal or slots_before.size() != soldiers:
-		return
-	# Deal from the slots the men held, not from where they stand: a block braking out of a
-	# flight stands sheared and strung out around its slots, and dealing from that would hand a
-	# man a cell across the block. Each man's new cell is then at most a rank pitch from his old
-	# one, so his distance to it grows by at most a rank pitch.
-	var held: PackedVector2Array = to_slot_frame(slots_before)
-	# The column deal replaces the reflection reform_ranks just composed, walkers and all.
-	_sim_soldier_reflect_walker = PackedByteArray()
-	if in_square():
-		_sim_soldier_square_slot = UnitFormation.pair_slots_by_column(
-				held, UnitFormation.block_slots(soldiers, files, file_pitch_wu()), file_pitch_wu())
-		_square_slot_files = files
-	else:
-		_sim_soldier_row_slot = UnitFormation.pair_slots_by_column(
-				held, UnitFormation.slots(self, soldiers), file_pitch_wu())
-		_row_slot_files = files
-		_row_slot_dealt = true
-		_row_layout_files = files
-	arm_couple_transit(PackedVector2Array() if settled_rebuild else slots_before, _reform_timeout())
-
-
-## Called each non-routing tick: carry a rally's re-square through once the coast has stopped.
-## The heading first turns at CONVERSIO_TURN_RATE (an ordered about-face's rate) by the part of the
-## fold off its nearer whole or half turn, the fold taking up each step so the slot grid stays
-## where the men stand; then _rally_resquare re-squares the ranks. Waiting for the coast means the
-## block never slides sideways along its old flight line with its men facing across it.
-## The heading can end up to a quarter-turn off the flight line, square across it at worst. That
-## is intended: turning the ranks onto the flight heading instead would swing a block that is not
-## square through a different footprint (the 60-horse router in the catalog clip trapped_routing
-## would have been sent 235 wu off its slots on average), and a unit can only rally clear of the
-## enemy, so which way it faces matters less than keeping its men in place; the next order turns
-## it. A fresh order takes the rest of the turn and the re-square at once (set_current_order,
-## start_order_response). An enemy that closes in first, which the coast's own cut-off allows,
-## cancels it instead (_drop_rally_resquare_near_enemy), as does any other way out of IDLE.
-func _advance_rally_resquare(delta: float) -> void:
-	if not _rally_resquare_pending:
-		return
-	if state != State.IDLE:
-		_rally_resquare_pending = false
-		_rally_fold_unsquared = true
-		_rally_clear_ticks = 0
-		return
-	if is_rally_halting():
-		return
-	var fold: float = wrapf(_formation_angle, -PI, PI)
-	var residue: float = fold - roundf(fold / PI) * PI
-	if absf(residue) > RALLY_TURN_DONE_EPS:
-		var step: float = clampf(residue, -CONVERSIO_TURN_RATE * delta, CONVERSIO_TURN_RATE * delta)
-		facing = facing.rotated(step)
-		_formation_angle = wrapf(_formation_angle - step, -PI, PI)
-		_drill_turn_fold = 0.0   # a heading turn absorbed into the fold, not a drill turn
-		_absorbed_fold = 0.0
-		_render_dirty = true
-		return
-	_finish_rally_resquare()
-
-
-# The residue (rad) under which a rally's bounded heading turn counts as done; the last few
-# millionths are taken by _turn_heading_onto_fold_half inside _rally_resquare.
-const RALLY_TURN_DONE_EPS: float = 0.0001
-
-
-## Called from _think before anything there turns the unit: a rallied unit whose re-square is
-## still pending gives it up once an enemy is in contact or within rally_coast_enemy_radius(),
-## the range inside which its idle auto-engage would face it toward that enemy. The heading turn
-## would otherwise turn it away from its attacker, and a turn counted twice with an engage turn
-## swings the grid under the men. The fold stays as it stands, as any engage re-face leaves one,
-## and the engage logic faces the enemy from there; _rally_fold_unsquared records that the fold
-## still wants squaring. Once the unit is IDLE again, out of contact, and no enemy has come within
-## rally_resume_radius_factor times that radius for rally_resume_clear_ticks ticks, the re-square
-## resumes. The wider radius and the wait keep an enemy hovering at the edge of the radius from
-## flipping it on and off.
-func _drop_rally_resquare_near_enemy() -> void:
-	var radius: float = rally_coast_enemy_radius()
-	if _rally_resquare_pending:
-		if _in_enemy_contact or UnitTargeting.nearest_enemy_to(self, position, radius) != null:
-			_rally_resquare_pending = false
-			_rally_fold_unsquared = true
-			_rally_clear_ticks = 0
-		return
-	if not _rally_fold_unsquared:
-		return
-	if state != State.IDLE or _in_enemy_contact or UnitTargeting.nearest_enemy_to(
-			self, position, radius * rally_resume_radius_factor) != null:
-		_rally_clear_ticks = 0
-		return
-	_rally_clear_ticks += 1
-	if _rally_clear_ticks >= rally_resume_clear_ticks:
-		_rally_fold_unsquared = false
-		_rally_clear_ticks = 0
-		_rally_resquare_pending = true
-
-
-# How much farther than rally_coast_enemy_radius() every enemy must stand, and for how many
-# ticks, before a rally re-square an enemy called off resumes (see _drop_rally_resquare_near_enemy).
-# Defaults for the caller-configurable fields below.
-const RALLY_RESUME_RADIUS_FACTOR: float = 1.25
-const RALLY_RESUME_CLEAR_TICKS: int = 30
-# Live rally-resume thresholds -- caller-configurable parameters (CLAUDE.md's code conventions)
-# defaulting to the consts above, with the same set-before-_ready contract as rout_time.
-var rally_resume_radius_factor: float = RALLY_RESUME_RADIUS_FACTOR
-var rally_resume_clear_ticks: int = RALLY_RESUME_CLEAR_TICKS
-
-
-## A fresh order squares the fold a rally re-square left when an enemy called it off: the heading
-## takes the part of the fold off its nearer whole or half turn (_turn_heading_onto_fold_half), so
-## the order's own reform_ranks drops a whole or half turn rather than an arbitrary fold, which
-## would swing the grid under the men. The order re-aims the unit anyway. A no-op otherwise.
-func _square_cancelled_rally_fold() -> void:
-	if not _rally_fold_unsquared:
-		return
-	_rally_fold_unsquared = false
-	_rally_clear_ticks = 0
-	_turn_heading_onto_fold_half()
-
-
-## Run a pending rally re-square now (see _advance_rally_resquare). A no-op when none is pending.
-func _finish_rally_resquare() -> void:
-	if not _rally_resquare_pending:
-		return
-	_rally_resquare_pending = false
-	_rally_resquare()
-
-
-## Turn `facing` by the part of the fold that lies off its nearer whole or half turn, and take
-## that part out of the fold, so the slot grid stays exactly where it was (soldier_world_slots
-## turns the grid by facing plus the fold) and the fold is left at 0 or a half-turn. The heading
-## moves by at most a quarter-turn. Clears the drill record, as every fold write that is not a
-## drill turn does.
-func _turn_heading_onto_fold_half() -> void:
-	var fold: float = wrapf(_formation_angle, -PI, PI)
-	var half: float = roundf(fold / PI) * PI
-	var residue: float = fold - half
-	if residue == 0.0:
-		return
-	facing = facing.rotated(residue)
-	_formation_angle = half
+## Lay a rallied unit's grid out where its men stand: square to the heading they face, which
+## couple() read off them while they ran, at their centroid, where couple() left `position`.
+## With rally_deal STAND each man is then dealt the place nearest where he stands
+## (deal_slots_where_men_stand); with OWN each keeps his own place in his own file.
+func _reform_where_men_stand() -> void:
+	_fold_grid_lag()
+	_formation_angle = 0.0
 	_absorbed_fold = 0.0
 	_drill_turn_fold = 0.0
 	_render_dirty = true
+	if rally_deal == RallyDeal.STAND:
+		deal_slots_where_men_stand()
 
 
-## The men are still running when they rally: hand the flight over to the idle coast-to-stop
-## instead of stopping the anchor dead under bodies that still carry the flight velocity (they
-## would overrun their slots and walk back). The coast pulls up at rally_halt_brake_rate(), and
-## the bodies brake with it (SoldierBodies.body_brake_accel_for), so the block halts as one.
-## Called from _rally() after the state flip, before its re-square and before _clear_flight() drops
-## the flight. A coast is not handed over -- the anchor stops where it rallied, as it always
-## did -- when its stopping point would leave retreat_bounds, when the block's swept width
-## along it runs into impassable terrain, or when a living enemy stands within
-## rally_coast_enemy_radius() of it: the flee pace must not carry the rallied unit into
-## contact, where _approach_velocity would read as a charge. An enemy that comes near the
-## remaining coast later cuts it short (_cut_rally_halt_on_enemy).
-func _begin_rally_halt() -> void:
-	# A flight with no direction (a zero _flee_velocity) has no leg to check: the idle coast
-	# would fall back to running along `facing`, which nothing here vetted.
-	if _flee_pace <= 0.0 or rally_halt_brake_rate() <= 0.0 \
-			or _flee_velocity.length_squared() <= 0.0001:
+## Deal this unit's men places on its grid from where they stand, in whichever layout it uses:
+## the row-major pairing at once, by lateral file with the short rear rank dealt on its own
+## (UnitFormation.pair_slots_rear_rank_first), and the square pairing or the file-major
+## assignment on their next slot query, by marking their file count stale so the query deals
+## them from the bodies (_ensure_square_slot_assignment, _ensure_file_assignment). A unit with
+## too few bodies to read keeps its current layout.
+func deal_slots_where_men_stand() -> void:
+	if in_square():
+		_square_slot_files = -1
 		return
-	var dir: Vector2 = _flee_velocity.normalized()
-	var stop_dist: float = _flee_pace * _flee_pace / (2.0 * rally_halt_brake_rate())
-	var stop_at: Vector2 = position + dir * stop_dist
-	if not retreat_bounds.has_point(stop_at):
+	if _effective_file_major_reform():
+		_file_assignment_files = -1
 		return
-	if PathField.active != null \
-			and PathField.active.is_leg_blocked(position, stop_at, terrain_clearance(dir)):
+	var live: PackedVector2Array = _slot_frame_positions(soldiers)
+	if live.is_empty():
 		return
-	if _enemy_near_leg(position, stop_at, rally_coast_enemy_radius()):
-		return
-	_current_speed = _flee_pace
-	_approach_velocity = _flee_velocity
-	_rally_halt = true
-
-
-## How near a living enemy may come to a rallied unit's coast before the coast is refused,
-## or cut short: the farther of the rally-contact radius and this unit's own detection
-## range, inside which its idle auto-engage would turn the coast's flee-pace velocity
-## toward the enemy (where UnitCombat.charge_multiplier reads it as a charge).
-func rally_coast_enemy_radius() -> float:
-	return maxf(RALLY_CONTACT_RADIUS, detection_range)
-
-
-## Called each tick before _think: a halting unit whose remaining coast an enemy has come
-## near -- one that moved into its path or its detection range after the rally -- stops where
-## it stands, as a rally did before the halt existed, so it never carries the flee pace into
-## contact.
-func _cut_rally_halt_on_enemy() -> void:
-	if not is_rally_halting():
-		return
-	var dir: Vector2 = _approach_velocity.normalized() \
-			if _approach_velocity.length_squared() > 0.0001 else Vector2.ZERO
-	var remaining: float = _current_speed * _current_speed / (2.0 * rally_halt_brake_rate())
-	if not _enemy_near_leg(position, position + dir * remaining, rally_coast_enemy_radius()):
-		return
-	_rally_halt = false
-	_current_speed = 0.0
-	_approach_velocity = Vector2.ZERO
-
-
-## Whether a living enemy (fighting or routing) stands within `radius` of the segment
-## `from`-`to`. Centre distances, as _can_rally's radius test reads them. False outside the tree.
-func _enemy_near_leg(from: Vector2, to: Vector2, radius: float) -> bool:
-	if not is_inside_tree():
-		return false
-	var r_sq: float = radius * radius
-	for group in ["units", "routers"]:
-		for o in get_tree().get_nodes_in_group(group):
-			var other: Unit = o as Unit
-			if other == null or other.team == team or other.state == State.DEAD:
-				continue
-			var near: Vector2 = Geometry2D.get_closest_point_to_segment(other.position, from, to)
-			if near.distance_squared_to(other.position) < r_sq:
-				return true
-	return false
-
-
-## The rate a rallied unit pulls up from its flight at: its own decel, the halt the type can
-## actually make. The orderly arrival brake (arrival_brake_rate, never above decel) is held to
-## what the bodies track at their ordinary acceleration and would coast a full-flight block up
-## to twice as far; SoldierBodies.body_brake_accel_for raises the bodies to this rate for the halt.
-func rally_halt_brake_rate() -> float:
-	return decel
+	var files: int = maxi(1, formation_files(soldiers))
+	_sim_soldier_row_slot = UnitFormation.pair_slots_rear_rank_first(live,
+			UnitFormation.slots(self, soldiers), files, rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5)
+	_row_slot_files = files
+	_row_slot_dealt = true
+	_row_layout_files = files
+	_sim_soldier_reflect_walker = PackedByteArray()
 
 
 ## Shatter: a routed ("broken") unit that couldn't recover in time --- still in contact,
@@ -12002,258 +11314,6 @@ func _shatter() -> void:
 func _escape() -> void:
 	escaped.emit()
 	_remove_from_play()
-
-
-## Check if escape path is blocked: true if all viable escape directions (within 90 degree
-## cone around the team's flee direction) are impassable. Assumes PathField.active is set --
-## the sole call site already guards on that, so routing proceeds unchecked when there's no
-## terrain layer at all rather than reaching this function.
-func _is_escape_path_blocked(flee_direction: Vector2) -> bool:
-	# Scan directions around the flee vector: check a 90-degree cone
-	# (45 degrees to each side of the primary flee direction).
-	var angles_to_check: Array = []
-	var base_angle: float = flee_direction.angle()
-	for offset_deg in [-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0]:
-		angles_to_check.append(base_angle + deg_to_rad(offset_deg))
-
-	# Check each direction: if ANY has a genuine route out, the path is not fully blocked.
-	# PathField.has_escape_route() distinguishes "a route exists" from "no route,
-	# fell back to the raw target" -- next_step()'s own return value can't tell those
-	# apart, and it clips the candidate target to the field's own bounds so the check
-	# isn't asking for a route to an inherently unreachable off-map point.
-	for angle in angles_to_check:
-		var direction: Vector2 = Vector2.from_angle(angle)
-		if PathField.active.has_escape_route(position, direction, _rout_clearance()):
-			return false
-
-	# All directions blocked: unit is trapped.
-	return true
-
-
-# How close to parallel (cosine) a step direction must be to a heading to count as running
-# along it: a solver tolerance on float directions, not a gameplay parameter.
-const STRAIGHT_FLIGHT_DOT: float = 0.999999
-# How far (wu/s, along the step direction) a router's veered travel may lean back against its
-# step and still count as running square to it (_flight_front_veer): a solver tolerance on a
-# float dot product, not a gameplay parameter.
-const STRAIGHT_FLIGHT_EPS: float = 0.000001
-
-
-## Clearance margin for a routing unit's escape check (_is_escape_path_blocked): whether
-## any way out exists at all. A routing mob need not clear a full formed pivot radius, so
-## this keeps only a loose cluster of bodies off obstacles; the flight's own step rounds
-## terrain wider (_rout_step_clearance).
-func _rout_clearance() -> float:
-	return soldier_body_radius() + RADIUS
-
-
-## The margin a router's flight step rounds impassable terrain with: the block's swept
-## width across its own heading (terrain_clearance along `facing`, the heading
-## _turn_flight_toward turns onto each step), never less than _rout_clearance(). The router's
-## bodies run on their formation slots, so a step that cleared only the anchor's own margin
-## led the block's flank files straight into the terrain, where the soldier backstop held
-## them against the face while the block ran on and the coupling dragged the anchor back
-## toward them. That holds for any block wider than the anchor's own margin, a wide shallow
-## line as much as a deep column. A flight line clear of terrain by more than the block's
-## half-width takes the same step at either margin.
-## The escape check keeps the narrower _rout_clearance(), so whether a router counts as
-## trapped (and turns to fight) is unchanged.
-func _rout_step_clearance() -> float:
-	return maxf(_rout_clearance(), terrain_clearance(facing))
-
-
-## The point a router's anchor steers for this tick (PathField active): next_step_fleeing at
-## the block's swept width (_rout_step_clearance), with two exceptions.
-## - The flight is about to turn back off a detour leg onto its flight line while the block
-##   is still turned onto the detour (its heading turns at a bounded rate,
-##   _turn_flight_toward): the turned block sweeps wider across the flight line than its
-##   half-width, by its depth times the sine of the turn, so turning back now would run its
-##   rear ranks into the terrain it just rounded. It runs on along its own heading until the
-##   flight line is clear at the turned block's swept width (terrain_clearance along the
-##   flight line), as long as that heading itself runs clear, and only then turns back. Only a router whose last step ran a detour leg does this; a router
-##   just broken has no flight yet.
-## - A detour whose waypoint would leave the turned block hanging off the field sideways (a
-##   hill near the field's edge) falls back to the anchor's own margin (_rout_clearance), as
-##   before the swept width existed, so the flight never leads the block off the field.
-func _flight_step(flee: Vector2) -> Vector2:
-	_flight_step_narrow = false
-	var field: PathField = PathField.active
-	var wide: float = _rout_step_clearance()
-	var step: Vector2 = field.next_step_fleeing(position, flee, wide)
-	var dir: Vector2 = (step - position).normalized()
-	if dir.dot(flee) >= STRAIGHT_FLIGHT_DOT:
-		# Last tick's flight, if it ran a detour leg (a router just broken has no flight yet).
-		var leg: Vector2 = _flee_velocity.normalized()
-		if leg != Vector2.ZERO and leg.dot(flee) < STRAIGHT_FLIGHT_DOT \
-				and facing.dot(flee) < STRAIGHT_FLIGHT_DOT \
-				and _across_flight_on_field(position, flee, wide):
-			var turned: float = maxf(wide, terrain_clearance(flee))
-			var straight: Vector2 = field.next_step_fleeing(position, flee, turned)
-			if (straight - position).normalized().dot(flee) < STRAIGHT_FLIGHT_DOT:
-				var ahead: Vector2 = field.next_step_fleeing(position, facing, wide)
-				if (ahead - position).normalized().dot(facing) >= STRAIGHT_FLIGHT_DOT:
-					return ahead
-		return step
-	if wide <= _rout_clearance():
-		return step
-	# The block turns onto the detour leg, so across the flight line it sweeps its half-width
-	# times the cosine of that turn plus its half-depth times the sine.
-	var half: Vector2 = _formation_local_half_extents()
-	var cos_turn: float = absf(dir.dot(flee))
-	var sin_turn: float = absf(dir.cross(flee))
-	var swept: float = half.x * cos_turn + half.y * sin_turn + soldier_body_radius()
-	if _across_flight_on_field(step, flee, swept):
-		return step
-	# TODO(#1789): the fallback's narrow margin pins the flank files against the terrain
-	# again, about as before the swept width existed.
-	_flight_step_narrow = true
-	return field.next_step_fleeing(position, flee, _rout_clearance())
-
-
-## The direction a router's anchor travels this tick, given `dir`, the direction toward its
-## flight step `step` (_flight_step). The step rounds terrain from the anchor, at the
-## block's half-width, but a deep block's leading rank runs half its depth ahead of the
-## anchor: a block that breaks with its front just short of a face carries its front rank
-## onto the face while the step and the bounded heading turn (_turn_flight_toward) are
-## still clearing it from the anchor. The soldier backstop holds those men at the face
-## while their slots run on, and a man held there loses more ground than he can make up
-## before the rout ends.
-## So the leading rank veers along the face the way a man veers his own run
-## (SoldierBodies.router_terrain_avoid). The leading rank is the side of the slot grid's
-## footprint that faces most nearly along `facing` (_flight_front_line), read off the grid's
-## own axes: a rout keeps the grid's fold, so a block that broke facing one way and flees
-## another leads with whichever side of its grid now faces the flight. When this tick's
-## travel would carry that line into a block rect grown by a body radius (an exact swept
-## test, PathField.swept_segment_meets_rect), the part of `dir` heading into the face it
-## meets is turned along that face, toward the end `step` goes round by. The face is read
-## off the rect grown by the line's half-extent along each axis, which for a line oblique
-## to the axes also covers the corners the line cannot reach; only the exact test decides
-## whether to veer at all. If the turned travel would still carry the line into a face (two
-## rects meeting in a corner), it is turned once more along that one; travel that would need
-## a third turn, or that would run back against `dir`, is dropped for `dir` itself, the
-## flight as it ran before the veer existed. The whole block translates with the anchor, so
-## its men stay on their slots. Only this tick's travel is looked along, so a flight whose
-## heading turn swings its front clear in time travels exactly as before.
-## `dir` itself when there is no block terrain, or when the flight does not move this tick.
-## _process_rout does not call it on a tick whose step fell back to the anchor's own margin
-## (_flight_step_narrow): a block too wide to pass beside the field's edge has no room to
-## side-step either, and veering it there led it off the field.
-## The veered travel stays in _flee_velocity like any flight, and its readers want the travel
-## itself: the bodies' feed-forward and a rally's coast run with the block as it moves, and
-## _flight_step's turn-back exception reads it only to tell a router already in flight from
-## one just broken, its real guard being a heading turned off the flight line.
-func _flight_front_veer(dir: Vector2, step: Vector2, delta: float) -> Vector2:
-	var field: PathField = PathField.active
-	if not field.has_block_terrain() or _flee_pace <= 0.0 or delta <= 0.0:
-		return dir
-	var line: Array[Vector2] = _flight_front_line()
-	var centre: Vector2 = line[0]
-	var reach: Vector2 = line[1]
-	var radius: float = soldier_body_radius()
-	var body_accel: float = maxf(accel, SoldierBodies.BODY_ACCEL_FLOOR)
-	var want: Vector2 = dir * _flee_pace
-	var met: Array[Rect2] = _rects_met_by_line(centre, reach, want * delta, radius)
-	if met.is_empty():
-		return dir
-	var travel: Vector2 = SoldierBodies.router_terrain_avoid(centre, Vector2.ZERO, step, want,
-			_grown_by_line(met, reach, radius), body_accel, delta)
-	# Re-check the turned travel. A rect it still passes into turns it again only if it heads
-	# into that rect's face (router_terrain_avoid leaves travel along or away from a face
-	# alone), so a line the grid's own bounded turn has tilted a hair past the face it slides
-	# along keeps sliding. A second turn that would need a third gives up.
-	for again in range(2):
-		met = _rects_met_by_line(centre, reach, travel * delta, radius)
-		if met.is_empty():
-			break
-		var turned: Vector2 = SoldierBodies.router_terrain_avoid(centre, Vector2.ZERO, step,
-				travel, _grown_by_line(met, reach, radius), body_accel, delta)
-		if turned == travel:
-			break
-		if again == 1:
-			return dir
-		travel = turned
-	if travel == want or travel.length_squared() <= 0.0 \
-			or travel.dot(dir) < -STRAIGHT_FLIGHT_EPS:
-		return dir   # nothing turned, or a turn back: the flight runs on exactly as before
-	return travel.normalized()
-
-
-## The router's leading rank as [centre, half-vector]: the side of its slot grid's footprint
-## (_formation_local_half_extents about the anchor, on the grid's own axes, the rotation
-## soldier_world_slots applies) whose outward normal lies nearest `facing`, and the vector
-## from that side's centre to either end of it.
-func _flight_front_line() -> Array[Vector2]:
-	var half: Vector2 = _formation_local_half_extents()
-	var angle: float = soldier_block_world_angle()
-	var file_axis: Vector2 = Vector2.RIGHT.rotated(angle)
-	var rank_axis: Vector2 = Vector2.DOWN.rotated(angle)
-	var along_files: float = file_axis.dot(facing)
-	var along_ranks: float = rank_axis.dot(facing)
-	if absf(along_ranks) >= absf(along_files):
-		return [position + rank_axis * (signf(along_ranks) * half.y), file_axis * half.x]
-	return [position + file_axis * (signf(along_files) * half.x), rank_axis * half.y]
-
-
-## The block rects, grown by `radius`, that a line centred on `centre` reaching `reach`
-## either way would pass into when carried along `travel` (PathField.swept_segment_meets_rect).
-func _rects_met_by_line(centre: Vector2, reach: Vector2, travel: Vector2,
-		radius: float) -> Array[Rect2]:
-	var met: Array[Rect2] = []
-	for rect in PathField.active.block_rects():
-		if PathField.swept_segment_meets_rect(centre - reach, centre + reach, travel,
-				rect.grow(radius)):
-			met.append(rect)
-	return met
-
-
-## `rects` grown by a line's half-extent `reach` along each axis plus `radius`: where a point
-## at the line's centre stands when the line itself reaches a rect, for router_terrain_avoid
-## to read the face from.
-func _grown_by_line(rects: Array[Rect2], reach: Vector2, radius: float) -> Array[Rect2]:
-	var grown: Array[Rect2] = []
-	var gx: float = absf(reach.x) + radius
-	var gy: float = absf(reach.y) + radius
-	for rect in rects:
-		grown.append(rect.grow_individual(gx, gy, gx, gy))
-	return grown
-
-
-## Whether `p` stands at least `margin` inside the field across the flight line `flee` (the
-## field PathField.active was built for).
-func _across_flight_on_field(p: Vector2, flee: Vector2, margin: float) -> bool:
-	var bounds: Rect2 = PathField.active.field_bounds()
-	var side: Vector2 = flee.orthogonal()
-	var a: float = bounds.position.dot(side)
-	var b: float = bounds.end.dot(side)
-	var at: float = p.dot(side)
-	return at >= minf(a, b) + margin and at <= maxf(a, b) - margin
-
-
-## Unit is trapped by terrain with no viable escape path: stop routing and stand ground
-## to fight to the death. Marks the unit as shattered (will fight but can't rally/escape).
-func _stop_rout_and_fight() -> void:
-	# Exit routing state: rejoin the fighting units instead of routers.
-	state = State.IDLE
-	# Square the fold the rout kept (plus the flight's turns) to the heading, as a rally does,
-	# but at once: the unit stands to fight with no coast to wait for (see _rally_resquare).
-	_rally_resquare()
-	_clear_flight()
-	remove_from_group("routers")
-	add_to_group("units")
-	# Mark as shattered so the unit will fight to the death without rallying if it
-	# happens to break contact temporarily. The unit will only leave play via
-	# annihilation (soldiers reach zero) or being run down in combat.
-	_shattered = true
-	# Morale was <= 0 -- that's what triggered the original rout -- and left
-	# untouched, UnitCombat.register_casualties' "morale <= 0.0 and state !=
-	# ROUTING" guard re-satisfies on the very next casualty, calling _rout() again
-	# and flipping this unit straight back into ROUTING (replaying the rout
-	# SFX/shockwave and re-firing the friendly-morale contagion every casualty
-	# tick, instead of the one stable transition this function is meant to make).
-	# _shattered already forecloses any further rally, so restoring morale here
-	# grants no actual recovery -- it only stops that spurious re-trigger.
-	morale = RALLY_MORALE
-	queue_redraw()
 
 
 # --- Visuals ------------------------------------------------------------------
@@ -12938,9 +11998,6 @@ func to_snapshot_dict() -> Dictionary:
 		"march_share_from_pitches": march_share_from_pitches,
 		"march_share_full_pitches": march_share_full_pitches,
 		"march_share_max_accel_mult": march_share_max_accel_mult,
-		"flight_share_max_accel_mult": flight_share_max_accel_mult,
-		"flight_share_from_wu": flight_share_from_wu,
-		"flight_share_full_wu": flight_share_full_wu,
 		"march_target_stop_grace_ticks": march_target_stop_grace_ticks,
 		"standoff_off_slot_pitches": standoff_off_slot_pitches,
 		"attack_range": attack_range, "sight_range": sight_range,
@@ -13040,8 +12097,7 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_stand_point": _explicatio_stand_point,
 		"sim_soldier_role": _sim_soldier_role.duplicate(),
 		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
-		"in_enemy_contact": _in_enemy_contact, "router_front_in_melee": _router_front_in_melee,
-		"router_left_contact": _router_left_contact, "router_anchor_contact": _router_anchor_contact,
+		"in_enemy_contact": _in_enemy_contact,
 		"attack_cd": _attack_cd, "pin_down_exposure_cd": _pin_down_exposure_cd,
 		"rout_timer": _rout_timer, "shattered": _shattered,
 		"far_tier_casualty_carry": _far_tier_casualty_carry,
@@ -13062,15 +12118,10 @@ func to_snapshot_dict() -> Dictionary:
 		"line_index": line_index,
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
-		"moved_while_routing": _moved_while_routing,
-		"moved_while_routing_pace": _moved_while_routing_pace,
-		"flee_pace": _flee_pace, "flee_velocity": _flee_velocity, "flight_turn_rate": _flight_turn_rate,
+		"far_flee_pace": _far_flee_pace, "rallied": _rallied,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
-		"body_flight_ff_prev": _body_flight_ff_prev.duplicate(),
 		"march_target_frac": _march_target_frac,
 		"march_stopped_ticks": _march_stopped_ticks,
-		"rally_halt": _rally_halt, "rally_resquare_pending": _rally_resquare_pending,
-		"rally_fold_unsquared": _rally_fold_unsquared, "rally_clear_ticks": _rally_clear_ticks,
 		# Not reset before a routing unit's early return, so a router keeps reading it.
 		"is_facing_turning": _is_facing_turning,
 
@@ -13085,9 +12136,9 @@ func to_snapshot_dict() -> Dictionary:
 		"disengage_step_distance": disengage_step_distance,
 		"rearguard_sacrifice_frac": rearguard_sacrifice_frac,
 		"rearguard_delay_sec": rearguard_delay_sec,
-		"rout_time": rout_time, "router_front_arc": router_front_arc,
-		"router_heading_anchor_fold": router_heading_anchor_fold,
-		"router_contact_reentry_frac": router_contact_reentry_frac,
+		"rout_time": rout_time, "rout_refuge": rout_refuge, "rout_follow": rout_follow,
+		"rout_herding": rout_herding, "rout_refuge_weight": rout_refuge_weight,
+		"rally_deal": rally_deal,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
 		"combat_wheel_rate": _combat_wheel_rate, "combat_wheel_offset": _combat_wheel_offset,
@@ -13103,13 +12154,10 @@ func to_snapshot_dict() -> Dictionary:
 		"melee_side_contact_max_cos": melee_side_contact_max_cos,
 		"shatter_strength_frac": shatter_strength_frac,
 		"rally_morale_threshold": rally_morale_threshold,
-		"rally_resume_radius_factor": rally_resume_radius_factor,
-		"rally_resume_clear_ticks": rally_resume_clear_ticks,
 		"traverse_arc_clearance": traverse_arc_clearance,
 		"flanking_maneuver_wrap_files": flanking_maneuver_wrap_files,
 		"flanking_maneuver_cooldown_ticks": flanking_maneuver_cooldown_ticks,
 		"flanking_maneuver_hysteresis": flanking_maneuver_hysteresis,
-		"streaming_router_uid": _streaming_router_uid,
 
 		# Unit references, resolved by uid after every unit in the snapshot is restored.
 		"target_enemy_uid": target_enemy.uid if is_instance_valid(target_enemy) else -1,
@@ -13190,10 +12238,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	march_share_full_pitches = float(d.get("march_share_full_pitches", march_share_full_pitches))
 	march_share_max_accel_mult = float(d.get("march_share_max_accel_mult",
 			march_share_max_accel_mult))
-	flight_share_max_accel_mult = float(d.get("flight_share_max_accel_mult",
-			flight_share_max_accel_mult))
-	flight_share_from_wu = float(d.get("flight_share_from_wu", flight_share_from_wu))
-	flight_share_full_wu = float(d.get("flight_share_full_wu", flight_share_full_wu))
 	march_target_stop_grace_ticks = int(d.get("march_target_stop_grace_ticks",
 			march_target_stop_grace_ticks))
 	standoff_off_slot_pitches = float(d.get("standoff_off_slot_pitches",
@@ -13326,9 +12370,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_under_fire = bool(d["under_fire"])
 	_under_fire_can_reply = bool(d.get("under_fire_can_reply", false))
 	_in_enemy_contact = bool(d["in_enemy_contact"])
-	_router_front_in_melee = bool(d.get("router_front_in_melee", false))
-	_router_left_contact = bool(d.get("router_left_contact", false))
-	_router_anchor_contact = bool(d.get("router_anchor_contact", false))
 	_attack_cd = float(d["attack_cd"])
 	_pin_down_exposure_cd = float(d["pin_down_exposure_cd"])
 	_rout_timer = float(d["rout_timer"])
@@ -13357,20 +12398,12 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	line_index = int(d.get("line_index", line_index))
 	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
-	_moved_while_routing = bool(d.get("moved_while_routing", _moved_while_routing))
-	_moved_while_routing_pace = float(d.get("moved_while_routing_pace", _moved_while_routing_pace))
-	_flee_pace = float(d.get("flee_pace", _flee_pace))
-	_flee_velocity = d.get("flee_velocity", _flee_velocity)
-	_flight_turn_rate = float(d.get("flight_turn_rate", _flight_turn_rate))
+	_far_flee_pace = float(d.get("far_flee_pace", _far_flee_pace))
+	_rallied = bool(d.get("rallied", _rallied))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
-	_body_flight_ff_prev = PackedVector2Array(d.get("body_flight_ff_prev", _body_flight_ff_prev))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
 	_march_stopped_ticks = int(d.get("march_stopped_ticks", _march_stopped_ticks))
-	_rally_halt = bool(d.get("rally_halt", _rally_halt))
-	_rally_resquare_pending = bool(d.get("rally_resquare_pending", false))
-	_rally_fold_unsquared = bool(d.get("rally_fold_unsquared", false))
-	_rally_clear_ticks = int(d.get("rally_clear_ticks", 0))
 	_is_facing_turning = bool(d.get("is_facing_turning", _is_facing_turning))
 	is_general = bool(d.get("is_general", is_general))
 	order_clear_step = float(d.get("order_clear_step", order_clear_step))
@@ -13382,9 +12415,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rearguard_sacrifice_frac = float(d.get("rearguard_sacrifice_frac", rearguard_sacrifice_frac))
 	rearguard_delay_sec = float(d.get("rearguard_delay_sec", rearguard_delay_sec))
 	rout_time = float(d.get("rout_time", rout_time))
-	router_front_arc = float(d.get("router_front_arc", router_front_arc))
-	router_heading_anchor_fold = float(d.get("router_heading_anchor_fold", router_heading_anchor_fold))
-	router_contact_reentry_frac = float(d.get("router_contact_reentry_frac", router_contact_reentry_frac))
+	rout_refuge = int(d.get("rout_refuge", rout_refuge))
+	rout_follow = int(d.get("rout_follow", rout_follow))
+	rout_herding = float(d.get("rout_herding", rout_herding))
+	rout_refuge_weight = float(d.get("rout_refuge_weight", rout_refuge_weight))
+	rally_deal = int(d.get("rally_deal", rally_deal))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))
 	combat_reface_snap_turn = float(d.get("combat_reface_snap_turn", combat_reface_snap_turn))
@@ -13403,13 +12438,10 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			melee_side_contact_max_cos))
 	shatter_strength_frac = float(d.get("shatter_strength_frac", shatter_strength_frac))
 	rally_morale_threshold = float(d.get("rally_morale_threshold", rally_morale_threshold))
-	rally_resume_radius_factor = float(d.get("rally_resume_radius_factor", rally_resume_radius_factor))
-	rally_resume_clear_ticks = int(d.get("rally_resume_clear_ticks", rally_resume_clear_ticks))
 	traverse_arc_clearance = float(d.get("traverse_arc_clearance", traverse_arc_clearance))
 	flanking_maneuver_wrap_files = int(d.get("flanking_maneuver_wrap_files", flanking_maneuver_wrap_files))
 	flanking_maneuver_cooldown_ticks = int(d.get("flanking_maneuver_cooldown_ticks", flanking_maneuver_cooldown_ticks))
 	flanking_maneuver_hysteresis = int(d.get("flanking_maneuver_hysteresis", flanking_maneuver_hysteresis))
-	_streaming_router_uid = int(d.get("streaming_router_uid", -1))
 
 	var restored: Array[Order] = []
 	for od in d.get("orders", []):

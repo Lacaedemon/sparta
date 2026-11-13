@@ -10,7 +10,8 @@ class_name SoldierBodies
 ## unengaged bulk feeds the unit's march velocity forward so it tracks its moving slots
 ## with no lag, easing onto a reformed slot instead of snapping. A body's fully-integrated
 ## speed is still hard-capped near its unit's own top pace (Unit.superphysical_speed_frac
-## * move_speed, or * flee_speed() while routing) no matter how far its slot has receded --
+## * move_speed) no matter how far its slot has receded (a routed unit's men run on their own,
+## SoldierFlightStep) --
 ## see the final clamp at the end of
 ## the per-soldier loop in step(). That clamp floors at whatever speed the body already
 ## carried in, so it never suppresses a deliberately faster external push (a knockback) --
@@ -88,35 +89,6 @@ const MARCH_TARGET_WALK_FRAC: float = 1.0
 # (march_share_frac).
 const MARCH_SHARE_FROM_PITCHES: float = 0.5
 const MARCH_SHARE_FULL_PITCHES: float = 1.0
-# Default for Unit.flight_share_max_accel_mult: the most extra acceleration
-# flight_accel_share grants a routing body, as a multiple of the body's own body_accel. Two
-# speeds in a slot's feed-forward each change no faster than body_accel: the flight pace,
-# which builds at unit.accel (Unit._process_rout) and body_accel is never below, and the
-# speed of the slot's turning velocity, which changes by at most body_accel at the block's
-# corner because the turn rate builds and sheds at Unit.bounded_turn_accel. Two body_accels
-# cover those two. Not counted: the turning velocity swinging round with the grid; the bend
-# of the flight's own heading as it follows a detour, about the pace times the rate the
-# heading turns, which nothing bounds; the man's friendly-contact steering (_sim_steer), part
-# of his feed-forward, which can change by any amount from one tick to the next; and a
-# one-tick swing of the flight's direction (the step leaving a detour leg, or a side-step
-# along a face starting or ending, Unit._flight_front_veer). So the cap binds while a flight
-# bends round terrain at pace: on deep-router-close-start-hill (seed 0, Windows) the uncapped
-# rate exceeded it on 279 of the 1637 man-ticks in which a man took any share and the flight
-# was not slowing, mostly between ticks 290 and 340 as the flight bent round the hill
-# (measured on 4a1c49aa, 2026-11-06, by a temporary per-man log of the uncapped rate).
-const FLIGHT_SHARE_MAX_ACCEL_MULT: float = 2.0
-# Defaults for Unit.flight_share_from_wu and Unit.flight_share_full_wu: how far off his own
-# slot a routing body takes none of flight_accel_share and all of it (march_share_frac), a
-# fixed distance rather than a multiple of the block's pitch: half and a whole of a default
-# Cavalry block's 120 wu (6 m) rank pitch. While a flight builds up its men trail their
-# slots: on deep-router-rounds-hill (Cavalry, file pitch 2 m, no man held at the hill), with
-# no share (main 806be006, seed 0, Windows, 2026-11-05), the farthest man stands 43.7 to
-# 103.6 wu off his slot from tick 120 to tick 350. A man within 3 m of his slot takes none,
-# so a block whose men all keep that close flees as it did before. A ramp set in the
-# block's own file or rank pitches also took up that ordinary lag, and in Infantry, whose
-# rank pitch is about its file pitch (18 wu), it reached men only 9 wu off their slots.
-const FLIGHT_SHARE_FROM_WU: float = 3.0 * WorldScaleRef.WU_PER_M
-const FLIGHT_SHARE_FULL_WU: float = 6.0 * WorldScaleRef.WU_PER_M
 # Lateral clearance beyond outer formed file for perimeter corridor routing.
 const CORRIDOR_CLEARANCE_MULT: float = 1.0
 # Stagger fraction between alternate soldier lanes in perimeter corridor.
@@ -195,8 +167,6 @@ static func seed(unit: Unit) -> void:
 	# from rest, as from any other standstill, and start their arrival target from the
 	# standing one.
 	unit._body_march_ff_prev = Vector2.ZERO
-	# Nor a flight: the next routing step reads no feed-forward change, so grants no share.
-	unit._body_flight_ff_prev = PackedVector2Array()
 	unit._march_target_frac = 0.0
 	unit._march_stopped_ticks = 0
 	unit._render_dirty = true   # fresh bodies need an initial draw
@@ -279,23 +249,35 @@ static func step(unit: Unit, delta: float) -> void:
 				unit._sim_soldier_facing[j] = unit.facing
 	# Default: bodies track the formation's own facing layout (SQUARE's perimeter
 	# ring outward, everything else the uniform unit heading). A maneuver that owns the
-	# facings (_per_soldier_facing) keeps its own values until it releases them.
-	if not unit._per_soldier_facing:
+	# facings (_per_soldier_facing) keeps its own values until it releases them. A routed man
+	# faces the way he runs (SoldierFlightStep), so a router's facings are his own.
+	var routing: bool = unit.state == Unit.State.ROUTING
+	if not unit._per_soldier_facing and not routing:
 		unit._sim_soldier_facing = unit.soldier_world_facings(n)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# follows the regiment's pace during the same pass (Unit.stamina_flow_per_s: regen at
 	# rest, neutral at a walk, a drain at a jog or sprint -- one reading per regiment per
 	# tick, since every body shares its unit's pace); rising from prone costs KAPPA_P on
 	# the tick it happens. The body still arrives at its slot below (it's down, not removed).
+	# A routed man runs at his own pace, so he is billed at the pace he ran last tick
+	# (Unit.man_stamina_flow_per_s).
 	var stamina_flow: float = unit.stamina_flow_per_s() * delta
 	for p in range(n):
 		var was_prone: bool = unit._sim_prone[p] > 0.0
 		unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
 		var just_rose: bool = was_prone and unit._sim_prone[p] == 0.0
+		var flow: float = unit.man_stamina_flow_per_s(p) * delta if routing else stamina_flow
 		unit._sim_soldier_stamina[p] = clampf(
-			unit._sim_soldier_stamina[p] + stamina_flow
+			unit._sim_soldier_stamina[p] + flow
 				- (SoldierCombat.KAPPA_P if just_rose else 0.0),
 			0.0, maxs)
+	# A routed unit is no formation: each man flees on his own (SoldierFlightStep), with no
+	# slot to arrive on, and the terrain backstop has the last word as for any body.
+	if routing:
+		var flight_guard: Dictionary = _terrain_entry_guard(unit, n)
+		SoldierFlightStep.step(unit, n, flight_guard, delta)
+		_keep_out_of_terrain(unit, n, flight_guard, delta)
+		return
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
@@ -407,89 +389,41 @@ static func step(unit: Unit, delta: float) -> void:
 	var file_front_neighbor: PackedInt32Array = PackedInt32Array()
 	var file_rear_neighbor: PackedInt32Array = PackedInt32Array()
 	if not turning and unit.state == Unit.State.MOVING and not unit._reform_holding() and not unit.in_square() and files > 0:
-		file_front_neighbor.resize(n)
-		file_front_neighbor.fill(-1)
-		file_rear_neighbor.resize(n)
-		file_rear_neighbor.fill(-1)
-		if unit._sim_soldier_file.size() == n:
-			var max_r: int = ceili(float(n) / float(files)) + 2
-			var grid: PackedInt32Array = PackedInt32Array()
-			grid.resize(files * max_r)
-			grid.fill(-1)
-			var explicit: bool = unit._sim_soldier_rank.size() == n
-			var rank_counts: PackedInt32Array = PackedInt32Array()
-			if not explicit:
-				rank_counts.resize(files)
-			var soldier_ranks: PackedInt32Array = PackedInt32Array()
-			soldier_ranks.resize(n)
-			for j in range(n):
-				var f: int = clampi(unit._sim_soldier_file[j], 0, files - 1)
-				var r: int = maxi(0, unit._sim_soldier_rank[j]) if explicit else rank_counts[f]
-				if not explicit:
-					rank_counts[f] += 1
-				soldier_ranks[j] = r
-				if r >= 0 and r < max_r:
-					grid[f * max_r + r] = j
-			for j in range(n):
-				var f: int = clampi(unit._sim_soldier_file[j], 0, files - 1)
-				var r: int = soldier_ranks[j]
-				if r > 0 and r - 1 < max_r:
-					file_front_neighbor[j] = grid[f * max_r + r - 1]
-				if r + 1 < max_r:
-					file_rear_neighbor[j] = grid[f * max_r + r + 1]
-		else:
-			for j in range(n):
-				if j - files >= 0:
-					file_front_neighbor[j] = j - files
-				if j + files < n:
-					file_rear_neighbor[j] = j + files
-	# A router's anchor is driven by _process_rout, not _move_to, so its _approach_velocity
-	# (zeroed by Unit._rout()) carries nothing of the flight: its bulk takes the flight
-	# velocity as feed-forward instead, the same way a marching bulk takes the march. And its flee pace is above its
-	# own move_speed by design (Unit.FLEE_SPEED_MULTIPLIER), so the superphysical ceiling is
-	# measured from the flee pace -- measured from move_speed it would hold every body below
-	# the pace its anchor runs at, and the coupling would drag the anchor back to them.
-	var routing: bool = unit.state == Unit.State.ROUTING
-	var halting: bool = unit.is_rally_halting()
-	var march_vel: Vector2 = unit._flee_velocity if routing else unit._approach_velocity
+		var neighbours: Array[PackedInt32Array] = SoldierFileNeighbours.compute(unit, n, files)
+		file_front_neighbor = neighbours[0]
+		file_rear_neighbor = neighbours[1]
+	var march_vel: Vector2 = unit._approach_velocity
 	# The velocity change the march itself took since the last step, which each unengaged body
 	# may take on top of its own body_accel (see march_accel_budget). Only an orderly march
-	# grants it (Unit._body_march_orderly). A router's flight takes its own per-man share
-	# instead (flight_accel_share, below). A pursuit, a charge or a hasty move takes none:
+	# grants it (Unit._body_march_orderly). A pursuit, a charge or a hasty move takes none:
 	# their men close at the ordinary rate.
 	var march_budget: float = march_accel_budget(unit, march_vel, body_accel, delta) \
-			if unit._body_march_orderly and not routing else 0.0
+			if unit._body_march_orderly else 0.0
 	var share_pitch: float = unit.file_pitch_wu()
 	unit._body_march_ff_prev = march_vel
-	# A router's men each read their own feed-forward from the last step (the flight velocity,
-	# their slot's turning velocity and any friendly-contact steering,
-	# Unit._body_flight_ff_prev), so a man well off his
-	# slot can take on top of body_accel what his slot's feed-forward changed by
-	# (flight_accel_share). A last step with a different headcount, or none, grants nothing.
-	var flight_prev: PackedVector2Array = unit._body_flight_ff_prev
-	var flight_share: bool = routing and flight_prev.size() == n
-	var flight_now := PackedVector2Array()
-	if routing:
-		flight_now.resize(n)
-	var flight_cap: float = body_accel * maxf(unit.flight_share_max_accel_mult, 0.0)
-	# A router turning its flight, or any other block whose slot grid is turning after a small
-	# heading correction, turns its grid about the anchor at this rate (rad/s;
-	# Unit._turn_flight_toward, Unit._advance_grid_lag): each unengaged slot also moves at
+	# A block whose slot grid is turning after a small heading correction turns its grid about
+	# the anchor at this rate (rad/s; Unit._advance_grid_lag): each unengaged slot also moves at
 	# turn_rate x its offset from the anchor, and that is fed forward with the march.
-	var turn_rate: float = unit._flight_turn_rate if routing else unit._grid_lag_rate
-	var top_pace: float = unit.flee_speed() if routing else unit.move_speed
+	var turn_rate: float = unit._grid_lag_rate
+	var top_pace: float = unit.move_speed
 	# In-transit same-unit standoff velocities for crowding same-unit bodies:
 	var sep_vels: PackedVector2Array = _separate_same_unit(unit, n, target_slots, is_engaged, delta)
 	var terrain_guard: Dictionary = _terrain_entry_guard(unit, n)
-	# A router's men veer off impassable terrain they are running at (router_terrain_avoid);
-	# the flight's feed-forward otherwise carries a man still closing on his slot after a turn
-	# of the flight straight onto the rock. Only on a map with block terrain, and only routers.
-	var routing_near_terrain: bool = routing and not terrain_guard.is_empty()
 	# A man in the follow mode (Unit.follow_leader, SoldierFollow) steers on another man: his
 	# slot this tick is his place beside or behind that man, and he heads for it the way a man in
 	# a file does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
 	var follow_width: float = unit.follow_line_width()
+	# A unit standing still (IDLE, not coasting, not in a reform hold) whose man is still running
+	# ahead faster than a jog, as its men are when it rallies from a rout, cannot stop him dead
+	# or turn him back onto his place at once: he first pulls up along his own run at his braking
+	# rate (the larger of brake_accel and the unit's decel), and only once he is down to a jog
+	# does he walk to his place (pull_up).
+	var standing: bool = unit.state == Unit.State.IDLE and not unit._reform_holding() \
+			and unit._current_speed <= 0.0
+	var pull_up_rate: float = maxf(brake_accel, unit.decel)
 	for i in range(n):
+		if standing and pull_up(unit, i, pull_up_rate, delta):
+			continue
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
 		# unit's march velocity (the rate its formation slots translate), so a body keeps up
@@ -555,9 +489,6 @@ static func step(unit: Unit, delta: float) -> void:
 			# drifting through it and having to turn around -- the last guard against a
 			# sub-pixel oscillation around the exact point.
 			desired_vel += (to_slot / dist) * (dist / delta)
-		if routing_near_terrain and terrain_guard["inside"][i] == 0:
-			desired_vel = router_terrain_avoid(unit._sim_soldier_pos[i], unit._sim_body_vel[i],
-					own_slot, desired_vel, terrain_guard["grown"], body_accel, delta)
 		# The speed this body carried INTO this tick, before anything below touches it --
 		# the floor the superphysical clamp uses further down, so a body already coasting
 		# faster than that clamp (a knockback -- see the clamp's own comment) never gets
@@ -584,28 +515,6 @@ static func step(unit: Unit, delta: float) -> void:
 			accel_i += march_budget * march_share_frac(
 					own_slot.distance_to(unit._sim_soldier_pos[i]), share_pitch,
 					unit.march_share_from_pitches, unit.march_share_full_pitches)
-		# A router's flight builds its pace at the unit's accel, and its grid turn speeds a
-		# corner slot sideways at up to the bodies' own acceleration on top, so a man's slot can
-		# change its velocity faster than his body_accel lets him follow, and a man who has
-		# fallen behind it gains nothing on it while the flight keeps changing (once its pace
-		# and heading settle, his arrival term closes the gap as usual). He takes the change in
-		# his own feed-forward on top, ramped in by how far he stands off his slot
-		# (Unit.flight_share_from_wu, Unit.flight_share_full_wu).
-		if routing:
-			# Recorded in the unengaged form for every man, so a man who leaves the engaged
-			# tier compares like with like rather than steering alone against the whole flight.
-			# An engaged man's own_slot is the canonical slot he was re-paired onto, so his arm
-			# is read off his own grid slot (slots[i]), the one he returns to when he leaves.
-			var flight_ff: Vector2 = feed_forward
-			if is_engaged[i] == 1:
-				var flight_arm: Vector2 = slots[i] - unit.position
-				flight_ff = march_vel + unit._sim_steer[i] \
-						+ Vector2(-flight_arm.y, flight_arm.x) * turn_rate
-			flight_now[i] = flight_ff
-			if flight_share and is_engaged[i] == 0:
-				accel_i += flight_accel_share(feed_forward, flight_prev[i], flight_cap, delta) \
-						* march_share_frac(own_slot.distance_to(unit._sim_soldier_pos[i]), 1.0,
-						unit.flight_share_from_wu, unit.flight_share_full_wu)
 		var new_vel: Vector2 = damped_vel.move_toward(desired_vel, accel_i * delta) \
 				if brake_accel <= accel_i \
 				else brake_biased_step(damped_vel, desired_vel, accel_i, brake_accel, delta)
@@ -687,9 +596,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
-		# A rallied unit pulling up from its flight is still moving -- its slots coast with
-		# the anchor (Unit.is_rally_halting) -- so it is exempt for the same reason.
-		if unit._reform_holding() or (unit.state == Unit.State.IDLE and not halting):
+		if unit._reform_holding() or unit.state == Unit.State.IDLE:
 			var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
 					else unit.facing
 			step_vel = _cap_body_speed_vec(step_vel, facing, unit.jog_speed, unit.back_speed_fraction)
@@ -697,7 +604,7 @@ static func step(unit: Unit, delta: float) -> void:
 		unit._sim_body_vel[i] = new_vel
 		# Final physical ceiling, applied after every adjustment above and to every body
 		# alike (marching, engaged, idle/reforming): a man cannot exceed his own top pace (his
-		# sprint, or his flee pace while routing -- `top_pace` above) by more than a hard
+		# sprint, `top_pace` above; a routed man is stepped by SoldierFlightStep) by more than a hard
 		# margin no matter how fast his slot is receding out from under him.
 		# The arrival term above is already capped at jog pace, but the march feed-forward
 		# stacks on top of it with no cap of its own, so only this clamp on the FULLY
@@ -720,32 +627,10 @@ static func step(unit: Unit, delta: float) -> void:
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
 
-	# Empty unless routing, so a later rout's first step grants no flight share.
-	unit._body_flight_ff_prev = flight_now
 	# One arrival integration per body, each with exactly one `to_slot.length()`.
 	SimOps.add(SimOps.BODY_STEP, n)
 	SimOps.add(SimOps.SQRT_EVAL, n)
 	_keep_out_of_terrain(unit, n, terrain_guard, delta)
-
-
-## The extra acceleration (world units/s^2) a routing body may take this tick on top of its
-## own body_accel: the rate its feed-forward `ff` (the flight velocity, its slot's turning
-## velocity and any friendly-contact steering) changed since its feed-forward `ff_prev` on the
-## last step, capped at `cap`
-## (Unit.flight_share_max_accel_mult times body_accel). Unlike march_accel_budget it is read
-## per man, since a turning grid moves each slot at its own velocity. Like it, a feed-forward
-## whose speed fell grants none (compared exactly, with no tolerance): pulling up is not what
-## leaves a man behind, and extra braking for a man well off his slot is what ran file-mates
-## into each other on a march (march_accel_budget's sprint_reshape case). A swing at an
-## unchanged or higher speed still counts. step() scales it by march_share_frac over the man's
-## distance from his slot (Unit.flight_share_from_wu, Unit.flight_share_full_wu), so a man
-## within 3 m of his slot, by default, takes none of it. 0 when `delta` is not positive.
-static func flight_accel_share(ff: Vector2, ff_prev: Vector2, cap: float, delta: float) -> float:
-	if delta <= 0.0:
-		return 0.0
-	if ff.length_squared() < ff_prev.length_squared():
-		return 0.0
-	return minf((ff - ff_prev).length() / delta, cap)
 
 
 ## The extra acceleration (world units/s^2) each unengaged body may take this tick: the rate
@@ -764,8 +649,7 @@ static func flight_accel_share(ff: Vector2, ff_prev: Vector2, cap: float, delta:
 ## in good order moves exactly as before. That gate matters: without it the share also took
 ## up the small lag kinetic friction leaves a body behind an accelerating march, so every
 ## charge and pursuit closed faster than before. step() grants the share only on an orderly
-## march (Unit._body_march_orderly): never on a router's flight (its men take
-## flight_accel_share instead), a pursuit, a charge, a
+## march (Unit._body_march_orderly): never on a pursuit, a charge, a
 ## combat approach or a hasty move. A march that slows grants none either: pulling up is not
 ## what leaves a man behind, and a man braking harder than the neighbour behind him in his
 ## file was run into (sprint_reshape's 180-degree reversal: two men of one file 0.14 wu
@@ -799,14 +683,24 @@ static func march_share_frac(dist: float, pitch: float, from_pitches: float,
 	return (dist - lo) / (hi - lo)
 
 
+## Pull man `i` of `unit` up along his own run at `rate` (world units/s^2) for one tick of
+## `delta`, if he is running ahead (along his facing) faster than his unit's jog. Returns whether
+## he did, so the caller skips his ordinary arrival this tick.
+static func pull_up(unit: Unit, i: int, rate: float, delta: float) -> bool:
+	var run: Vector2 = unit._sim_body_vel[i]
+	if run.dot(unit.soldier_facing(i)) <= unit.jog_speed:
+		return false
+	var pulled: Vector2 = run.move_toward(Vector2.ZERO, rate * delta)
+	unit._sim_body_vel[i] = pulled
+	unit._sim_soldier_pos[i] += pulled * delta
+	unit._render_dirty = true
+	return true
+
+
 ## The rate this unit's bodies may shed speed at: their ordinary max(unit.accel,
-## BODY_ACCEL_FLOOR), raised to the anchor's own braking rate while it pulls up from a rally
-## (Unit.is_rally_halting, Unit.rally_halt_brake_rate): bodies held to the gentler rate would
-## run on past their halting slots and walk back. Only braking is raised; a body speeding up
-## (a man re-paired onto a slot ahead of him) still does so at the ordinary rate.
+## BODY_ACCEL_FLOOR).
 static func body_brake_accel_for(unit: Unit) -> float:
-	var base: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
-	return maxf(base, unit.rally_halt_brake_rate()) if unit.is_rally_halting() else base
+	return maxf(unit.accel, BODY_ACCEL_FLOOR)
 
 
 ## One tick of a body's velocity toward `desired`, with the part of the change that opposes
@@ -900,16 +794,17 @@ static func _keep_out_of_terrain(unit: Unit, n: int, guard: Dictionary, delta: f
 ## at `accel`, plus one tick; and along where he wants to go (`desired`), as far as one tick
 ## takes him. If either look meets one of `grown` (the rects grown by the body radius), the
 ## part of `desired` heading into the face it meets is turned along that face: toward the
-## side `slot` lies on when the slot is on his own side of the face, and otherwise toward the
-## end that makes the shorter way round to `slot` -- counting, for an end whose straight line
-## on to `slot` would cross the rect, the way on round its far corner. He veers off the rock
+## side `goal` lies on when the goal is on his own side of the face, and otherwise toward the
+## end that makes the shorter way round to `goal` -- counting, for an end whose straight line
+## on to `goal` would cross the rect, the way on round its far corner. A routed man's goal is
+## a point far along his own line of flight (SoldierFlightStep). He veers off the rock
 ## while he can still turn, instead of running onto it and standing there: the hard backstop
 ## (_keep_out_of_terrain) stops a body dead in the direction of the rock, and a man stopped
 ## dead takes as long to pick up the flight again as it took him to reach it. The second look
 ## keeps a man already standing at the face from pressing into it. `desired` unchanged when
 ## both looks clear every rect, or when he already wants to run away from the face met.
 ## Deterministic and replay-safe; counts its own rect clips and square roots in SimOps.
-static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desired: Vector2,
+static func router_terrain_avoid(pos: Vector2, vel: Vector2, goal: Vector2, desired: Vector2,
 		grown: Array[Rect2], accel: float, delta: float) -> Vector2:
 	var speed: float = vel.length()
 	var want: float = desired.length()
@@ -970,19 +865,19 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 		SimOps.add(SimOps.SQRT_EVAL, sqrts)
 		return desired
 	var toward_a: bool
-	var side: float = (slot - pos).dot(end_a - end_b)
-	if slot.dot(outward) >= end_a.dot(outward) and side != 0.0:
-		# His slot is on his own side of the face: he only has to stop running into it, so
-		# he turns toward the side his slot lies on.
+	var side: float = (goal - pos).dot(end_a - end_b)
+	if goal.dot(outward) >= end_a.dot(outward) and side != 0.0:
+		# His goal is on his own side of the face: he only has to stop running into it, so
+		# he turns toward the side his goal lies on.
 		toward_a = side > 0.0
 	else:
-		# His slot lies beyond the face: the shorter way round, by either end. Each end's far
+		# His goal lies beyond the face: the shorter way round, by either end. Each end's far
 		# corner is the same corner of the rect on its opposite face.
 		var depth: float = absf(hit.size.dot(outward))
 		var via_a: float = pos.distance_to(end_a) \
-				+ _way_round(end_a, end_a - outward * depth, slot, hit)
+				+ _way_round(end_a, end_a - outward * depth, goal, hit)
 		var via_b: float = pos.distance_to(end_b) \
-				+ _way_round(end_b, end_b - outward * depth, slot, hit)
+				+ _way_round(end_b, end_b - outward * depth, goal, hit)
 		sqrts += 8
 		SimOps.add(SimOps.TERRAIN_PROJECT, 2)
 		toward_a = via_a <= via_b
@@ -995,14 +890,14 @@ static func router_terrain_avoid(pos: Vector2, vel: Vector2, slot: Vector2, desi
 	return desired + outward * inward_part + along * (inward_part / along_len)
 
 
-## How far it is from `corner` (one end of a face of `rect`) on to `slot`: straight there,
+## How far it is from `corner` (one end of a face of `rect`) on to `goal`: straight there,
 ## unless that line would cross the rect's interior, in which case on round `far` (the same
 ## end's corner on the rect's opposite face) first. Always three square roots and one rect
 ## clip, so the caller can count them.
-static func _way_round(corner: Vector2, far: Vector2, slot: Vector2, rect: Rect2) -> float:
-	var direct: float = corner.distance_to(slot)
-	var round_far: float = corner.distance_to(far) + far.distance_to(slot)
-	if PathField.segment_intersects_rect(corner, slot, rect.grow(-INTERIOR_EPS)):
+static func _way_round(corner: Vector2, far: Vector2, goal: Vector2, rect: Rect2) -> float:
+	var direct: float = corner.distance_to(goal)
+	var round_far: float = corner.distance_to(far) + far.distance_to(goal)
+	if PathField.segment_intersects_rect(corner, goal, rect.grow(-INTERIOR_EPS)):
 		return round_far
 	return direct
 
@@ -1320,6 +1215,12 @@ static func couple(unit: Unit, delta: float) -> void:
 			unit._body_follow_vel = (unit.explicatio_grid_position() - unit.position) / delta
 		unit.position = unit.explicatio_grid_position()
 		return
+	# A routed unit has no grid: its `position` is where its men are (their centroid) and its
+	# heading the way they face, which is the way each runs (SoldierFlightStep), both read off
+	# the men each tick and never fed back to them.
+	if unit.state == Unit.State.ROUTING:
+		_read_router_off_men(unit, n, delta)
+		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
 	# bodies arrive onto the swinging slots a few frames behind. Their centroid therefore lags the
 	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
@@ -1400,10 +1301,26 @@ static func couple(unit: Unit, delta: float) -> void:
 	unit.position += follow_step
 
 
+## A routed unit's readout of its `n` men: `position` their centroid, `facing` the sum of their
+## facings (kept when they cancel out), and _body_follow_vel the centroid's motion this tick.
+static func _read_router_off_men(unit: Unit, n: int, delta: float) -> void:
+	unit._step_slots_for_couple_valid = false
+	var centre := Vector2.ZERO
+	var heading := Vector2.ZERO
+	for i in range(n):
+		centre += unit._sim_soldier_pos[i]
+		heading += unit.soldier_facing(i)
+	centre /= float(n)
+	unit._body_follow_vel = (centre - unit.position) / delta if delta > 0.0 else Vector2.ZERO
+	unit.position = centre
+	if heading.length_squared() > 0.000001:
+		unit.facing = heading.normalized()
+	unit._render_dirty = true
+
+
 ## How far the bodies `indices` (a non-empty anchor selection, Unit.position_anchor_indices)
 ## stand off the slots of `slots` (the unit's slot grid at its `position`) that a selection that
-## size belongs on, or off their own slots for a router anchored on the men ahead along its
-## heading (Unit.position_anchor_on_heading): their centroid less those slots' centroid.
+## size belongs on: their centroid less those slots' centroid.
 ## couple() moves `position` along it, so `position` plus it is where anchoring on those
 ## bodies settles the block. Moving
 ## `position` moves the slots with it and leaves the bodies, so the sum does not depend on
@@ -1420,13 +1337,7 @@ static func anchor_drift(unit: Unit, indices: PackedInt32Array, slots: PackedVec
 	# range instead of materializing the index array just to walk it right back off
 	# (every engaged unit pays this once per tick in couple(), on top of step()'s own call to
 	# canonical_target_slot_indices()).
-	# A router anchored on the men ahead along its heading (Unit.position_anchor_on_heading)
-	# can be anchored on any of the grid's ranks, its rear ones included, so each of those
-	# men is measured against his own slot instead of against the grid's front slots.
-	if unit.position_anchor_on_heading():
-		for i in indices:
-			slot_centroid += slots[i]
-	elif unit.in_square():
+	if unit.in_square():
 		var target_indices: PackedInt32Array = unit.canonical_target_slot_indices(slots, count)
 		for j in target_indices:
 			slot_centroid += slots[j]

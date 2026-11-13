@@ -2421,6 +2421,10 @@ func _on_soldier_tick() -> void:
 	# pairs, no friendly-contact-tier expansion) than SoldierSteering's own rebuild above, so
 	# it can't share that key without silently reusing the wrong grid.
 	SoldierEnemyContact.accumulate(units, -frame - 1)
+	# A routed man runs from the foes he perceives (SoldierFlight), so perception is bound for
+	# this frame before the bodies step, and only while some unit routs: nobody else asks.
+	if not get_tree().get_nodes_in_group("routers").is_empty():
+		SoldierFlight.prepare(frame, units, terrain, _sight_path_field)
 	UnitRef.step_all_sim_soldiers(units, delta)
 	UnitRef.couple_all_sim_soldiers(units, delta)
 	# Advance in-flight volleys and land any that arrived this tick (resolved in launch order,

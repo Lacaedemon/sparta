@@ -389,27 +389,43 @@ func test_plain_reform_still_marches_the_block_through_itself() -> void:
 		"the drill still carries men most of the block's depth, unlike hold-ground")
 
 
-## The rally takes the hold-ground variant: a unit that steadied its nerve reforms where it
-## stands rather than countermarching, which is what stopped the whole block scrambling
-## through itself the moment its rout timer expired.
-func test_rally_reforms_without_marching_the_block_through_itself() -> void:
+## A rally re-forms the unit where its men stand: its grid squares to the heading, dropping any
+## fold it carried into the rout, and each man is dealt the place nearest where he stands
+## (Unit.deal_slots_where_men_stand). A block whose men stand on a half-turned grid with a short
+## rank re-forms with no man sent more than a rank pitch, as a hold-ground re-square would.
+func test_rally_reforms_where_the_men_stand() -> void:
 	var u := _make_partial_unit()
 	u.facing = Vector2.UP
 	u._rout()
-	u._formation_angle = PI   # the flee turn re-folded the grid via _face_dir's snap-absorb
-	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._formation_angle = PI
+	u._sim_soldier_pos = u.soldier_world_slots(u.soldiers)   # the men stand on the folded grid
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 
 	u._rally()
-	u._advance_rally_resquare(1.0 / 60.0)   # no flight to coast off, and the fold is a half-turn
 
 	assert_eq(u.state, Unit.State.IDLE, "the unit rallied")
-	assert_eq(u._formation_angle, 0.0, "and re-squared the grid to its heading")
+	assert_eq(u._formation_angle, 0.0, "and squared the grid to its heading")
 	var after: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var farthest: float = 0.0
 	for i in range(before.size()):
 		farthest = maxf(farthest, before[i].distance_to(after[i]))
-	assert_almost_eq(farthest, u.rank_pitch_wu(), 0.001,
-		"no man is sent further than one rank pitch to re-square")
+	assert_lt(farthest, u.rank_pitch_wu() + 0.001,
+		"no man is sent further than one rank pitch (farthest %.2f wu)" % farthest)
+
+
+## The OWN rally keeps each man on his own place in his file: the grid squares the same way, but
+## nobody is dealt afresh, so a half-turned block's men walk the depth of the block.
+func test_an_own_place_rally_keeps_the_pairing() -> void:
+	var u := _make_partial_unit()
+	u.rally_deal = Unit.RallyDeal.OWN
+	u.facing = Vector2.UP
+	u._rout()
+	u._formation_angle = PI
+	u._sim_soldier_pos = u.soldier_world_slots(u.soldiers)
+	var held: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
+	u._rally()
+	assert_eq(u._formation_angle, 0.0, "the grid is squared")
+	assert_eq(u._sim_soldier_row_slot, held, "and no man was dealt a new place")
 
 
 ## A squared block takes the square slot branch, which never reads the per-soldier file

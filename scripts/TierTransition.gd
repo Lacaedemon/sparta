@@ -147,8 +147,6 @@ static func demote(u: Unit) -> void:
 	u._sim_soldier_reflect_walker = PackedByteArray()
 	# And each man's role: the men promote() builds are new, so none leads a column.
 	u._sim_soldier_role = PackedByteArray()
-	# And a router's per-man feed-forward record, so a later promotion reads no change from it.
-	u._body_flight_ff_prev = PackedVector2Array()
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 
@@ -199,8 +197,6 @@ static func promote(u: Unit, tick: int, battle_seed: int) -> void:
 	u._sim_soldier_hp = hp
 	u._sim_body_vel = PackedVector2Array()
 	u._sim_body_vel.resize(n)   # at rest; the arrival dynamics ease each body onto its slot
-	# Rebuilt bodies have no last feed-forward, so their first routing step grants no share.
-	u._body_flight_ff_prev = PackedVector2Array()
 	u._sim_steer = PackedVector2Array()
 	u._sim_steer.resize(n)
 	u._sim_prone = PackedFloat32Array()
