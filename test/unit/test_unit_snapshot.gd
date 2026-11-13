@@ -452,7 +452,7 @@ func test_spawn_role_tunables_and_late_state_round_trip() -> void:
 	var values := {
 		"is_general": true, "line_index": 2,
 		"_withdrawal_peeling": true, "_separation_velocity": Vector2(3.5, -1.25),
-		"_is_facing_turning": true, "_far_flee_pace": 61.5, "_rallied": true,
+		"_is_facing_turning": true, "_far_flee_pace": 61.5, "_rally_pending": true,
 		"_grid_lag": 0.375, "_grid_lag_rate": -0.25, "_grid_lag_resquare": true,
 		"_resquare_pending": true, "_contact_clear_time": 0.125,
 		"_absorbed_fold": -0.125, "_absorbed_drill_turn": 1.5,
@@ -494,7 +494,7 @@ func test_newly_captured_fields_default_for_older_snapshots() -> void:
 		"is_general": "is_general", "line_index": "line_index",
 		"withdrawal_peeling": "_withdrawal_peeling", "separation_velocity": "_separation_velocity",
 		"is_facing_turning": "_is_facing_turning",
-		"far_flee_pace": "_far_flee_pace", "rallied": "_rallied",
+		"far_flee_pace": "_far_flee_pace", "rally_pending": "_rally_pending",
 		"grid_lag": "_grid_lag", "grid_lag_rate": "_grid_lag_rate", "grid_lag_resquare": "_grid_lag_resquare",
 		"resquare_pending": "_resquare_pending", "contact_clear_time": "_contact_clear_time",
 		"absorbed_fold": "_absorbed_fold", "absorbed_drill_turn": "_absorbed_drill_turn",

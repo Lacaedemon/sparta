@@ -252,7 +252,9 @@ static func step(unit: Unit, delta: float) -> void:
 	# facings (_per_soldier_facing) keeps its own values until it releases them. A routed man
 	# faces the way he runs (SoldierFlightStep), so a router's facings are his own.
 	var routing: bool = unit.state == Unit.State.ROUTING
-	if not unit._per_soldier_facing and not routing:
+	# A rallied man still pulling up faces his run too (pull_up_rallied).
+	var pulling_up: bool = unit._rally_pending and unit.state == Unit.State.IDLE
+	if not unit._per_soldier_facing and not routing and not pulling_up:
 		unit._sim_soldier_facing = unit.soldier_world_facings(n)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# follows the regiment's pace during the same pass (Unit.stamina_flow_per_s: regen at
@@ -278,6 +280,14 @@ static func step(unit: Unit, delta: float) -> void:
 		SoldierFlightStep.step(unit, n, flight_guard, delta)
 		_keep_out_of_terrain(unit, n, flight_guard, delta)
 		return
+	# A rallied unit's men pull up from their flight on their own, and its grid is laid out where
+	# they come to rest (Unit._reform_where_men_stand); a rallying unit taken out of IDLE by
+	# anything else re-forms at once.
+	if unit._rally_pending:
+		if pulling_up and pull_up_rallied(unit, n, maxf(body_brake_accel_for(unit), unit.decel), delta):
+			_keep_out_of_terrain(unit, n, _terrain_entry_guard(unit, n), delta)
+			return
+		unit._reform_where_men_stand()
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
@@ -413,17 +423,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# slot this tick is his place beside or behind that man, and he heads for it the way a man in
 	# a file does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
 	var follow_width: float = unit.follow_line_width()
-	# A unit standing still (IDLE, not coasting, not in a reform hold) whose man is still running
-	# ahead faster than a jog, as its men are when it rallies from a rout, cannot stop him dead
-	# or turn him back onto his place at once: he first pulls up along his own run at his braking
-	# rate (the larger of brake_accel and the unit's decel), and only once he is down to a jog
-	# does he walk to his place (pull_up).
-	var standing: bool = unit.state == Unit.State.IDLE and not unit._reform_holding() \
-			and unit._current_speed <= 0.0
-	var pull_up_rate: float = maxf(brake_accel, unit.decel)
 	for i in range(n):
-		if standing and pull_up(unit, i, pull_up_rate, delta):
-			continue
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
 		# unit's march velocity (the rate its formation slots translate), so a body keeps up
@@ -683,16 +683,25 @@ static func march_share_frac(dist: float, pitch: float, from_pitches: float,
 	return (dist - lo) / (hi - lo)
 
 
-## Pull man `i` of `unit` up along his own run at `rate` (world units/s^2) for one tick of
-## `delta`, if he is running ahead (along his facing) faster than his unit's jog. Returns whether
-## he did, so the caller skips his ordinary arrival this tick.
-static func pull_up(unit: Unit, i: int, rate: float, delta: float) -> bool:
-	var run: Vector2 = unit._sim_body_vel[i]
-	if run.dot(unit.soldier_facing(i)) <= unit.jog_speed:
+## One tick of a rallied unit's men pulling up from their flight: each slows along his own run
+## at `rate` (world units/s^2, his braking rate), faces it while he still moves, and runs on at
+## what he kept. Returns false, touching nobody, once no man of the first `n` is faster than a
+## jog: the men have pulled up, and the caller lays the grid out where they stand.
+static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bool:
+	var jog_sq: float = unit.jog_speed * unit.jog_speed
+	var running: bool = false
+	for i in range(n):
+		if unit._sim_body_vel[i].length_squared() > jog_sq:
+			running = true
+			break
+	if not running:
 		return false
-	var pulled: Vector2 = run.move_toward(Vector2.ZERO, rate * delta)
-	unit._sim_body_vel[i] = pulled
-	unit._sim_soldier_pos[i] += pulled * delta
+	for i in range(n):
+		var v: Vector2 = unit._sim_body_vel[i].move_toward(Vector2.ZERO, rate * delta)
+		unit._sim_body_vel[i] = v
+		unit._sim_soldier_pos[i] += v * delta
+		if v.length_squared() > REST_SPEED * REST_SPEED:
+			unit._sim_soldier_facing[i] = v.normalized()
 	unit._render_dirty = true
 	return true
 
@@ -1215,10 +1224,11 @@ static func couple(unit: Unit, delta: float) -> void:
 			unit._body_follow_vel = (unit.explicatio_grid_position() - unit.position) / delta
 		unit.position = unit.explicatio_grid_position()
 		return
-	# A routed unit has no grid: its `position` is where its men are (their centroid) and its
-	# heading the way they face, which is the way each runs (SoldierFlightStep), both read off
-	# the men each tick and never fed back to them.
-	if unit.state == Unit.State.ROUTING:
+	# A routed unit has no grid, nor a rallied one whose men are still pulling up: its `position`
+	# is where its men are (their centroid) and its heading the way they face, which is the way
+	# each runs (SoldierFlightStep, pull_up_rallied), both read off the men each tick and never
+	# fed back to them.
+	if unit.state == Unit.State.ROUTING or (unit._rally_pending and unit.state == Unit.State.IDLE):
 		_read_router_off_men(unit, n, delta)
 		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the

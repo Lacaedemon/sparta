@@ -70,6 +70,10 @@ static func can_demote(u: Unit, is_reinforce_target: bool = false) -> bool:
 	# REFORM leaf order mechanism. Plain MARCH is aggregate-safe.
 	if u._per_soldier_facing or u._reform_holding():
 		return false
+	# A rallied unit whose men are still pulling up from their flight: each runs on his own, and
+	# the aggregate record has no grid to put them on until they have stopped.
+	if u._rally_pending:
+		return false
 	# An active anchor hold (e.g. post-commit newcomer arrival after a reinforcement)
 	# keeps the host close-tier so interleaved bodies can reach their assigned slots.
 	if u.position_anchor_held():

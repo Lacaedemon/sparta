@@ -249,7 +249,7 @@ func test_a_router_caught_by_a_pursuer_comes_into_enemy_contact() -> void:
 ## Run the open-ground router RALLY_AFTER_TICKS, scramble its men the way a crowd running
 ## from a fight scrambles them (each man stands where the man at the other end of the array
 ## stood), then let it rally under `deal`. Returns the total distance from its men to their
-## places on the rally tick.
+## places on the tick its grid is laid out, once they have pulled up.
 func _rally_walk(deal: int) -> float:
 	var router: Unit = await _spawn()
 	router.rally_deal = deal
@@ -261,6 +261,11 @@ func _rally_walk(deal: int) -> float:
 	router.morale = 50.0
 	await _advance_ticks(1)
 	assert_eq(router.state, Unit.State.IDLE, "setup: the unit rallied")
+	for t in range(RALLY_WATCH_TICKS * 4):
+		if not router._rally_pending:
+			break
+		await _advance_ticks(1)
+	assert_false(router._rally_pending, "setup: the men pulled up and the grid was laid out")
 	var slots: PackedVector2Array = router.soldier_world_slots(router.soldiers)
 	var walk: float = 0.0
 	for i in range(mini(slots.size(), router._sim_soldier_pos.size())):
@@ -276,7 +281,7 @@ func test_a_rally_deals_the_men_places_from_where_they_stand() -> void:
 			% stand + " each going back to his own place in his file (%.0f wu)" % own)
 
 
-func test_a_rallied_unit_re_forms_where_its_men_stand_and_sheds_their_run() -> void:
+func test_a_rallied_unit_s_men_pull_up_then_it_re_forms_where_they_stand() -> void:
 	var router: Unit = await _spawn()
 	_rout_and_hold(router)
 	await _advance_ticks(RALLY_AFTER_TICKS)
@@ -288,22 +293,30 @@ func test_a_rallied_unit_re_forms_where_its_men_stand_and_sheds_their_run() -> v
 	router.morale = 50.0
 	await _advance_ticks(1)
 	assert_eq(router.state, Unit.State.IDLE, "the unit rallied")
-	assert_almost_eq(router._formation_angle, 0.0, 0.0001, "its grid is square to its heading")
-	assert_lt(router.position.distance_to(_centroid(router)), router.rank_pitch_wu(),
-			"it re-formed where its men stand")
-	assert_true(router.shedding_flight(), "its men still carry their run")
+	assert_true(router.shedding_flight(), "its men are still pulling up")
+	var brake: float = maxf(maxf(router.accel, SoldierBodies.BODY_ACCEL_FLOOR), router.decel)
 	var worst_drop: float = 0.0
-	for t in range(RALLY_WATCH_TICKS):
+	var worst_readout: float = 0.0
+	for t in range(RALLY_WATCH_TICKS * 4):
+		if not router._rally_pending:
+			break
 		var prev: PackedFloat32Array = _speeds(router)
 		await _advance_ticks(1)
+		if not router._rally_pending:
+			break
+		worst_readout = maxf(worst_readout, router.position.distance_to(_centroid(router)))
 		var now: PackedFloat32Array = _speeds(router)
 		for i in range(mini(prev.size(), now.size())):
-			if prev[i] > router.jog_speed:   # still pulling up; below a jog he walks to his place
-				worst_drop = maxf(worst_drop, prev[i] - now[i])
-	var brake: float = maxf(maxf(router.accel, SoldierBodies.BODY_ACCEL_FLOOR), router.decel)
-	assert_lt(worst_drop * 60.0, brake + ACCEL_SLACK, "no man running above a jog sheds his run faster than he can brake"
-			+ " (worst %.1f wu/s^2, brake %.1f)" % [worst_drop * 60.0, brake])
-	assert_false(router.shedding_flight(), "by the end of the watch the men are down to a jog")
+			worst_drop = maxf(worst_drop, prev[i] - now[i])
+	assert_false(router._rally_pending, "the men pulled up and the unit re-formed")
+	assert_lt(worst_drop * 60.0, brake + ACCEL_SLACK, "no man sheds his run faster than he can"
+			+ " brake (worst %.1f wu/s^2, brake %.1f)" % [worst_drop * 60.0, brake])
+	assert_lt(worst_readout, READOUT_EPS, "while they pull up, position reads the men")
+	assert_almost_eq(router._formation_angle, 0.0, 0.0001, "its grid is square to its heading")
+	assert_lt(router.position.distance_to(_centroid(router)), router.rank_pitch_wu(),
+			"laid out where its men came to rest")
+	for s in _speeds(router):
+		assert_lt(s, router.jog_speed + 0.001, "no man is faster than a jog once it has re-formed")
 
 
 func test_a_router_rounds_a_hill_in_its_way() -> void:

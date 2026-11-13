@@ -1834,9 +1834,11 @@ var _cycle_recharging: bool = false
 # own, so its aggregate record runs from its centre at this pace, which builds to flee_speed()
 # at `accel` (_process_rout). Close-tier routers do not read it.
 var _far_flee_pace: float = 0.0
-# Whether this unit has rallied since it last routed: set by _rally, cleared by _rout. Only
-# shedding_flight() reads it, for the state dump; nothing in the sim does.
-var _rallied: bool = false
+# True from a rally until its grid is laid out where its men have pulled up
+# (_reform_where_men_stand): while it holds, each man still running slows on his own
+# (SoldierBodies.pull_up_rallied) and `position` reads the men, as for a router. Set by _rally,
+# cleared by the deal and by _rout.
+var _rally_pending: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -2140,6 +2142,8 @@ func _tick_idle_coast(delta: float) -> void:
 ## makes `order` current immediately. Mirrors the legacy "a fresh order discards the queued
 ## route" rule (see Battle._apply_order_cmd).
 func set_current_order(order: Order) -> void:
+	if _rally_pending:
+		_reform_where_men_stand()   # an order re-forms a rallying unit at once, where it stands
 	_interrupt_current_order()
 	var q: Array[Order] = []
 	if order != null:
@@ -3893,19 +3897,11 @@ func idle_brake_rate() -> float:
 	return arrival_brake_rate()
 
 
-## Whether this unit has rallied since it last routed and one of its men still carries more of
-## his flight's speed than his own steering can give him (his top pace times
-## superphysical_speed_frac): he is still shedding it at his braking rate (SoldierBodies.step).
-## A readout for the state dump, whose speed check allows such a man his flee pace; nothing in
-## the sim reads it.
+## Whether this rallied unit's men are still pulling up from their flight
+## (SoldierBodies.pull_up_rallied), before its grid is laid out where they stop. A readout for
+## the state dump, whose speed check allows such men the flee pace they are shedding.
 func shedding_flight() -> bool:
-	if not _rallied or state == State.ROUTING:
-		return false
-	var cap_sq: float = pow(move_speed * superphysical_speed_frac, 2.0)
-	for v in _sim_body_vel:
-		if v.length_squared() > cap_sq:
-			return true
-	return false
+	return _rally_pending and state != State.ROUTING
 
 
 ## Whether the current order is a genuine click-count-driven run/sprint MOVE -- too urgent
@@ -11053,7 +11049,7 @@ func _rout() -> void:
 	# frozen through the rout and coast the rallied unit off along it on its first idle tick.
 	_approach_velocity = Vector2.ZERO
 	_current_speed = 0.0
-	_rallied = false
+	_rally_pending = false
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -11238,9 +11234,9 @@ func _can_rally() -> bool:
 ## Recover from a rout: the unit reforms under the player's control at low,
 ## fragile morale and rejoins the fightable units -- the inverse of the state/group
 ## changes _rout() made. It can be re-ordered, and can break again, from here.
-## It re-forms from its men where they stand (_reform_where_men_stand); each man then walks to
-## his place under the ordinary arrival, shedding the run he still carries no faster than his
-## braking rate (SoldierBodies.step).
+## Each man first pulls up from his run on his own, at his braking rate
+## (SoldierBodies.pull_up_rallied), and the unit re-forms where they come to rest
+## (_reform_where_men_stand); a fresh order re-forms it at once.
 func _rally() -> void:
 	state = State.IDLE
 	# Keep whatever nerve the unit steadied to while fleeing, but never below the fragile
@@ -11248,8 +11244,7 @@ func _rally() -> void:
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
 	_far_flee_pace = 0.0
-	_rallied = true
-	_reform_where_men_stand()
+	_rally_pending = true
 	# The orders queue (route legs included) was already dropped by _rout()'s
 	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")
@@ -11258,10 +11253,12 @@ func _rally() -> void:
 
 
 ## Lay a rallied unit's grid out where its men stand: square to the heading they face, which
-## couple() read off them while they ran, at their centroid, where couple() left `position`.
+## couple() read off them while they ran and pulled up, at their centroid, where couple() left
+## `position`.
 ## With rally_deal STAND each man is then dealt the place nearest where he stands
 ## (deal_slots_where_men_stand); with OWN each keeps his own place in his own file.
 func _reform_where_men_stand() -> void:
+	_rally_pending = false
 	_fold_grid_lag()
 	_formation_angle = 0.0
 	_absorbed_fold = 0.0
@@ -12118,7 +12115,7 @@ func to_snapshot_dict() -> Dictionary:
 		"line_index": line_index,
 		"withdrawal_peeling": _withdrawal_peeling,
 		"separation_velocity": _separation_velocity,
-		"far_flee_pace": _far_flee_pace, "rallied": _rallied,
+		"far_flee_pace": _far_flee_pace, "rally_pending": _rally_pending,
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"march_target_frac": _march_target_frac,
 		"march_stopped_ticks": _march_stopped_ticks,
@@ -12399,7 +12396,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_withdrawal_peeling = bool(d.get("withdrawal_peeling", _withdrawal_peeling))
 	_separation_velocity = d.get("separation_velocity", _separation_velocity)
 	_far_flee_pace = float(d.get("far_flee_pace", _far_flee_pace))
-	_rallied = bool(d.get("rallied", _rallied))
+	_rally_pending = bool(d.get("rally_pending", _rally_pending))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))

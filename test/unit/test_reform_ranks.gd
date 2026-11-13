@@ -402,6 +402,7 @@ func test_rally_reforms_where_the_men_stand() -> void:
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 
 	u._rally()
+	u.step_sim_soldiers(1.0 / 60.0)   # nobody is running, so the grid is laid out at once
 
 	assert_eq(u.state, Unit.State.IDLE, "the unit rallied")
 	assert_eq(u._formation_angle, 0.0, "and squared the grid to its heading")
@@ -424,6 +425,7 @@ func test_an_own_place_rally_keeps_the_pairing() -> void:
 	u._sim_soldier_pos = u.soldier_world_slots(u.soldiers)
 	var held: PackedInt32Array = u._sim_soldier_row_slot.duplicate()
 	u._rally()
+	u.step_sim_soldiers(1.0 / 60.0)   # nobody is running, so the grid is laid out at once
 	assert_eq(u._formation_angle, 0.0, "the grid is squared")
 	assert_eq(u._sim_soldier_row_slot, held, "and no man was dealt a new place")
 

@@ -2,9 +2,9 @@ extends GutTest
 ## The routed and rallied unit's per-man rules and readouts, on bare units outside a battle:
 ## the escape once every man has left the field (Unit._fled_clear), the far tier's aggregate
 ## flight (Unit._far_flight), the stamina a routed man is billed at his own pace
-## (Unit.man_stamina_flow_per_s), the pull-up of a rallied man still running
-## (SoldierBodies.pull_up), the state dump's readout of it (Unit.shedding_flight), and the rally's
-## deal from where the men stand in each layout (Unit.deal_slots_where_men_stand).
+## (Unit.man_stamina_flow_per_s), the pull-up of a rallied unit's men still running
+## (SoldierBodies.pull_up_rallied), the state dump's readout of it (Unit.shedding_flight), and the
+## rally's deal from where the men stand in each layout (Unit.deal_slots_where_men_stand).
 
 const TICK := 1.0 / 60.0
 
@@ -61,33 +61,56 @@ func test_a_routed_man_is_billed_stamina_at_his_own_pace() -> void:
 	assert_eq(u.man_stamina_flow_per_s(7), u.man_stamina_flow_per_s(0), "no body reads as resting")
 
 
-func test_a_man_still_running_ahead_pulls_up_at_the_given_rate() -> void:
+func test_a_rallied_unit_s_men_pull_up_on_their_own_then_it_re_forms() -> void:
 	var u := _unit(2)
-	u._sim_body_vel[0] = Vector2(0, -u.jog_speed * 2.0)   # running ahead, along his facing
-	u._sim_body_vel[1] = Vector2(0, u.jog_speed * 2.0)    # running backward: not pulled up
+	u._rout()
+	u._formation_angle = 0.5
+	u._rally()
+	assert_true(u._rally_pending, "a rally waits for its men to pull up")
+	assert_true(u.shedding_flight(), "and the dump reads them as shedding their flight")
+	u._sim_body_vel[0] = Vector2(0, -u.jog_speed * 2.0)   # still running north
+	u._sim_body_vel[1] = Vector2(u.jog_speed * 0.5, 0)    # already down to a walk
 	var before: Vector2 = u._sim_soldier_pos[0]
-	assert_true(SoldierBodies.pull_up(u, 0, 60.0, TICK), "a man ahead faster than a jog pulls up")
+	assert_true(SoldierBodies.pull_up_rallied(u, 2, 60.0, TICK), "a man still faster than a jog")
 	assert_almost_eq(u._sim_body_vel[0].length(), u.jog_speed * 2.0 - 1.0, 0.0001,
-			"by one tick of the rate")
+			"slows by one tick of the rate along his run")
 	assert_almost_eq(before.distance_to(u._sim_soldier_pos[0]), u._sim_body_vel[0].length() * TICK,
 			0.0001, "and runs on at what he kept")
-	assert_false(SoldierBodies.pull_up(u, 1, 60.0, TICK), "a man moving backward is not")
+	assert_almost_eq(u.soldier_facing(0).y, -1.0, 0.0001, "facing his run")
+	assert_almost_eq(u._sim_body_vel[1].length(), u.jog_speed * 0.5 - 1.0, 0.0001,
+			"the walking man slows too")
 	u._sim_body_vel[0] = Vector2(0, -u.jog_speed)
-	assert_false(SoldierBodies.pull_up(u, 0, 60.0, TICK), "nor one at a jog")
+	assert_false(SoldierBodies.pull_up_rallied(u, 2, 60.0, TICK), "none above a jog: they have pulled up")
+	u.step_sim_soldiers(TICK)
+	assert_false(u._rally_pending, "so the step lays the grid out where they stand")
+	assert_eq(u._formation_angle, 0.0, "square to their heading")
+	assert_false(u.shedding_flight(), "and nothing is shed any more")
 
 
-func test_shedding_flight_reads_a_rallied_man_faster_than_his_steering() -> void:
+func test_shedding_flight_is_a_rallying_unit_only() -> void:
 	var u := _unit(2)
-	var over := Vector2(0, -u.move_speed * u.superphysical_speed_frac * 1.1)
-	u._sim_body_vel[0] = over
 	assert_false(u.shedding_flight(), "a unit that never routed is not shedding a flight")
 	u._rout()
 	assert_false(u.shedding_flight(), "nor a router")
 	u._rally()
-	u._sim_body_vel[0] = over
-	assert_true(u.shedding_flight(), "a rallied unit with a man still that fast is")
-	u._sim_body_vel[0] = Vector2.ZERO
-	assert_false(u.shedding_flight(), "and once none is, it is not")
+	assert_true(u.shedding_flight(), "a rallied unit whose men are pulling up is")
+
+
+func test_a_rallying_unit_stays_in_the_close_tier_until_its_men_have_pulled_up() -> void:
+	var u := _unit(2)
+	u._rout()
+	u._rally()
+	assert_false(TierTransition.can_demote(u), "its men are still running on their own")
+	u._reform_where_men_stand()
+	assert_true(TierTransition.can_demote(u), "once re-formed it may demote like any idle unit")
+
+
+func test_an_order_re_forms_a_rallying_unit_at_once() -> void:
+	var u := _unit(2)
+	u._rout()
+	u._rally()
+	u.set_current_order(null)
+	assert_false(u._rally_pending, "the order lays the grid out where the men stand")
 
 
 func test_a_rally_marks_a_square_and_a_file_major_block_to_deal_from_the_bodies() -> void:
