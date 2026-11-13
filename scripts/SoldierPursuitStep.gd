@@ -1,18 +1,20 @@
 class_name SoldierPursuitStep
 extends RefCounted
-## A unit riding a router down: each of its men chases the runner of the routed unit nearest him,
-## not the routed unit's centre, which can lie where no runner is once the rout scatters. He
-## looks round once a reaction time (Unit.rout_reaction_ticks), on a tick of his own, picks the
-## nearest runner and rides at him at his own top pace and acceleration until he next looks
-## (Unit._sim_flight_dir holds his heading); he strikes the runners within his reach at his
-## unit's cadence (strike). Pursuing horse were the main killers of a rout (Polybius 3.116 on
-## the Roman flight at Cannae). SoldierBodies.step calls step in place of the slot arrival, and
+## Horse riding a router down: each rider chases the runner nearest him, not the routed unit's
+## centre, which can lie where no runner is once the rout scatters. He looks round once a
+## reaction time (Unit.rout_reaction_ticks), on a tick of his own, and rides at that runner until
+## he next looks (Unit._sim_flight_dir); he strikes the runners in his reach at his unit's cadence
+## (strike). Pursuing horse were the main killers of a rout (Polybius 3.116, Cannae). Foot keep
+## their ranks and follow a rout as a block: the Spartans pursued briefly and not far
+## (Thucydides 5.73.4). SoldierBodies.step calls step in place of the slot arrival, and
 ## SoldierBodies.couple reads the unit's `position` off its men while it pursues.
 
 
-## Whether `unit` is riding a routed enemy down: after a routing target with men, on the move
-## or already among its runners (FIGHTING).
+## Whether `unit` is riding a routed enemy down: a mounted unit after a routing target with men,
+## on the move or already among its runners (FIGHTING).
 static func is_pursuing(unit: Unit) -> bool:
+	if not unit.is_cavalry:
+		return false
 	if unit.state != Unit.State.MOVING and unit.state != Unit.State.FIGHTING:
 		return false
 	var quarry: Unit = unit.target_enemy
@@ -42,15 +44,17 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 			unit._sim_flight_dir[i] = _toward_nearest(pos, quarry)
 		var dir: Vector2 = unit._sim_flight_dir[i]
 		var desired: Vector2 = dir * top * (field.speed_at(pos) if field != null else 1.0) \
-				+ unit._sim_steer[i] + clear[i]
+				+ unit._sim_steer[i]
 		if not guard.is_empty() and guard["inside"][i] == 0:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel,
 					pos + dir * SoldierFlightStep.LOOK_AHEAD, desired, guard["grown"], accel, delta)
 		var damped: Vector2 = SoldierCollision.apply_kinetic_friction(vel, mass, 0.0, delta)
-		var new_vel: Vector2 = ride(damped, desired, accel, Unit.TURN_RATE, delta) \
-				.limit_length(maxf(cap_floor, vel.length()))
+		var cap: float = maxf(cap_floor, vel.length())
+		var new_vel: Vector2 = ride(damped, desired, accel, Unit.TURN_RATE, delta).limit_length(cap)
 		unit._sim_body_vel[i] = new_vel
-		unit._sim_soldier_pos[i] = pos + new_vel * delta
+		# He gives way to a friend he touches at once, as a friendly bias does (SoldierSteering),
+		# not at the pace he can turn his horse.
+		unit._sim_soldier_pos[i] = pos + (new_vel + clear[i]).limit_length(cap) * delta
 		if new_vel.length_squared() > SoldierBodies.REST_SPEED * SoldierBodies.REST_SPEED:
 			unit._sim_soldier_facing[i] = new_vel.normalized()
 			unit._render_dirty = true

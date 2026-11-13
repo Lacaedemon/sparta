@@ -24,6 +24,7 @@ func _split_rout() -> Array:
 	r._rout()
 	var p := _unit(1, 1, AT + Vector2(-300, 200))
 	p._sim_soldier_pos[0] = AT + Vector2(-300, 200)
+	p.is_cavalry = true
 	p.target_enemy = r
 	p.state = Unit.State.MOVING
 	return [r, p]
@@ -38,6 +39,9 @@ func test_a_unit_after_a_router_is_pursuing() -> void:
 	p.state = Unit.State.MOVING
 	pair[0].state = Unit.State.IDLE
 	assert_false(SoldierPursuitStep.is_pursuing(p), "nor after a unit that is not routing")
+	pair[0].state = Unit.State.ROUTING
+	p.is_cavalry = false
+	assert_false(SoldierPursuitStep.is_pursuing(p), "foot follow a rout in their ranks")
 
 
 func test_each_rider_rides_at_the_runner_nearest_him_not_the_routed_unit_s_centre() -> void:
