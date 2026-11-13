@@ -909,16 +909,20 @@ func test_men_of_one_file_walking_through_each_other_fail_file_crossing() -> voi
 	var through: Array = file.duplicate()
 	through[0] = [float(file[3][0]) + 5.0, float(file[3][1])]
 	through[3] = [float(file[0][0]) + 5.0, float(file[0][1])]
-	var walking: Dictionary = DemoDefects.analyze([_snapshot(0, file, file), _snapshot(30, through, file)])
+	var walking: Dictionary = DemoDefects.analyze([_snapshot(0, file, file),
+			_snapshot(30, through, file), _snapshot(60, file, file)])
 	assert_false(bool(_verdict(walking, "file_crossing")["pass"]),
-			"two men of one file whose routes cross have walked through each other")
+			"two men of one file whose routes cross, sample after sample, have walked through each other")
+	var once: Dictionary = DemoDefects.analyze([_snapshot(0, file, file), _snapshot(30, through, file)])
+	assert_true(bool(_verdict(once, "file_crossing")["pass"]),
+			"one crossing between two samples is a transient, as for path_crossing")
 	var standing: Dictionary = DemoDefects.analyze([_snapshot(0, file, file), _snapshot(30, file, file)])
 	assert_true(bool(_verdict(standing, "file_crossing")["pass"]), "a file standing still crosses nothing")
 	# The corner swap across a block sends the two corner men of file 0, and of file 5, the
 	# length of their files on routes that cross.
 	var grid: Array = _grid(6, 4, SPACING)
 	var trading: Dictionary = DemoDefects.analyze([_snapshot(0, grid, grid),
-			_snapshot(30, _swap_corners(grid), grid)])
+			_snapshot(30, _swap_corners(grid), grid), _snapshot(60, grid, grid)])
 	assert_false(bool(_verdict(trading, "file_crossing")["pass"]),
 			"corner men trading the ends of their own files cross within them")
 

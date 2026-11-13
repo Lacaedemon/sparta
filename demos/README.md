@@ -646,9 +646,10 @@ The follow error and misslot checks are relational, from the dump's `relations`:
 to his dressing man, after fitting the one rotation the men's relations share from the men themselves,
 so a turn, a fold, a re-deal or a shift of the slot grid cannot read as a defect.
 `misslotted` is the fraction of men standing on the place behind another man rather than behind their
-own leader (or on the wrong side of their dressing man): behind the right man or not.
+own leader (or standing in the place of their dressing man, as he does in theirs): behind the right man or not.
 `file_crossing` is the share of men whose route crosses another man's of the same file between two
-judged samples, men walking through each other in a file, and it fails on any.
+judged samples: men walking through each other in a file.
+Like `path_crossing`, it fails when more than 15% of the men do so over two samples running.
 The slot-based `shape_residual` verdict is retired:
 it read a fold or re-deal of the grid under the men as a defect, and every clip that still fails
 `follow_error` reads the same deformation of the men themselves.

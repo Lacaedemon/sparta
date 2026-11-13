@@ -715,11 +715,14 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	var min_travel: float = spacing * CROSS_MIN_TRAVEL_FRAC
 	var worst_cross := 0.0
 	var worst_file_cross := 0.0
+	var file_cross_run := 0
+	var worst_file_run := 0
 	var cross_run := 0
 	var worst_cross_run := 0
 	for i in range(1, n):
 		if s["counts"][i] != s["counts"][i - 1] or not (bool(mask[i]) and bool(mask[i - 1])):
 			cross_run = 0   # renumbered by a casualty, or an exempt sample
+			file_cross_run = 0
 			continue
 		var crossed: int = crossing_indices(s["pos"][i - 1], s["pos"][i], min_travel).size()
 		var frac: float = float(crossed) / maxf(1.0, float(s["counts"][i]))
@@ -731,11 +734,13 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 					s["files"][i]).size()
 			var file_frac: float = float(in_file) / maxf(1.0, float(s["counts"][i]))
 			worst_file_cross = maxf(worst_file_cross, file_frac)
+			file_cross_run = file_cross_run + 1 if file_frac > CROSS_MAX_FRAC else 0
+			worst_file_run = maxi(worst_file_run, file_cross_run)
 	out.append({"uid": uid, "metric": "path_crossing", "pass": worst_cross_run < MIN_SUSTAIN,
 			"worst": worst_cross, "threshold": CROSS_MAX_FRAC})
 	if judged_relations:
-		out.append({"uid": uid, "metric": "file_crossing", "pass": worst_file_cross <= 0.0,
-				"worst": worst_file_cross, "threshold": 0.0})
+		out.append({"uid": uid, "metric": "file_crossing", "pass": worst_file_run < MIN_SUSTAIN,
+				"worst": worst_file_cross, "threshold": CROSS_MAX_FRAC})
 	return out
 
 
