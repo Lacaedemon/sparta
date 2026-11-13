@@ -172,8 +172,10 @@ Whether the doubled line keeps its pitch or its ground (`UnitFormation.Explicati
   every original file keeps its place, file leader included,
   and each new file comes up in the gap beside the file it opened from.
   That needs every interval on the same side of its file, so the same ground takes the spear side or the shield side, the sources saying neither.
-  Asked for the outward or inward reading, which would leave two neighbouring original files with no gap between them and close each wing on the middle by half the old pitch,
-  the sim takes the spear side instead; that default is the sim's choice.
+  The outward reading would leave the two middle original files with no gap between them, and the inward reading would leave two gaps there,
+  so under either some original files could not keep their places.
+  Asked for either, the sim takes the spear side instead.
+  That default is the sim's choice.
   The one new file beyond the last original file then lengthens the line by half the old pitch,
   on the right on the spear side and on the left on the shield side, which is also the sim's inference.
   Bingham's note on 29.3 says it "must be done in open order".

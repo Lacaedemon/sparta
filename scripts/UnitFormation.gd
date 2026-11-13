@@ -1290,8 +1290,8 @@ enum ExplicatioSide { OUTWARD = 0, INWARD = 1, SPEAR_SIDE = 2, SHIELD_SIDE = 3 }
 ##   locked shields (Asclepiodotus 4.1: four cubits, two, and one, "on all sides"), on both axes.
 ##   Every original file keeps its place and each new file comes up in the gap beside the file it
 ##   opened from, so every interval opens on the same side: SPEAR_SIDE or SHIELD_SIDE, the sources
-##   being silent on which. Asked for OUTWARD or INWARD, which would leave two neighbouring files
-##   with no gap between them and close the wings on it, the sim takes the spear side
+##   being silent on which. OUTWARD would leave the two middle files with no gap between them and
+##   INWARD would leave two gaps there; asked for either, the sim takes the spear side
 ##   (explicatio_ground_side), its own choice; so the one new file beyond the last original file
 ##   lengthens the line by half an old pitch on the right (the left on the shield side), also the
 ##   sim's inference. Bingham's note on 29.3 says it "must be done in open order"; a block already
