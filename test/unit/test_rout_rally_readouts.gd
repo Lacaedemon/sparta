@@ -84,6 +84,7 @@ func test_a_rallied_unit_s_men_pull_up_on_their_own_then_it_re_forms() -> void:
 	u.step_sim_soldiers(TICK)
 	assert_false(u._rally_pending, "so the step lays the grid out where they stand")
 	assert_eq(u._formation_angle, 0.0, "square to their heading")
+	assert_eq(u._last_redeal_tick, Engine.get_physics_frames(), "stamped as a re-deal for the dump")
 	assert_false(u.shedding_flight(), "and nothing is shed any more")
 
 

@@ -305,7 +305,6 @@ static func step(unit: Unit, delta: float) -> void:
 	# does, rather than each man riding back through the others to his old place.
 	if not unit._sim_flight_dir.is_empty():
 		unit._reform_where_men_stand()
-		unit._last_redeal_tick = Engine.get_physics_frames()
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
