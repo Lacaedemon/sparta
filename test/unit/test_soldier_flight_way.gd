@@ -51,3 +51,14 @@ func test_rock_on_one_side_sends_him_round_the_other() -> void:
 	var rock: Array[Rect2] = [Rect2(AT + Vector2(10 + reach * 0.5, -20), Vector2(40, 40))]
 	var d: Vector2 = SoldierFlightWay.choose(u, 0, Vector2(0, -1), rock)
 	assert_lt(d.x, 0.0, "the east is shut by rock, so he goes west")
+
+
+func test_a_man_who_barely_sees_the_foes_runs_along_them_not_back_out_of_sight() -> void:
+	# Foes between him and his refuge, at the edge of his sight: their weight is slight.
+	var u := _man(AT + Vector2(10, 0))
+	var d: Vector2 = SoldierFlightWay.choose(u, 0, Vector2(0, -0.1))
+	assert_gt(d.x, 0.95, "he runs round them, east")
+	assert_gt(d.y, 0.0, "edging away from them only as much as he feels them")
+	var close: Vector2 = SoldierFlightWay.choose(u, 0, Vector2(0, -3))
+	assert_almost_eq(close, Vector2(1, 1).normalized(), Vector2(0.0001, 0.0001),
+			"close to them he runs as much away as round")

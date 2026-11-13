@@ -8,10 +8,13 @@ extends RefCounted
 
 
 ## His own direction, which never stalls. With the foes he perceives between him and his refuge
-## (the refuge within a quarter-turn of the `threat`), he runs away from them and round them on
-## one side: toward his refuge's side of them (where fewer foes stand), else the side `grown`
-## rock does not shut, else his own side of his unit's centre. Otherwise his refuge's pull
-## (rout_refuge_weight) and the threat's push add, both pointing away from the foes.
+## (the refuge within a quarter-turn of the `threat`), he runs round them on one side: toward his
+## refuge's side of them (where fewer foes stand), else the side `grown` rock does not shut, else
+## his own side of his unit's centre; and away from them as strongly as he feels them (the
+## threat's weight, up to 1), so a man who barely sees them at the edge of his sight runs along
+## them rather than turning back out of sight, where his refuge would turn him in again.
+## Otherwise his refuge's pull (rout_refuge_weight) and the threat's push add, both pointing
+## away from the foes.
 static func choose(unit: Unit, i: int, threat: Vector2,
 		grown: Array[Rect2] = []) -> Vector2:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
@@ -30,4 +33,4 @@ static func choose(unit: Unit, i: int, threat: Vector2,
 	if PathField.inside_any_rect(pos + side * stride, grown) \
 			and not PathField.inside_any_rect(pos - side * stride, grown):
 		side = -side
-	return (side + away).normalized()
+	return (side + away * minf(1.0, threat.length())).normalized()
