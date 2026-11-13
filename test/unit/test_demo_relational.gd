@@ -180,3 +180,21 @@ func test_a_single_rank_traded_in_places_is_misslotted_and_one_in_transit_is_not
 		between.append([p.x * 0.5 + PITCH * 0.25, p.y])
 	assert_gt(float((DemoRelational.read(between, _rel(local), PITCH * 0.25, PITCH * 0.5))["settled"]),
 			PITCH * 0.1, "men between places are not settled")
+
+
+func test_men_no_relation_connects_are_pieces_of_their_own_and_fit_separately() -> void:
+	var local := _local(3, 2)
+	var rel: Dictionary = _rel(local)
+	# A second block of three, with no relation to the first, standing elsewhere and turned.
+	for key in ["leaders", "dress"]:
+		for i in range(3):
+			rel[key].append(-1)
+	for key in ["offsets", "dress_offsets"]:
+		for i in range(3):
+			rel[key].append([0.0, 0.0])
+	var men: Array = _men(local)
+	for i in range(3):
+		men.append([500.0 + i * PITCH * 0.3, 500.0])
+	var read: Dictionary = DemoRelational.read(men, rel, PITCH * 0.25, PITCH * 0.5)
+	assert_eq(int(read["pieces"]), 4, "the first block is one piece, each unconnected man another")
+	assert_almost_eq(float(read["far"]), 0.0, 0.001, "each piece fits on its own, wherever the others stand")

@@ -1371,7 +1371,7 @@ whole-catalog absolute sweep as #1147.)
 (The `misslotted` and `shape_residual` verdicts described here were slot-based.
 `misslotted` now reads whether a man stands behind the right man.
 `shape_residual` is replaced by the relational `follow_error`.
-Both read the dump's `relations`, so a fold or re-deal of the grid cannot disturb them.
+Both read the dump's `relations`, so a fold of the grid cannot disturb them (a re-deal only by the transit window).
 `misslotted_count` is kept as the slot-based reading the relief corridor's budget test uses.
 The timing gap below holds for the new verdicts too.)
 

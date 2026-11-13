@@ -8,10 +8,9 @@ extends RefCounted
 ## so a block compressed, spread, sheared or bent as a whole reads, where the per-edge errors
 ## of DemoRelational stay small. Pure, and a leaf: it runs under bare `godot -s`.
 
-
-## Each man's place in the grid frame and the piece he belongs to, by breadth-first walk over
-## the leader and dressing relations of `rel` for `n` men. Men no relation reaches are pieces of
-## their own.
+## Each man's place in the grid frame and his piece, by breadth-first walk over the leader and
+## dressing relations of `rel` for `n` men. Men no relation connects are pieces of their own, and
+## `fit` fits each piece separately: two pieces never constrain each other's position or turn.
 static func grid(rel: Dictionary, n: int) -> Dictionary:
 	var adj: Array = []
 	for i in range(n):
@@ -49,7 +48,7 @@ static func grid(rel: Dictionary, n: int) -> Dictionary:
 					places[e[0]] = places[i] + (e[1] as Vector2)
 					queue.append(e[0])
 		count += 1
-	return {"places": places, "piece": piece}
+	return {"places": places, "piece": piece, "pieces": count}
 
 
 ## The fit of `places` onto the men at `pos`, one rotation and shift per piece. `cells` and

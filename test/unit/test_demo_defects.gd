@@ -939,6 +939,22 @@ func test_a_casualty_or_a_new_deal_opens_a_window_for_misslot_until_the_men_sett
 			"a change of who follows whom opens one at the same headcount")
 
 
+func test_a_casualty_window_starts_at_the_casualty_not_at_an_earlier_reshape() -> void:
+	var series: Dictionary = _mask_series([24, 24, 22, 22, 22], [0.0, 0.0, 20.0, 20.0, 1.0],
+			[[1], [1], [2], [2], [2]])
+	series["last_reshape_tick"] = [0, 0, 0, 0, 0]
+	var all_judged: Array = [true, true, true, true, true]
+	assert_eq(DemoDefects.follow_error_mask(series, all_judged, true), [true, true, false, false, true],
+			"a unit reshaped long ago still gets the reflow window from its casualty")
+
+
+func test_follow_error_reports_how_many_pieces_the_relations_fall_into() -> void:
+	var slots: Array = _grid(6, 4, SPACING)
+	var snaps: Array = [_snapshot(0, slots, slots), _snapshot(60, slots, slots)]
+	assert_eq(int(_verdict(DemoDefects.analyze(snaps), "follow_error")["pieces"]), 1,
+			"one block, one connected piece")
+
+
 # --- declared expectations (intent as data) ------------------------------------------
 
 func _swap_corners(grid: Array) -> Array:

@@ -205,7 +205,7 @@ static func kabsch_fit(slots: Array, positions: Array) -> Dictionary:
 ## own. The slot-based count, kept as an informational reading of a slot grid: the relief
 ## corridor's spread budget is tuned against it (test_relief_corridor.gd). The misslotted
 ## verdict does not read it; it reads the men behind the wrong man (DemoRelational), which
-## a fold, a re-deal or an anchor shift of the grid cannot disturb. Callers that want
+## a fold or an anchor shift of the grid cannot disturb (a re-deal it forgives only by the transit window). Callers that want
 ## turning-tolerant counts pass FIT-ALIGNED slots (see aligned_slots).
 static func misslotted_count(slots: Array, positions: Array) -> int:
 	var n: int = mini(slots.size(), positions.size())
@@ -418,7 +418,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "last_redeal_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "facing_angle": [], "pos": [],
-					"edges": [], "follow_rms": [], "follow_far": [], "misslotted": [], "files": [], "deal": [],
+					"edges": [], "follow_rms": [], "follow_far": [], "misslotted": [], "files": [], "deal": [], "pieces": [],
 					"motion_ref": u["motion_ref"],
 				}
 			var s: Dictionary = series[uid]
@@ -466,6 +466,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 					if still and float(rd["settled"]) <= spacing_now * MISSLOT_SETTLED_FRAC else 0.0)
 			s["files"].append(DemoRelations.files(rel.get("leaders", [])))
 			s["deal"].append(rel.get("leaders", []))
+			s["pieces"].append(rd["pieces"])
 			var fa: Array = u.get("facing", [0.0, 1.0])
 			s["facing_angle"].append(atan2(float(fa[1]), float(fa[0])))
 			s["pos"].append(u["soldiers_full"]["pos"])
@@ -599,6 +600,7 @@ static func follow_error_mask(s: Dictionary, base_mask: Array = [], casualties: 
 		var prev_last_tick: int = int(s["last_reshape_tick"][i - 1]) if (has_last_tick and i > 0) else -1
 
 		var reshape_event := false
+		var flow_event := false
 		var old_files: int = int(s["frontage"][i - 1]) if (i > 0 and s.has("frontage") and s["frontage"].size() > i) else 1
 		var new_files: int = int(s["frontage"][i]) if (s.has("frontage") and s["frontage"].size() > i) else old_files
 
@@ -622,9 +624,12 @@ static func follow_error_mask(s: Dictionary, base_mask: Array = [], casualties: 
 			elif casualties and (int(s["counts"][i]) < int(s["counts"][i - 1])
 					or s["deal"][i] != s["deal"][i - 1]):
 				reshape_event = true
+				flow_event = true
 
 		if reshape_event:
-			var start_tick: int = cur_last_tick if cur_last_tick >= 0 else tick
+			# A casualty or a new deal starts its window at its own sample, not at the unit's last
+			# unrelated reshape, which may be long past.
+			var start_tick: int = cur_last_tick if cur_last_tick >= 0 and not flow_event else tick
 			var count: int = int(s["counts"][i]) if (s.has("counts") and s["counts"].size() > i) else 1
 			var timeout_sec: float = reshape_timeout(old_files, new_files, count, fp, rp, jog, back_frac)
 			if redeal_event and s.has("follow_far") and s["follow_far"].size() > i:
@@ -676,8 +681,11 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	# behind each man's leader and from his interval to his dressing man, sustained. Pitch-based
 	# deliberately, since the pitch is the basis the relations are laid out on.
 	if judged_relations:
-		out.append(_sustained_verdict(uid, "follow_error", s, "follow_rms",
-				spacing * FOLLOW_RMS_FRAC, follow_error_mask(s, mask), MIN_SUSTAIN, true))
+		var follow: Dictionary = _sustained_verdict(uid, "follow_error", s, "follow_rms",
+				spacing * FOLLOW_RMS_FRAC, follow_error_mask(s, mask), MIN_SUSTAIN, true)
+		# Men no relation connects are fitted as separate pieces: say when there is more than one.
+		follow["pieces"] = int(s["pieces"].max())
+		out.append(follow)
 		# Misslot: the fraction of soldiers standing behind another man than their leader.
 		out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
 				MISSLOT_MAX_FRAC, follow_error_mask(s, mask, true), MIN_SUSTAIN, true))

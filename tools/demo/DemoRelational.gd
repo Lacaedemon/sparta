@@ -67,7 +67,7 @@ static func _behind_wrong_man(pos: Array, i: int, leader: int, turn: float,
 static func read(pos: Array, rel: Dictionary, stand: float, half_width: float) -> Dictionary:
 	var list: Array = edges(pos, rel)
 	if list.is_empty():
-		return {"edges": 0, "rms": 0.0, "far": 0.0, "behind_wrong": 0, "settled": 0.0}
+		return {"edges": 0, "rms": 0.0, "far": 0.0, "behind_wrong": 0, "settled": 0.0, "pieces": 0}
 	var n: int = pos.size()
 	var grid: Dictionary = DemoRelationalFit.grid(rel, n)
 	var fit: Dictionary = DemoRelationalFit.fit(pos, grid["places"], grid["piece"], stand)
@@ -95,4 +95,5 @@ static func read(pos: Array, rel: Dictionary, stand: float, half_width: float) -
 		near_sum += fit["near"][i]
 		fill_sum += fit["fill"][i]
 	return {"edges": list.size(), "rms": maxf(sqrt(sq / list.size()), sqrt(walk_sq / n)),
-			"far": far, "behind_wrong": wrong.size(), "settled": maxf(near_sum, fill_sum) / n}
+			"far": far, "behind_wrong": wrong.size(), "settled": maxf(near_sum, fill_sum) / n,
+			"pieces": grid["pieces"]}

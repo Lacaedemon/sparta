@@ -644,10 +644,15 @@ flutter, sustained super-physical speed, and crossing routes).
 The follow error, misslot and file-crossing checks are relational, from the dump's `relations`:
 `follow_error` is the larger of two readings.
 One is the RMS error of every man from the place behind his leader and of his interval to his dressing man.
-The other is the RMS walk of every man to his identity place, which the relations chain back through his file and rank
+The other is the RMS walk of every man to his identity place, which the relations chain back through his file and rank,
+one rotation and shift per connected piece of men (men no relation connects are pieces of their own, fitted separately,
+and the verdict data carries the largest number of pieces read as `pieces`)
 (so a block compressed, spread, sheared or bent as a whole reads, where each edge stays near its pitch).
 Both are taken after fitting the one rotation the men's relations share from the men themselves,
-so a turn, a fold, a re-deal or a shift of the slot grid cannot read as a defect.
+so a turn, a fold or a shift of the slot grid cannot read as a defect.
+The identity places are the unit's own grid as laid out without traverse arcs or corridor, so the whole-block reading
+is the rigid residual against that grid.
+A re-deal, a reflow or a reshape changes the grid under men who have not yet walked, and is forgiven only by the transit window.
 `misslotted` is the fraction of men standing behind another man than their own leader
 (the nearest man ahead in their column),
 or in the place of their dressing man as he stands in theirs.
@@ -660,7 +665,7 @@ A headcount drop or a change of who follows whom opens a window until the men se
 (or who pass through each other along it) between two judged samples.
 Like `path_crossing`, it fails when more than 15% of a file's men do so over two samples running.
 The slot-based `shape_residual` verdict is retired:
-it read a fold or re-deal of the grid under the men as a defect,
+it read a fold of the grid, and the arcs and corridors laid over it, under the men as a defect,
 and `follow_error` reads the same deformation of the men themselves where it is real.
 An exemption can only name a metric the analyzer emits, so one keyed on a retired metric is refused.
 A dump taken before `relations` existed is not judged by the relational checks.
