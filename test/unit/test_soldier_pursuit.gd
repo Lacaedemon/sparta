@@ -84,3 +84,5 @@ func test_a_rider_turns_onto_a_new_runner_at_his_pace_rather_than_pulling_up() -
 	assert_almost_eq(Vector2.RIGHT.angle_to(next), PI * TICK, 0.0001, "swinging at his turn rate")
 	var halted: Vector2 = SoldierPursuitStep.ride(Vector2.ZERO, Vector2(0, 170), 30.0, PI, TICK)
 	assert_almost_eq(halted, Vector2(0, 0.5), Vector2(0.0001, 0.0001), "from rest he sets off at once")
+	var shoved: Vector2 = SoldierPursuitStep.ride(Vector2(-260, 0), Vector2(170, 0), 30.0, PI, TICK)
+	assert_almost_eq(shoved, Vector2(-259.5, 0), Vector2(0.0001, 0.0001), "a shove is shed, not turned onto his line")

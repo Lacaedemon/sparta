@@ -61,12 +61,13 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	SimOps.add(SimOps.BODY_STEP, n)
 
 
-## A rider's next velocity from `vel`: he swings onto `desired` at `turn` (radians a second)
-## keeping his pace, as a horse at the gallop turns rather than pulling up to turn, and gains or
-## sheds pace toward `desired`'s at `accel`. A rider at rest sets off along `desired` at once.
+## A rider's next velocity from `vel`: he swings onto `desired` at `turn` (radians a second) at his
+## pace, as a horse at the gallop turns rather than pulling up to, gaining or shedding pace at
+## `accel`. At rest, or shoved past the pace he wants, he changes straight toward `desired`.
 static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float, delta: float) -> Vector2:
 	var speed: float = vel.length()
-	if speed <= SoldierBodies.REST_SPEED or desired == Vector2.ZERO:
+	if speed <= SoldierBodies.REST_SPEED or desired == Vector2.ZERO \
+			or speed > desired.length() + accel * delta:
 		return vel.move_toward(desired, accel * delta)
 	var swing: float = clampf(vel.angle_to(desired), -turn * delta, turn * delta)
 	return (vel / speed).rotated(swing) * move_toward(speed, desired.length(), accel * delta)
