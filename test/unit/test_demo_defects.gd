@@ -6,6 +6,9 @@ extends GutTest
 ## state dump emits, so these tests also pin the analyzer's input contract.
 
 const SPACING := 9.0
+## Sample ticks whose third sample lies thousands of ticks after the stale stamp at tick 0:
+## far past any reshape window, so a window anchored to the stamp has expired by then.
+const LATE_TICKS := [0, 60, 6000, 6060, 6120]
 
 
 func _grid(files: int, ranks: int, spacing: float, origin: Vector2 = Vector2.ZERO,
@@ -943,6 +946,7 @@ func test_a_casualty_window_starts_at_the_casualty_not_at_an_earlier_reshape() -
 	var series: Dictionary = _mask_series([24, 24, 22, 22, 22], [0.0, 0.0, 20.0, 20.0, 1.0],
 			[[1], [1], [2], [2], [2]])
 	series["last_reshape_tick"] = [0, 0, 0, 0, 0]
+	series["ticks"] = LATE_TICKS
 	var all_judged: Array = [true, true, true, true, true]
 	assert_eq(DemoDefects.follow_error_mask(series, all_judged, true), [true, true, false, false, true],
 			"a unit reshaped long ago still gets the reflow window from its casualty")
@@ -953,12 +957,14 @@ func test_a_formation_or_frontage_change_after_an_earlier_stamp_starts_its_own_w
 	var toggled: Dictionary = _mask_series([24, 24, 24, 24, 24], [0.0, 0.0, 20.0, 20.0, 1.0],
 			[[1], [1], [1], [1], [1]])
 	toggled["last_reshape_tick"] = [0, 0, 0, 0, 0]
+	toggled["ticks"] = LATE_TICKS
 	toggled["formation"] = ["NORMAL", "NORMAL", "SQUARE", "SQUARE", "SQUARE"]
 	assert_eq(DemoDefects.follow_error_mask(toggled, all_judged), [true, true, false, false, true],
 			"a formation toggle long after the last frontage stamp is forgiven while the men walk")
 	var widened: Dictionary = _mask_series([24, 24, 24, 24, 24], [0.0, 0.0, 20.0, 20.0, 1.0],
 			[[1], [1], [1], [1], [1]])
 	widened["last_reshape_tick"] = [0, 0, 0, 0, 0]
+	widened["ticks"] = LATE_TICKS
 	widened["frontage"] = [6, 6, 12, 12, 12]
 	assert_eq(DemoDefects.follow_error_mask(widened, all_judged), [true, true, false, false, true])
 
