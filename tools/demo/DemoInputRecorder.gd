@@ -61,6 +61,10 @@ var _deployment_gap_m: float = -1.0
 # instance (not via a Settings session setter) since this is a live-battle behavior
 # override, not a HUD/render toggle -- see _start_battle.
 var _form_up_dist: int = -1
+# The explicatio the script's B presses deal, from its optional "explicatio" block
+# (DemoExplicatio.parse); empty leaves SelectionManager's defaults. Set on the live
+# SelectionManager in _start_battle, like _form_up_dist.
+var _explicatio: Dictionary = {}
 # Optional tray-grid seed from the input script's "tray_grid" field (rows of unit uids
 # or nulls) plus the session-only tray_row_order_placement / show_unit_card_tray
 # toggles. Applied after Battle._ready so HUD's tray exists; empty = leave the tray
@@ -238,6 +242,12 @@ func _ready() -> void:
 			return
 		_deployment_gap_m = gap["gap_m"]
 	_form_up_dist = int(script.get("form_up_dist", -1))
+	# Strict like map: the block decides WHAT drill the clip shows.
+	if script.has("explicatio"):
+		_explicatio = DemoExplicatio.parse(script["explicatio"])
+		if _explicatio.has("error"):
+			_fail(2, "[demo-input] %s" % _explicatio["error"])
+			return
 	_tray_row_order_placement = bool(script.get("tray_row_order_placement", false))
 	_show_unit_card_tray = bool(script.get("show_unit_card_tray", false))
 	var raw_tray_grid = script.get("tray_grid", [])
@@ -340,6 +350,10 @@ func _start_battle() -> void:
 	_hud = _battle.get_node("HUD")
 	if _form_up_dist >= 0:
 		_sel._form_up_dist = _form_up_dist
+	if not _explicatio.is_empty():
+		_sel.explicatio_drill = _explicatio["drill"]
+		_sel.explicatio_side = _explicatio["side"]
+		_sel.explicatio_ground = _explicatio["ground"]
 	_apply_demo_tray()
 	if _initial_time_scale != 1.0 and _initial_time_scale > 0.0:
 		_set_time_scale(_initial_time_scale, 0)

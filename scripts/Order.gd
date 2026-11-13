@@ -307,6 +307,11 @@ var dir: int = 0
 ## Unit.set_frontage deals it only to a block that can do it; the turn-and-unfold combo's widen is
 ## the drill only for a block as deep as it was wide (Unit.set_frontage).
 var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
+## On a widening relative FRONTAGE step, the side of each file its interval opens on
+## (UnitFormation.ExplicatioSide) and whether the line keeps its pitch or its ground
+## (UnitFormation.ExplicatioGround), as Unit.set_frontage reads them.
+var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
+var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
 ## The gait (Battle.Gait: WALK/JOG/RUN/SPRINT) for MOVE orders. When >= 0, overrides
@@ -512,6 +517,8 @@ func to_dict() -> Dictionary:
 		"frontage_anchor_offset": frontage_anchor_offset,
 		"dir": dir,
 		"explicatio_drill": explicatio_drill,
+		"explicatio_side": explicatio_side,
+		"explicatio_ground": explicatio_ground,
 		"order_mode": order_mode,
 		"gait": gait,
 		"haste": haste,
@@ -561,6 +568,10 @@ static func from_dict(d: Dictionary) -> Order:
 	# Absent in an order saved before the drill: its widen was the lateral deal, and it resumes as
 	# one, as ReplayDecoder plays back a B press recorded before the drill.
 	o.explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.NONE))
+	# Absent in an order saved before the variants: the outward, lengthening drill it was.
+	o.explicatio_side = int(d.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD))
+	o.explicatio_ground = int(d.get("explicatio_ground",
+			UnitFormation.ExplicatioGround.LENGTHEN))
 	o.order_mode = int(d.get("order_mode", 0))
 	o.gait = int(d.get("gait", -1))
 	o.haste = bool(d.get("haste", false))
@@ -728,9 +739,13 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 ## contract violation still gets a well-formed step instead of a corrupted one. Callers
 ## wanting an absolute file count belong on `new_frontage` instead.
 ## `drill` (UnitFormation.ExplicatioDrill) is the explicatio a widen is dealt as; the
-## half-file drill unless the order names another.
+## half-file drill unless the order names another. `side` (UnitFormation.ExplicatioSide) and
+## `ground` (UnitFormation.ExplicatioGround) are its readings, outward and lengthening unless
+## the order names others.
 static func new_file_double(direction: int,
-		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE) -> Order:
+		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE,
+		side: int = UnitFormation.ExplicatioSide.OUTWARD,
+		ground: int = UnitFormation.ExplicatioGround.LENGTHEN) -> Order:
 	if direction == 0:
 		push_error("Order.new_file_double: direction must be nonzero (0 has no relative " +
 				"widen/narrow meaning); defaulting to an explicatio. Use new_frontage for " +
@@ -740,6 +755,8 @@ static func new_file_double(direction: int,
 	o.type = Type.FRONTAGE
 	o.dir = signi(direction)
 	o.explicatio_drill = drill
+	o.explicatio_side = side
+	o.explicatio_ground = ground
 	return o
 
 

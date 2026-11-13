@@ -45,6 +45,11 @@ static func _decode_order(o: Dictionary) -> Dictionary:
 		entry["explicatio"] = int(o["explicatio"])
 	if o.has("explicatio_held"):
 		entry["explicatio_held"] = int(o["explicatio_held"])
+	# Absent in a replay recorded before the drill's readings: the outward, lengthening drill.
+	if o.has("explicatio_side"):
+		entry["explicatio_side"] = int(o["explicatio_side"])
+	if o.has("explicatio_ground"):
+		entry["explicatio_ground"] = int(o["explicatio_ground"])
 	return entry
 
 
