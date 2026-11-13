@@ -514,6 +514,13 @@ analyzer derives thresholds from (`formation_spacing`, the per-axis pitches,
 `soldier_body_radius` -- the physical-contact basis for the blob/overlap floors, distinct
 from the grid pitch -- the three gait speeds, `pivot_radius`, `turn_rate`), so analysis
 reads the sim's own tuning rather than hardcoding a copy.
+`relations` is who stands behind and beside whom (`DemoRelations.plan`, read off the unit's grid
+as laid out before any traverse arc or corridor bends it):
+for each man the index of the man ahead of him in his file (`leaders`) and of the man to his right
+in his rank (`dress`), `-1` for none, with the matching `offsets` and `dress_offsets` as
+(to his right, behind him) pairs in the grid's own frame.
+A man's place is his identity, so the relational defect metrics below judge the men against these
+men and never against a point of the grid in the world.
 
 ### Declared expectations (`expect`)
 
@@ -545,6 +552,9 @@ Two optional keys widen what an entry can say:
 
 Seven more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
 defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
+The slot-based ones among them (the first five) measure a deal of the slot grid, which is what the sim
+still sends the men to, and are kept for the clips that pin one;
+they retire with the slot grid, and the relational checks above are what judge the men.
 The first three measure sideways from the unit's position.
 The first two compare every man's body with his own slot, along the unit's lateral axis.
 Sampled the tick after a reshape, they show where the reshape sends the men before anyone has walked:
@@ -629,8 +639,20 @@ where a flee was staged) turns into a red exit code instead of an eyeball catch.
 
 `tools/demo/DemoDefects.gd` turns a FULL dump into deterministic defect verdicts -- the
 machine-checkable core of the demo-review checklist (blob/compression, soldier overlap,
-shape scramble via an ordered-vs-actual best-fit decomposition, facing whipsaw, facing
+follow error, men standing behind the wrong man, facing whipsaw, facing
 flutter, sustained super-physical speed, and crossing routes).
+The follow error and misslot checks are relational, from the dump's `relations`:
+`follow_error` is the RMS error of every man from the place behind his leader and of his interval
+to his dressing man, after fitting the one rotation the men's relations share from the men themselves,
+so a turn, a fold, a re-deal or a shift of the slot grid cannot read as a defect.
+`misslotted` is the fraction of men standing on the place behind another man rather than behind their
+own leader (or on the wrong side of their dressing man): behind the right man or not.
+`file_crossing` is the share of men whose route crosses another man's of the same file between two
+judged samples, men walking through each other in a file, and it fails on any.
+The slot-based `shape_residual` verdict is retired:
+it read a fold or re-deal of the grid under the men as a defect, and every clip that still fails
+`follow_error` reads the same deformation of the men themselves.
+A dump taken before `relations` existed is not judged by the relational checks.
 Facing flutter is the small-amplitude counterpart of whipsaw: a facing that flips back and
 forth sample after sample, however small each swing, while marching out of contact.
 It fails on more than three reversals in a row over samples at most four ticks apart.
@@ -651,8 +673,8 @@ a declaration would silently disable every check for the clip. Post-contact samp
 melee press legitimately compresses a block -- and the sustained checks are
 convergence-aware: a long transition (a reshape, a big commanded turn) that steadily
 improves toward tolerance is read as healthy, while the same magnitude holding flat or
-worsening is a defect. Slot-misassignment only counts once the men are actually standing on
-the grid (identity is noise mid-transit).
+worsening is a defect. Misslot only counts once the men are actually standing in their
+places (who a man stands behind is noise mid-transit).
 
 `path_crossing` is the one metric that scores the ROUTE rather than the destination, and it
 exists because every other check above is blind in exactly the same place. Misslot is

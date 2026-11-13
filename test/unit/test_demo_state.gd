@@ -530,3 +530,37 @@ func test_motion_ref_slot_grid_leaves_out_the_traverse_arcs() -> void:
 			widest = maxf(widest, absf((s - u.position).dot(axis)))
 		assert_gt(widest, 4.0 * p,
 				"square %s: precondition: the arcs bend slots out past the grid" % square)
+
+
+func _assert_men_stand_in_their_relations(u: Unit, what: String) -> void:
+	# The layout may have changed since the men were seeded: stand them on it.
+	var stand: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(stand.size()):
+		u._sim_soldier_pos[i] = stand[i]
+	var rec: Dictionary = DemoState.unit_record(u, {}, 1.0, true)
+	var full: Dictionary = rec["soldiers_full"]
+	var rel: Dictionary = full["relations"]
+	assert_eq(rel["leaders"].size(), u.soldiers, "%s: one leader entry per man" % what)
+	var read: Dictionary = DemoRelational.read(full["pos"], rel, 1.0)
+	assert_gt(read["edges"], 0, "%s: the grid names who stands behind and beside whom" % what)
+	assert_lt(float(read["rms"]), 0.05,
+			"%s: men on their grid read no error from the men they follow" % what)
+	assert_eq(read["behind_wrong"], 0, "%s: nobody stands behind the wrong man" % what)
+
+
+func test_relations_hold_for_the_men_on_every_layout_however_it_is_turned_or_mirrored() -> void:
+	var file_major := _footprint_unit(60, 6, Unit.ReformMode.FILE_MAJOR)
+	_assert_men_stand_in_their_relations(file_major, "file major")
+	var leaders: Array = DemoState.relations(file_major)["leaders"]
+	assert_eq(leaders.count(-1), 6, "the six file leaders follow nobody")
+	var row := _footprint_unit(61, 8, Unit.ReformMode.ROW_MAJOR)
+	_assert_men_stand_in_their_relations(row, "row major with a short last rank")
+	var square := _footprint_unit(60, 8, Unit.ReformMode.ROW_MAJOR)
+	square.set_formation(Unit.FORMATION_SQUARE)
+	_assert_men_stand_in_their_relations(square, "square")
+	var folded := _footprint_unit(60, 6, Unit.ReformMode.ROW_MAJOR)
+	folded._formation_angle = PI * 0.5
+	_assert_men_stand_in_their_relations(folded, "a quarter fold")
+	var mirrored := _footprint_unit(60, 8, Unit.ReformMode.ROW_MAJOR)
+	mirrored._formation_mirror_x = true
+	_assert_men_stand_in_their_relations(mirrored, "a mirrored reform")

@@ -37,9 +37,29 @@ func _snapshot(tick: int, bodies: Array, slots: Array, engaged: bool = false,
 		"formation": formation, "frontage": frontage,
 		"last_reshape_tick": last_reshape_tick,
 		"anchor_held": anchor_held,
-		"soldiers_full": {"pos": bodies, "slots": slots},
+		"soldiers_full": {"pos": bodies, "slots": slots, "relations": _relations_of(slots, ref)},
 		"motion_ref": ref,
 	}]}
+
+
+## The relations a dump carries for a unit whose slots are an axis-aligned grid: who stands
+## behind and beside whom (DemoRelations.plan), read off the slots taken as the grid's local
+## frame. A rotated grid has no such frame, so it carries none.
+func _relations_of(slots: Array, ref: Dictionary) -> Dictionary:
+	var local := PackedVector2Array()
+	for p in slots:
+		local.push_back(Vector2(p[0], p[1]))
+	var plan: Dictionary = DemoRelations.plan(local, 1.0,
+			float(ref.get("file_pitch", ref["formation_spacing"])),
+			float(ref.get("rank_pitch", ref["formation_spacing"])))
+	var offsets: Array = []
+	for o in plan["offsets"]:
+		offsets.append([o.x, o.y])
+	var dress_offsets: Array = []
+	for o in plan["dress_offsets"]:
+		dress_offsets.append([o.x, o.y])
+	return {"leaders": Array(plan["leaders"]), "offsets": offsets,
+			"dress": Array(plan["dress"]), "dress_offsets": dress_offsets}
 
 
 func _verdict(result: Dictionary, metric: String) -> Dictionary:
@@ -228,7 +248,7 @@ func test_routing_samples_are_exempt_from_grid_checks() -> void:
 		_snapshot(120, mob, slots, false, "ROUTING")]
 	var result: Dictionary = DemoDefects.analyze(snaps)
 	assert_true(bool(_verdict(result, "blob")["pass"]), "a routing mob is not a blob")
-	assert_true(bool(_verdict(result, "shape_residual")["pass"]),
+	assert_true(bool(_verdict(result, "follow_error")["pass"]),
 			"a routing mob has no grid to deviate from")
 
 
@@ -268,7 +288,7 @@ func test_a_block_still_in_enemy_contact_is_exempt_even_once_disengaged() -> voi
 			"a block still in the press is not judged for spacing once merely disengaged")
 	assert_true(bool(_verdict(backing, "blob")["pass"]),
 			"nor for median compression")
-	assert_true(bool(_verdict(backing, "shape_residual")["pass"]),
+	assert_true(bool(_verdict(backing, "follow_error")["pass"]),
 			"nor for shape, which the same press scrambles")
 	var clear: Array = [
 		_snapshot(0, press, slots),
@@ -339,7 +359,7 @@ func test_the_sample_after_a_formation_reshape_is_exempt() -> void:
 		_snapshot(60, slots_norm.duplicate(), slots_tight, false, "MOVING", [0.0, 1.0], {}, false, "TIGHT", 6), # reshape tick
 		_snapshot(120, slots_tight.duplicate(), slots_tight, false, "MOVING", [0.0, 1.0], {}, false, "TIGHT", 6), # settled
 	]
-	assert_true(bool(_verdict(DemoDefects.analyze(transient), "shape_residual")["pass"]),
+	assert_true(bool(_verdict(DemoDefects.analyze(transient), "follow_error")["pass"]),
 			"shape residual right after a formation reshape is exempt during transition")
 
 
@@ -355,7 +375,7 @@ func test_reshape_timeout_calculation() -> void:
 	assert_almost_eq(t_change, expected_change, 0.01, "timeout with changed files matches formula")
 
 
-func test_post_reshape_transit_window_exempts_shape_residual_over_multiple_samples() -> void:
+func test_post_reshape_transit_window_exempts_follow_error_over_multiple_samples() -> void:
 	var slots_start: Array = _grid(6, 4, SPACING)
 	var slots_wide: Array = _grid(12, 2, SPACING)
 	var transit_bodies: Array = []
@@ -370,7 +390,7 @@ func test_post_reshape_transit_window_exempts_shape_residual_over_multiple_sampl
 		_snapshot(80, slots_wide.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
 	]
 	var res_reshape: Dictionary = DemoDefects.analyze(snaps_reshape)
-	assert_true(bool(_verdict(res_reshape, "shape_residual")["pass"]),
+	assert_true(bool(_verdict(res_reshape, "follow_error")["pass"]),
 			"shape residual during multi-sample post-reshape transit is exempt")
 
 	var snaps_control: Array = [
@@ -381,8 +401,8 @@ func test_post_reshape_transit_window_exempts_shape_residual_over_multiple_sampl
 		_snapshot(80, slots_start.duplicate(), slots_start, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6),
 	]
 	var res_control: Dictionary = DemoDefects.analyze(snaps_control)
-	assert_false(bool(_verdict(res_control, "shape_residual")["pass"]),
-			"unreshaped block holding high residual fails shape_residual")
+	assert_false(bool(_verdict(res_control, "follow_error")["pass"]),
+			"unreshaped block holding high residual fails follow_error")
 
 
 ## `snap` with its unit's last near-quarter re-deal stamped at `tick`.
@@ -405,7 +425,7 @@ func test_a_near_quarter_redeal_opens_the_transit_window() -> void:
 			snaps.append(_redealt(snap, 20) if redealt else snap)
 		var last: Dictionary = _snapshot(80, slots.duplicate(), slots)
 		snaps.append(_redealt(last, 20) if redealt else last)
-		var passed: bool = bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"])
+		var passed: bool = bool(_verdict(DemoDefects.analyze(snaps), "follow_error")["pass"])
 		assert_eq(passed, redealt, "a re-deal's walk is judged as transit, the same walk without one fails")
 
 
@@ -425,11 +445,11 @@ func test_a_redeal_window_is_bounded_by_its_farthest_walk() -> void:
 	var snaps: Array = [_snapshot(0, slots.duplicate(), slots)]
 	for t in [20, 120, 160, 200, 240]:
 		snaps.append(_redealt(_snapshot(t, swapped.duplicate(), slots), 20))
-	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"]),
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "follow_error")["pass"]),
 			"men still off their slots past the farthest walk's window fail")
 
 
-func test_a_stuck_redeal_past_its_timeout_fails_shape_residual() -> void:
+func test_a_stuck_redeal_past_its_timeout_fails_follow_error() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var scrambled: Array = []
 	for i in range(slots.size()):
@@ -437,11 +457,11 @@ func test_a_stuck_redeal_past_its_timeout_fails_shape_residual() -> void:
 	var snaps: Array = [_snapshot(0, slots.duplicate(), slots)]
 	for t in [20, 120, 240, 360, 480]:
 		snaps.append(_redealt(_snapshot(t, scrambled.duplicate(), slots), 20))
-	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "shape_residual")["pass"]),
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "follow_error")["pass"]),
 			"a scramble that outlasts the re-deal's timeout still fails")
 
 
-func test_stuck_reshape_past_timeout_fails_shape_residual() -> void:
+func test_stuck_reshape_past_timeout_fails_follow_error() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var scrambled: Array = []
 	for i in range(slots.size()):
@@ -455,8 +475,8 @@ func test_stuck_reshape_past_timeout_fails_shape_residual() -> void:
 		_snapshot(480, scrambled.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, 20),
 	]
 	var res: Dictionary = DemoDefects.analyze(snaps)
-	assert_false(bool(_verdict(res, "shape_residual")["pass"]),
-			"scramble persisting past reshape timeout fails shape_residual")
+	assert_false(bool(_verdict(res, "follow_error")["pass"]),
+			"scramble persisting past reshape timeout fails follow_error")
 
 
 func test_reshape_transit_window_closes_early_once_settled() -> void:
@@ -476,11 +496,11 @@ func test_reshape_transit_window_closes_early_once_settled() -> void:
 		_snapshot(120, scrambled.duplicate(), slots_wide, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 12, 20),
 	]
 	var res: Dictionary = DemoDefects.analyze(snaps)
-	assert_false(bool(_verdict(res, "shape_residual")["pass"]),
-			"scramble occurring after early settlement fails shape_residual")
+	assert_false(bool(_verdict(res, "follow_error")["pass"]),
+			"scramble occurring after early settlement fails follow_error")
 
 
-func test_anchor_held_exempts_shape_residual() -> void:
+func test_anchor_held_exempts_follow_error() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var scrambled: Array = []
 	for i in range(slots.size()):
@@ -494,7 +514,7 @@ func test_anchor_held_exempts_shape_residual() -> void:
 		_snapshot(80, slots.duplicate(), slots, false, "MOVING", [0.0, 1.0], {}, false, "NORMAL", 6, -1, false),
 	]
 	var res: Dictionary = DemoDefects.analyze(snaps)
-	assert_true(bool(_verdict(res, "shape_residual")["pass"]),
+	assert_true(bool(_verdict(res, "follow_error")["pass"]),
 			"shape residual while anchor_held is active is exempt")
 
 
@@ -519,24 +539,37 @@ func test_colocated_soldiers_fail_the_overlap_verdict_on_one_sample() -> void:
 			"a single pre-contact sample with co-located soldiers fails overlap")
 
 
-func test_scrambled_block_fails_shape_residual_while_a_rotated_one_passes() -> void:
+func test_scrambled_block_fails_follow_error_while_a_rotated_one_passes() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var rotated: Array = _grid(6, 4, SPACING, Vector2.ZERO, deg_to_rad(45.0))
 	var rot_result: Dictionary = DemoDefects.analyze([
 		_snapshot(0, rotated, slots), _snapshot(60, rotated, slots)])
-	assert_true(bool(_verdict(rot_result, "shape_residual")["pass"]),
+	assert_true(bool(_verdict(rot_result, "follow_error")["pass"]),
 			"a rigidly rotated block is turning, not scrambled")
 	var scrambled: Array = []
 	for i in range(slots.size()):
 		scrambled.append(slots[(i * 7 + 3) % slots.size()])
 	var scr_result: Dictionary = DemoDefects.analyze([
 		_snapshot(0, scrambled, slots), _snapshot(60, scrambled, slots)])
-	assert_false(bool(_verdict(scr_result, "shape_residual")["pass"]),
+	assert_false(bool(_verdict(scr_result, "follow_error")["pass"]),
 			"a slot-scattered block is scrambled")
-	assert_false(bool(_verdict(scr_result, "misslotted")["pass"]),
-			"and its soldiers stand on each other's slots")
 	assert_true(bool(_verdict(rot_result, "misslotted")["pass"]),
-			"while a rigidly rotated block's men all keep their own slots")
+			"while a rigidly rotated block's men all keep their own leaders")
+
+
+func test_two_files_that_traded_places_fail_misslotted_while_their_leaders_hold() -> void:
+	# Files 0 and 1 trade places in every rank: each man still stands behind his own leader
+	# (his file moved whole), so the men are settled, but eight of the 24 now stand on the
+	# wrong side of their dressing man.
+	var slots: Array = _grid(6, 4, SPACING)
+	var traded: Array = slots.duplicate()
+	for r in range(4):
+		traded[r * 6] = slots[r * 6 + 1]
+		traded[r * 6 + 1] = slots[r * 6]
+	var result: Dictionary = DemoDefects.analyze([_snapshot(0, traded, slots), _snapshot(60, traded, slots)])
+	assert_false(bool(_verdict(result, "misslotted")["pass"]),
+			"a third of the block standing beside the wrong men is a rank swap")
+	assert_almost_eq(float(_verdict(result, "misslotted")["worst"]), 8.0 / 24.0, 0.001)
 
 
 func test_teleporting_soldier_fails_superphysical_only_when_sustained() -> void:
@@ -786,18 +819,18 @@ func test_a_converging_transition_passes_where_a_stuck_defect_fails() -> void:
 	# A rigid translation would be absorbed by the fit, so build genuine shape error
 	# with COMPRESSED grids annealing toward the ordered spacing.
 	var slots: Array = _grid(6, 4, SPACING)
-	var far: Array = _grid(6, 4, SPACING * 0.3)
-	var mid: Array = _grid(6, 4, SPACING * 0.55)
-	var near: Array = _grid(6, 4, SPACING * 0.8)
+	var far: Array = _grid(6, 4, SPACING * 0.1)
+	var mid: Array = _grid(6, 4, SPACING * 0.2)
+	var near: Array = _grid(6, 4, SPACING * 0.4)
 	var converging: Array = [
 		_snapshot(0, far, slots), _snapshot(60, mid, slots), _snapshot(120, near, slots),
 		_snapshot(180, slots.duplicate(), slots)]
-	assert_true(bool(_verdict(DemoDefects.analyze(converging), "shape_residual")["pass"]),
+	assert_true(bool(_verdict(DemoDefects.analyze(converging), "follow_error")["pass"]),
 			"a steadily improving residual is a transition, not a defect")
 	var stuck: Array = [
 		_snapshot(0, far.duplicate(), slots), _snapshot(60, far.duplicate(), slots),
 		_snapshot(120, far.duplicate(), slots)]
-	assert_false(bool(_verdict(DemoDefects.analyze(stuck), "shape_residual")["pass"]),
+	assert_false(bool(_verdict(DemoDefects.analyze(stuck), "follow_error")["pass"]),
 			"the same magnitude holding flat is a defect")
 
 
@@ -853,6 +886,41 @@ func test_repeated_place_trading_fails_path_crossing_while_a_turn_passes() -> vo
 		_snapshot(60, _grid(6, 4, SPACING, Vector2.ZERO, deg_to_rad(40.0)), grid)]
 	assert_true(bool(_verdict(DemoDefects.analyze(turning), "path_crossing")["pass"]),
 			"a block turning through the same angles keeps every man on his own route")
+
+
+func test_crossing_indices_with_groups_pairs_only_men_of_one_group() -> void:
+	var grid: Array = _grid(6, 4, SPACING)
+	var swapped: Array = _swap_corners(grid)
+	var apart: Array = []
+	for i in range(grid.size()):
+		apart.append(i)
+	assert_eq(DemoDefects.crossing_indices(grid, swapped, SPACING * 0.5, apart), [],
+			"men who each stand in a group of their own cross nobody")
+	var together: Array = apart.duplicate()
+	together[5] = 0
+	assert_eq(DemoDefects.crossing_indices(grid, swapped, SPACING * 0.5, together), [0, 5],
+			"two corner men of one group still cross each other's route")
+
+
+func test_men_of_one_file_walking_through_each_other_fail_file_crossing() -> void:
+	# One file of four. The front and rear men trade places by routes that cross at the middle
+	# of the file, each sidestepping the same way, while the two between stand still.
+	var file: Array = _grid(1, 4, SPACING)
+	var through: Array = file.duplicate()
+	through[0] = [float(file[3][0]) + 5.0, float(file[3][1])]
+	through[3] = [float(file[0][0]) + 5.0, float(file[0][1])]
+	var walking: Dictionary = DemoDefects.analyze([_snapshot(0, file, file), _snapshot(30, through, file)])
+	assert_false(bool(_verdict(walking, "file_crossing")["pass"]),
+			"two men of one file whose routes cross have walked through each other")
+	var standing: Dictionary = DemoDefects.analyze([_snapshot(0, file, file), _snapshot(30, file, file)])
+	assert_true(bool(_verdict(standing, "file_crossing")["pass"]), "a file standing still crosses nothing")
+	# The corner swap across a block sends the two corner men of file 0, and of file 5, the
+	# length of their files on routes that cross.
+	var grid: Array = _grid(6, 4, SPACING)
+	var trading: Dictionary = DemoDefects.analyze([_snapshot(0, grid, grid),
+			_snapshot(30, _swap_corners(grid), grid)])
+	assert_false(bool(_verdict(trading, "file_crossing")["pass"]),
+			"corner men trading the ends of their own files cross within them")
 
 
 func test_exemption_requires_named_units_and_a_written_reason() -> void:

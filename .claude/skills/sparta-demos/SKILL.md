@@ -1151,7 +1151,8 @@ passed.)
 
 ## Gate mechanics for sampling design: shape/blob need SUSTAINED violations; overlap fails on a single sample
 
-Empirically (probing the analyzer on snapshot subsets): `shape_residual` and `blob` only
+Empirically (probing the analyzer on snapshot subsets): `follow_error` (which replaced the
+slot-based `shape_residual`) and `blob` only
 FAIL when at least two CONSECUTIVE judged samples violate their floors -- a single spiked
 sample passes -- while `overlap` fails on ANY single judged sample below its floor. Two
 consequences for sampling design: never sample two adjacent story beats that both sit in
@@ -1240,7 +1241,8 @@ stop being valid standoff candidates for ANYONE shortly after they break, not ju
 the (now nonexistent) backing-away branch. Kept here rather than deleted since the
 `shape_residual`-blind-spot lesson (a formation can drift/rotate as a whole away from its
 canonical slots while staying internally coherent, so the demo-defect scan's scramble
-check won't catch it) is still a real, reusable diagnostic technique for any FUTURE
+check won't catch it; the relational `follow_error` that replaced it has the same blind spot,
+by design, since a block that stays coherent keeps every man's place behind his leader) is still a real, reusable diagnostic technique for any FUTURE
 per-soldier bias that reads live enemy positions -- re-run this same
 `soldiers_full.pos` vs `soldiers_full.slots` per-soldier distance check against any new
 mechanic in this family before assuming a clean `shape_residual` verdict means no drift.
@@ -1365,6 +1367,12 @@ judged by anything. (Found on the `square` clip, `anti-cav-square.json`, untouch
 whole-catalog absolute sweep as #1147.)
 
 ## The identity checks are real, but they are blind DURING a reshape -- which is when a bad route happens
+
+(The `misslotted` and `shape_residual` verdicts described here were slot-based. `misslotted` now reads
+whether a man stands behind the right man, and `shape_residual` is replaced by the relational
+`follow_error`; both read the dump's `relations`, so a fold or re-deal of the grid cannot disturb them.
+`misslotted_count` is kept as the slot-based reading the relief corridor's budget test uses.
+The timing gap below holds for the new verdicts too.)
 
 `DemoDefects` DOES read per-soldier identity, and it is easy to talk yourself out of
 believing that. `misslotted_count` compares `positions[i]` against `slots[i]` BY ARRAY
