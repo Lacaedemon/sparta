@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "The relational demo metrics judge dumps offline (tools/demo); they change no battle, so no clip differs. The hash streams of every demos/inputs clip on seeds 0 to 4 match main."
+  "reason": "The relational demo metrics judge dumps offline (tools/demo); they change no battle, so no clip differs. The per-tick hash streams of all 243 demos/inputs clips with scripted steps match main on seeds 0 and 1."
 }
