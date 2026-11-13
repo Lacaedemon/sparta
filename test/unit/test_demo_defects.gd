@@ -948,6 +948,21 @@ func test_a_casualty_window_starts_at_the_casualty_not_at_an_earlier_reshape() -
 			"a unit reshaped long ago still gets the reflow window from its casualty")
 
 
+func test_a_formation_or_frontage_change_after_an_earlier_stamp_starts_its_own_window() -> void:
+	var all_judged: Array = [true, true, true, true, true]
+	var toggled: Dictionary = _mask_series([24, 24, 24, 24, 24], [0.0, 0.0, 20.0, 20.0, 1.0],
+			[[1], [1], [1], [1], [1]])
+	toggled["last_reshape_tick"] = [0, 0, 0, 0, 0]
+	toggled["formation"] = ["NORMAL", "NORMAL", "SQUARE", "SQUARE", "SQUARE"]
+	assert_eq(DemoDefects.follow_error_mask(toggled, all_judged), [true, true, false, false, true],
+			"a formation toggle long after the last frontage stamp is forgiven while the men walk")
+	var widened: Dictionary = _mask_series([24, 24, 24, 24, 24], [0.0, 0.0, 20.0, 20.0, 1.0],
+			[[1], [1], [1], [1], [1]])
+	widened["last_reshape_tick"] = [0, 0, 0, 0, 0]
+	widened["frontage"] = [6, 6, 12, 12, 12]
+	assert_eq(DemoDefects.follow_error_mask(widened, all_judged), [true, true, false, false, true])
+
+
 func test_follow_error_reports_how_many_pieces_the_relations_fall_into() -> void:
 	var slots: Array = _grid(6, 4, SPACING)
 	var snaps: Array = [_snapshot(0, slots, slots), _snapshot(60, slots, slots)]

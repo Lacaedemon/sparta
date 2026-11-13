@@ -600,7 +600,7 @@ static func follow_error_mask(s: Dictionary, base_mask: Array = [], casualties: 
 		var prev_last_tick: int = int(s["last_reshape_tick"][i - 1]) if (has_last_tick and i > 0) else -1
 
 		var reshape_event := false
-		var flow_event := false
+		var own_tick := false
 		var old_files: int = int(s["frontage"][i - 1]) if (i > 0 and s.has("frontage") and s["frontage"].size() > i) else 1
 		var new_files: int = int(s["frontage"][i]) if (s.has("frontage") and s["frontage"].size() > i) else old_files
 
@@ -619,17 +619,20 @@ static func follow_error_mask(s: Dictionary, base_mask: Array = [], casualties: 
 		elif i > 0:
 			if (s.has("frontage") and s["frontage"].size() > i and int(s["frontage"][i]) != int(s["frontage"][i - 1])):
 				reshape_event = true
+				own_tick = true
 			elif (s.has("formation") and s["formation"].size() > i and String(s["formation"][i]) != String(s["formation"][i - 1])):
 				reshape_event = true
+				own_tick = true
 			elif casualties and (int(s["counts"][i]) < int(s["counts"][i - 1])
 					or s["deal"][i] != s["deal"][i - 1]):
 				reshape_event = true
-				flow_event = true
+				own_tick = true
 
 		if reshape_event:
-			# A casualty or a new deal starts its window at its own sample, not at the unit's last
-			# unrelated reshape, which may be long past.
-			var start_tick: int = cur_last_tick if cur_last_tick >= 0 and not flow_event else tick
+			# A change seen only in the samples (a frontage or formation change with no new stamp, a
+			# casualty, a new deal) starts its window at its own sample, not at the unit's last
+			# stamped reshape, which may be long past. A new stamp or a re-deal belongs to its event.
+			var start_tick: int = cur_last_tick if cur_last_tick >= 0 and not own_tick else tick
 			var count: int = int(s["counts"][i]) if (s.has("counts") and s["counts"].size() > i) else 1
 			var timeout_sec: float = reshape_timeout(old_files, new_files, count, fp, rp, jog, back_frac)
 			if redeal_event and s.has("follow_far") and s["follow_far"].size() > i:
