@@ -1232,21 +1232,21 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 #   parastates, a side-man (the sim's rendering of the Greek), and so made his line much longer;
 #   Bingham's note on Aelian 29.3 reads it as inserting "the euen ranks man by man into the odde".
 #
-# Both double the number of men in front. Aelian's doubling in number keeps the length (29.3, as
-# Asclepiodotus 10.17). The sim keeps the file pitch, so its length doubles too: the insertion
-# with Asclepiodotus's opening out, doubling of place (10.18), done at once, as Polyaenus's line
-# grew "much longer".
+# Both double the number of men in front. By default (ExplicatioGround.LENGTHEN) the sim keeps
+# the file pitch, so the length doubles too: the insertion with Asclepiodotus's opening out,
+# doubling of place (10.18), done at once, as Polyaenus's line grew "much longer". Aelian's
+# doubling in number keeps the length instead (29.3, as Asclepiodotus 10.17): SAME_GROUND.
 #
 # Which files stand is the sim's reading of Aelian 33, on opening a closed phalanx again: held on
 # the right flank, "the rightwing-corner-file to stand ... and the rest proceeding on to the
 # Target", the intervals opening on each file's left; held on the left, the mirror; and widened
 # about the middle, "the right Diphalange turning to the Pike, and the left Diphalange to the
-# Target", each wing opening outward. (Bingham's note on the chapter has "The files next the
-# middle section stand fast" but then turns each wing inward, against Aelian's text; the sim
-# follows the text.) So the intervals of the left wing open on the left of its files and those
-# of the right wing on the right, and the files next to the middle stand: the two middle files
-# of an even count, the middle file and the one on its left of an odd count. The leader of the
-# standing file is the guide the front rank dresses on.
+# Target", each wing opening outward (ExplicatioSide.OUTWARD, the default). So the intervals of
+# the left wing open on the left of its files and those of the right wing on the right, and the
+# files next to the middle stand: the two middle files of an even count, the middle file and the
+# one on its left of an odd count. The leader of the standing file is the guide the front rank
+# dresses on. Bingham's note on the chapter turns each wing inward (INWARD); Polyaenus and
+# Xenophon do not say on which side the men step (SPEAR_SIDE, SHIELD_SIDE).
 #
 # Nobody walks to a slot. Each man follows a man he can see (explicatio_follow_plan,
 # SoldierFollow): every man behind the head of his file keeps a rank's distance behind the man
@@ -1254,9 +1254,42 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 # beside the leader of the file it opened from as the interval opens; and each file leader who
 # stays keeps his distance from the next file leader toward the file that stands, dressing his
 # depth on the guide, who holds his ground.
-# TODO(#1969): no key or order deals ALTERNATE_RANK yet; only Battle.enqueue_file_double's
-# caller can name it.
+# TODO(#1969): no key deals ALTERNATE_RANK, or any ExplicatioSide or ExplicatioGround but the
+# default, yet; Battle.enqueue_file_double's caller, an Order, a replay entry and
+# SelectionManager's explicatio fields can name them.
 enum ExplicatioDrill { NONE = 0, HALF_FILE = 1, ALTERNATE_RANK = 2 }
+## Which side of each file its interval opens on, where the sources differ or are silent
+## (docs/historical-reshaping-maneuvers.md, "The explicatio drills"):
+## - OUTWARD, the default: each wing's intervals open away from the middle, the files next to the
+##   middle standing. Aelian 33 (Bingham's 1616 text), reopening a phalanx closed to the middle:
+##   "the right Diphalange turning to the Pike, and the left Diphalange to the Target".
+## - INWARD: each wing's intervals open toward the middle. Bingham's own note on chapter 33: "The
+##   files next the middle section stand fast, and the right wing turne faces to the Target, the
+##   left to the Pike". The intervals of the two middle files then both open between them, so
+##   only one of the two can stand fast; the right-hand one stands (explicatio_stand_old_file).
+##   A widen held on one flank has no inward reading: for a phalanx closed to a wing the note's
+##   words of command move "the rest" from the corner file "to the Target", as the text does, so
+##   INWARD held on a flank is OUTWARD (explicatio_inward).
+## - SPEAR_SIDE: every interval opens on the right of its file, the spear (Pike) side.
+## - SHIELD_SIDE: every interval opens on the left of its file, the shield (Target) side.
+##   Polyaenus, Stratagems 2.10.4, has the epistatai pass into the place of a side-man without
+##   saying on which side, and Xenophon, Cyropaedia 2.3.21, has the rear parts come "into line"
+##   without saying either; these two read each silence one way and the other. The file that
+##   stands is the held flank's corner file, or the middle's, as for OUTWARD.
+enum ExplicatioSide { OUTWARD = 0, INWARD = 1, SPEAR_SIDE = 2, SHIELD_SIDE = 3 }
+## Whether the doubled front keeps its file pitch or its ground:
+## - LENGTHEN, the default: the files keep their pitch, so the line grows twice as long.
+##   Asclepiodotus 10.18 (the compact order opened into a loose one by length), Polyaenus 2.10.4
+##   (Cleandridas's line grew "much longer") and Xenophon, Cyropaedia 2.3.21.
+## - SAME_GROUND: the line keeps its length and grows twice as dense. Asclepiodotus 10.17: files
+##   inserted between the original files, "maintaining all the while the length of the phalanx,
+##   so that a compact order arises"; Aelian 29.3, "keeping the same ground". The file pitch
+##   halves, so the block closes by one order of spacing, open order into compact and compact into
+##   locked shields (Asclepiodotus 4.1: four cubits, two, and one, "on all sides"), on both axes,
+##   and its file leaders keep their ground. Bingham's note on 29.3 says it "must be done in open
+##   order"; a block already at locked shields has no closer order to take, and its widen is
+##   refused (Unit.denser_formation_mode).
+enum ExplicatioGround { LENGTHEN = 0, SAME_GROUND = 1 }
 ## Roles a man takes in an explicatio's new file: the man who leads a column up an interval.
 ## HEMILOCHITES leads a half-file (HALF_FILE); EPISTATES, the first epistates, the man behind the
 ## file leader, leads the column of every epistates of the file (ALTERNATE_RANK). NONE for everyone else. The follow plan
@@ -1270,12 +1303,33 @@ enum SoldierRole { NONE = 0, HEMILOCHITES = 1, EPISTATES = 2 }
 ## every interval opens on the right (0), held on the right every one on the left (`old_files`),
 ## and about the middle each wing opens outward (old_files / 2: with an odd count the middle
 ## file's interval opens on its right, so the right wing gains one file more than the left).
-static func explicatio_lane_split(old_files: int, held_flank: int) -> int:
+## `side` (ExplicatioSide) reads the split for its own lanes: SPEAR_SIDE opens every interval on
+## the right (0) and SHIELD_SIDE every one on the left (`old_files`), wherever the flank is held;
+## OUTWARD and INWARD split as above, INWARD reversing each wing's side (explicatio_opens_right).
+static func explicatio_lane_split(old_files: int, held_flank: int,
+		side: int = ExplicatioSide.OUTWARD) -> int:
+	if side == ExplicatioSide.SPEAR_SIDE:
+		return 0
+	if side == ExplicatioSide.SHIELD_SIDE:
+		return old_files
 	if held_flank < 0:
 		return 0
 	if held_flank > 0:
 		return old_files
 	return old_files / 2
+
+
+## Whether an explicatio of `side` (ExplicatioSide) held on `held_flank` (-1 left, +1 right, 0
+## about the middle) opens each wing's intervals toward the middle: INWARD about the middle only.
+static func explicatio_inward(held_flank: int, side: int) -> bool:
+	return side == ExplicatioSide.INWARD and held_flank == 0
+
+
+## Whether old file `k`'s interval opens on its right, with the intervals split at `lane_split`
+## (explicatio_lane_split): the files at and right of the split open theirs on the right and the
+## rest on the left, or, `inward` (explicatio_inward), the other way about.
+static func explicatio_opens_right(k: int, lane_split: int, inward: bool = false) -> bool:
+	return (k >= lane_split) != inward
 
 
 ## The old file whose leader stands in an explicatio of `old_files` files held on `held_flank`
@@ -1294,21 +1348,23 @@ static func explicatio_stand_old_file(old_files: int, held_flank: int) -> int:
 ## Whether new file `f` of an explicatio whose intervals split at `lane_split`
 ## (explicatio_lane_split) is a file that stays (the front of an old file) rather than an
 ## interval. Old file k becomes new files 2k and 2k + 1: the one that stays is 2k when k's
-## interval opens on its right, 2k + 1 when it opens on its left.
-static func explicatio_file_stays(f: int, lane_split: int) -> bool:
-	return posmod(f, 2) == (0 if f / 2 >= lane_split else 1)
+## interval opens on its right, 2k + 1 when it opens on its left (explicatio_opens_right, with
+## `inward`).
+static func explicatio_file_stays(f: int, lane_split: int, inward: bool = false) -> bool:
+	return posmod(f, 2) == (0 if explicatio_opens_right(f / 2, lane_split, inward) else 1)
 
 
 ## The file whose leader becomes the guide when the leader of `stand_file` has fallen and nobody
 ## has closed up into his place: of the files that stay (explicatio_file_stays) and have a leader
 ## (`led`, a set of file ids keyed in a Dictionary), the one nearest `stand_file`, the lower of a
 ## tie. `stand_file` itself while it has a leader; -1 when no file that stays has one.
-static func explicatio_guide_file(led: Dictionary, stand_file: int, lane_split: int) -> int:
+static func explicatio_guide_file(led: Dictionary, stand_file: int, lane_split: int,
+		inward: bool = false) -> int:
 	if led.has(stand_file):
 		return stand_file
 	var best: int = -1
 	for f in led:
-		if not explicatio_file_stays(f, lane_split):
+		if not explicatio_file_stays(f, lane_split, inward):
 			continue
 		var d: int = absi(f - stand_file)
 		if best < 0 or d < absi(best - stand_file) or (d == absi(best - stand_file) and f < best):
@@ -1332,10 +1388,11 @@ static func explicatio_guide_file(led: Dictionary, stand_file: int, lane_split: 
 ##
 ## Returns {"files", "ranks", "roles"}: the new file ids and ranks and each man's SoldierRole.
 ## Empty arrays when the inputs do not line up (a file id outside 0..old_files - 1, no men, or
-## no drill), for the caller to deal some other way.
+## no drill), for the caller to deal some other way. `inward` (explicatio_inward) turns each
+## wing's intervals toward the middle (explicatio_opens_right).
 static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array,
 		old_files: int, lane_split: int = 0,
-		drill: int = ExplicatioDrill.HALF_FILE) -> Dictionary:
+		drill: int = ExplicatioDrill.HALF_FILE, inward: bool = false) -> Dictionary:
 	var empty := {"files": PackedInt32Array(), "ranks": PackedInt32Array(),
 			"roles": PackedByteArray()}
 	var n: int = file_ids.size()
@@ -1376,7 +1433,7 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 			new_rank = r / 2
 			if r == 1:
 				role = SoldierRole.EPISTATES
-		var lane: int = 1 if k >= lane_split else 0
+		var lane: int = 1 if explicatio_opens_right(k, lane_split, inward) else 0
 		out_files[i] = 2 * k + (lane if moves else 1 - lane)
 		out_ranks[i] = new_rank
 		roles[i] = role
@@ -1407,10 +1464,11 @@ static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32
 ## A man whose man to follow has fallen follows the next one along the same chain, at the
 ## matching distance; one with nobody left to follow holds where he is (SoldierFollow.HOLD).
 ## A file id grows to the right (file_major_block_slots lays file 0 out on the left). Empty
-## arrays when the ranks or roles do not line up with the files.
+## arrays when the ranks or roles do not line up with the files. `inward` (explicatio_inward)
+## turns each wing's intervals toward the middle, as the deal did.
 static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt32Array,
 		roles: PackedByteArray, lane_split: int, stand_file: int, file_pitch: float,
-		rank_pitch: float) -> Dictionary:
+		rank_pitch: float, inward: bool = false) -> Dictionary:
 	var n: int = file_ids.size()
 	var leaders := PackedInt32Array()
 	var offsets := PackedVector2Array()
@@ -1429,7 +1487,7 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 		var f: int = file_ids[i]
 		var r: int = ranks[i]
 		leaders[i] = SoldierFollow.HOLD
-		var stays: bool = explicatio_file_stays(f, lane_split)
+		var stays: bool = explicatio_file_stays(f, lane_split, inward)
 		var leads_column: bool = not stays and roles[i] != SoldierRole.NONE
 		if r > 0 and not leads_column:
 			# The nearest man ahead of him in his file; ranks close up after a casualty, so that
@@ -1452,7 +1510,7 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 		# toward the file that stands, and on along that chain past a fallen link.
 		var g: int
 		if leads_column:
-			g = f + 1 if f / 2 < lane_split else f - 1
+			g = f - 1 if explicatio_opens_right(f / 2, lane_split, inward) else f + 1
 			var j: int = int(at.get(Vector2i(g, 0), -1))
 			if j >= 0:
 				leaders[i] = j
@@ -1461,7 +1519,7 @@ static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt3
 		var step: int = 1 if stand_file > f else -1
 		g = f + step
 		while true:
-			if explicatio_file_stays(g, lane_split):
+			if explicatio_file_stays(g, lane_split, inward):
 				var j: int = int(at.get(Vector2i(g, 0), -1))
 				if j >= 0:
 					leaders[i] = j

@@ -1254,6 +1254,29 @@ No two men come closer than 0.44 m, centre to centre,
 where men shoulder to shoulder stand 0.45 m apart.
 :::
 
+**Other readings of the explicatio.**
+Where the drill manuals disagree or say nothing, the game builds each reading as a variant of its own.
+<kbd>B</kbd> always deals the defaults described above;
+no key chooses another variant yet ([#1969](https://github.com/Lacaedemon/sparta/issues/1969)),
+but each one can be named on the order and in a saved replay.
+Every variant works with both the half-file drill and the drill in which every second man steps out (Polyaenus 2.10.4).
+
+- **Outward** (the default, Aelian's text, Tactics 33): each wing's intervals open away from the middle, and the files next to the middle stand.
+- **Inward** (Bingham's 1616 note on that chapter): each wing's intervals open toward the middle.
+  Both middle intervals then open between the two middle files, so only the right-hand one stands
+  and the left-hand one steps out two files to make room.
+  A block of 9 files widening to 18 moves its left flank out 5 files and its right flank 4.
+  Held on a flank (<kbd>Shift+B</kbd>, <kbd>Ctrl+B</kbd>), inward is the same as outward, since the note agrees with the text there.
+- **Spear side** and **shield side** (Polyaenus and Xenophon do not say which side):
+  every interval opens on the right of its file, or every one on the left, whichever wing it is in.
+  The same files stand as in the outward reading.
+- **Lengthen** (the default): the files keep their spacing, so the line grows twice as long
+  (Asclepiodotus 10.18, Polyaenus, Xenophon).
+- **Same ground** (Asclepiodotus 10.17, Aelian 29.3): the line keeps its length and becomes twice as dense.
+  The block closes one order of spacing as it widens, loose into normal or normal into tight, both across and in depth,
+  and every file leader whose file stays keeps the ground he stood on while the new files come up between them.
+  A block already in tight order, a shield wall, a testudo or a square has no closer order to take, and is not given the order.
+
 **Anchored (asymmetric) explicatio.** The plain explicatio above widens
 about the middle of the block, the files next to the middle standing, so both flanks step
 outward (by the same amount when the files are even). Press <kbd>Shift+B</kbd> to

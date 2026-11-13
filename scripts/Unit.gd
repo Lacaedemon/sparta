@@ -6301,19 +6301,37 @@ func _reset_shield_hold_angles() -> void:
 ## flank the order holds (UnitFormation.Anchor: -1 left, +1 right, 0 about the middle), whose
 ## file stands (UnitFormation.explicatio_lane_split); it is the order's choice, not read off
 ## `anchor_offset`, which a held widen before this one leaves standing.
+## `explicatio_side` (UnitFormation.ExplicatioSide) is the side of each file its interval opens
+## on, and `explicatio_ground` (UnitFormation.ExplicatioGround) whether the widened line keeps
+## its file pitch or its ground. A widen that keeps its ground closes the block by one order of
+## spacing (denser_formation_mode) as its files double, drill or lateral deal; a block with no
+## closer order to take cannot keep its ground, and that widen is refused, said out loud, with
+## the width left as it was (Battle.enqueue_file_double never issues one).
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
-		held_flank: int = UnitFormation.Anchor.CENTRE) -> void:
-	_bake_formation_mirror()
-	_end_explicatio_drill()   # a new width supersedes a drill still under way
+		held_flank: int = UnitFormation.Anchor.CENTRE,
+		explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD,
+		explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN) -> void:
 	var old_files: int = UnitFormation.frontage(self)
 	var target_files: int = clampi(files, 1, maxi(1, max_soldiers))
+	var denser: int = -1
+	if explicatio_ground == UnitFormation.ExplicatioGround.SAME_GROUND \
+			and explicatio_drill != UnitFormation.ExplicatioDrill.NONE and target_files > old_files:
+		denser = denser_formation_mode(formation_mode)
+		if denser < 0:
+			push_error("Unit.set_frontage: a widen on the same ground needs a closer order than "
+					+ "formation %d, and there is none; the width stays %d" % [formation_mode,
+					old_files])
+			return
+	_bake_formation_mirror()
+	_end_explicatio_drill()   # a new width supersedes a drill still under way
 	var dealt: Dictionary = {}
+	var split: int = UnitFormation.explicatio_lane_split(old_files, held_flank, explicatio_side)
+	var inward: bool = UnitFormation.explicatio_inward(held_flank, explicatio_side)
 	if explicatio_drill != UnitFormation.ExplicatioDrill.NONE \
 			and _can_deal_explicatio(old_files, target_files):
 		dealt = UnitFormation.explicatio_assignment(_sim_soldier_file, _sim_soldier_rank,
-				old_files, UnitFormation.explicatio_lane_split(old_files, held_flank),
-				explicatio_drill)
+				old_files, split, explicatio_drill, inward)
 		if (dealt["files"] as PackedInt32Array).size() != soldiers:
 			# _can_deal_explicatio checked the assignment the deal splits, so this is a bug: say
 			# so, and widen with the lateral deal rather than leave the files half dealt.
@@ -6331,9 +6349,24 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 		# arm the watch using the reshape-specific bound (old shape's diagonal plus the
 		# new one's), captured before the frontage actually changes underneath it.
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
+	if denser >= 0:
+		set_formation(denser)   # the doubled files keep the ground at half the pitch
 	if not dealt.is_empty():
-		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill)
+		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill, split, inward)
 	note_front_depth()   # a narrower frontage deepens the block
+
+
+## The next closer order of spacing than formation `mode`, the one a widen on the same ground
+## takes (UnitFormation.ExplicatioGround.SAME_GROUND): open order (LOOSE, four times the
+## authored pitch) into compact (NORMAL, twice it), and compact into locked shields (TIGHT, the
+## authored pitch), as Asclepiodotus 4.1's four cubits, two and one. -1 for every other
+## formation, which has no closer line order to take.
+static func denser_formation_mode(mode: int) -> int:
+	if mode == FORMATION_LOOSE:
+		return FORMATION_NORMAL
+	if mode == FORMATION_NORMAL:
+		return FORMATION_TIGHT
+	return -1
 
 
 ## Whether a change from `old_files` to `new_files` can be done as an explicatio drill, from what
@@ -6365,11 +6398,13 @@ func _can_deal_explicatio(old_files: int, new_files: int) -> bool:
 ## (UnitFormation.explicatio_stand_old_file), or the nearest file casualties have left a man in.
 ## Its leader holds the ground he stands on; every other man follows a man he can see
 ## (UnitFormation.explicatio_follow_plan, _refresh_explicatio_follow) until every man has taken
-## his place (_advance_explicatio_drill).
-func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill: int) -> void:
+## his place (_advance_explicatio_drill). Its intervals split at `split`
+## (UnitFormation.explicatio_lane_split) and open toward the middle when `inward`
+## (UnitFormation.explicatio_inward), as the deal did.
+func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill: int,
+		split: int, inward: bool) -> void:
 	var files_out: PackedInt32Array = dealt["files"]
 	var ranks_out: PackedInt32Array = dealt["ranks"]
-	var split: int = UnitFormation.explicatio_lane_split(old_files, held_flank)
 	var wanted: int = UnitFormation.explicatio_stand_old_file(old_files, held_flank)
 	# The file leader of each old file that still has men stays at rank 0 of its new file.
 	var stand: int = -1
@@ -6378,7 +6413,7 @@ func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill
 		for k in [wanted - d, wanted + d]:
 			if k < 0 or k >= old_files or stand >= 0:
 				continue
-			var f: int = 2 * k + (0 if k >= split else 1)
+			var f: int = 2 * k + (0 if UnitFormation.explicatio_opens_right(k, split, inward) else 1)
 			for i in range(soldiers):
 				if files_out[i] == f and ranks_out[i] == 0:
 					stand = i
@@ -6395,6 +6430,7 @@ func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill
 	if stand < 0:
 		return
 	_explicatio_lane_split = split
+	_explicatio_inward = inward
 	_explicatio_stand_file = stand_file
 	_explicatio_stand_point = _sim_soldier_pos[stand]
 	_explicatio_following = PackedByteArray()
@@ -6438,7 +6474,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		return false
 	var plan: Dictionary = UnitFormation.explicatio_follow_plan(_sim_soldier_file,
 			_sim_soldier_rank, _sim_soldier_role, _explicatio_lane_split, _explicatio_stand_file,
-			file_pitch_wu(), rank_pitch_wu())
+			file_pitch_wu(), rank_pitch_wu(), _explicatio_inward)
 	var leaders: PackedInt32Array = plan["leaders"]
 	if leaders.size() != count:
 		return false
@@ -6459,7 +6495,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 	var lined_up: bool = _explicatio_following.size() == count
 	for i in range(count):
 		var f: int = _sim_soldier_file[i]
-		if UnitFormation.explicatio_file_stays(f, _explicatio_lane_split):
+		if UnitFormation.explicatio_file_stays(f, _explicatio_lane_split, _explicatio_inward):
 			continue
 		# His place's line where it passes level with him, along his own facing: a man turned a
 		# little off the block's facing has his line pass level with him well off his place's.
@@ -6549,7 +6585,7 @@ func _take_up_explicatio_guide(count: int) -> bool:
 		if _sim_soldier_rank[i] == 0:
 			leader_of[_sim_soldier_file[i]] = i
 	var f: int = UnitFormation.explicatio_guide_file(leader_of, _explicatio_stand_file,
-			_explicatio_lane_split)
+			_explicatio_lane_split, _explicatio_inward)
 	if f < 0:
 		push_error("Unit._take_up_explicatio_guide: no file that stays has a leader to be the "
 				+ "guide; the explicatio ends with the grid laid on the men")
@@ -7184,6 +7220,8 @@ var _sim_soldier_role: PackedByteArray = PackedByteArray()
 # place (_advance_explicatio_drill).
 var _explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE
 var _explicatio_lane_split: int = 0
+# Whether its wings' intervals open toward the middle (UnitFormation.explicatio_inward).
+var _explicatio_inward: bool = false
 var _explicatio_stand_file: int = -1
 var _explicatio_stand_point: Vector2 = Vector2.ZERO
 var _explicatio_following: PackedByteArray = PackedByteArray()
@@ -8375,7 +8413,8 @@ func _apply_file_double_step(step: Order) -> void:
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
 	set_frontage(files, step.frontage_anchor_offset,
-			step.explicatio_drill if step.dir > 0 else UnitFormation.ExplicatioDrill.NONE)
+			step.explicatio_drill if step.dir > 0 else UnitFormation.ExplicatioDrill.NONE,
+			UnitFormation.Anchor.CENTRE, step.explicatio_side, step.explicatio_ground)
 
 
 ## True while the slot grid's turn off the heading (grid_fold: the folded maneuver rotation plus
@@ -13035,6 +13074,7 @@ func to_snapshot_dict() -> Dictionary:
 		"sim_soldier_reflect_walker": _sim_soldier_reflect_walker.duplicate(),
 		"explicatio_drill": _explicatio_drill,
 		"explicatio_lane_split": _explicatio_lane_split,
+		"explicatio_inward": _explicatio_inward,
 		"explicatio_following": _explicatio_following.duplicate(),
 		"explicatio_stand_file": _explicatio_stand_file,
 		"explicatio_stand_point": _explicatio_stand_point,
@@ -13435,6 +13475,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	# none, and the men take their slots.
 	_explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.NONE))
 	_explicatio_lane_split = int(d.get("explicatio_lane_split", 0))
+	_explicatio_inward = bool(d.get("explicatio_inward", false))
 	_explicatio_following = (d.get("explicatio_following", PackedByteArray()) as PackedByteArray) \
 			.duplicate()
 	_explicatio_stand_file = int(d.get("explicatio_stand_file", -1))

@@ -592,7 +592,7 @@ func test_a_deal_with_no_file_leader_to_stand_says_so() -> void:
 	var ranks: PackedInt32Array = dealt["ranks"]
 	for i in range(ranks.size()):
 		ranks[i] += 1   # nobody at rank 0
-	u._begin_explicatio(dealt, 9, 0, HALF_FILE)
+	u._begin_explicatio(dealt, 9, 0, HALF_FILE, 4, false)
 	assert_push_error("no file leader to stand", "the missing guide is reported")
 	assert_false(u.explicatio_drill_active(), "no drill starts")
 

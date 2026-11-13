@@ -8,7 +8,8 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
 		line_index: int = -1, reinforce: int = 0, explicatio: int = 0,
-		explicatio_held: int = 0) -> Dictionary:
+		explicatio_held: int = 0, explicatio_side: int = 0,
+		explicatio_ground: int = 0) -> Dictionary:
 	var entry := {
 		"tick": tick,
 		"units": uids.duplicate(),
@@ -67,4 +68,10 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# The flank that drill holds (UnitFormation.Anchor); omitted when 0 = CENTRE.
 	if explicatio_held != 0:
 		entry["explicatio_held"] = explicatio_held
+	# Its readings (UnitFormation.ExplicatioSide, ExplicatioGround); omitted when 0, the outward,
+	# lengthening drill, so a replay of the defaults stays byte-identical on re-save.
+	if explicatio_side != 0:
+		entry["explicatio_side"] = explicatio_side
+	if explicatio_ground != 0:
+		entry["explicatio_ground"] = explicatio_ground
 	return entry
