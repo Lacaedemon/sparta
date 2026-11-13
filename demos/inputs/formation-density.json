@@ -34,12 +34,6 @@
       ],
       "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: min neighbour 0.14 wu during the Tight->Loose 1x->4x expansion."
     },
-    "shape_residual": {
-      "uids": [
-        0
-      ],
-      "reason": "The clip deliberately films a large formation reshape at the new pitch identity; in-transit samples fire the grid metrics (same-owner bodies pass arbitrarily close mid-re-slot by design -- intra-regiment spacing is the formation arrival's job, not steering's -- and routes cross while the grid re-deals). Measured on the new-density re-pin: residual 138 wu mid-expansion across the quadrupling pitch."
-    },
     "path_crossing": {
       "uids": [
         0

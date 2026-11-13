@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The relational demo metrics judge dumps offline (tools/demo); they change no battle, so no clip differs. The per-tick hash streams of all 243 demos/inputs clips with scripted steps match main on seeds 0 and 1, from runs with SPARTA_DEMO_STATE_FULL=1 set so the new relations dump ran."
+}

@@ -21,9 +21,9 @@
   ],
   "state": [8, 240, 300, 330, 540, 840, 900, 960],
   "defect_exemptions": {
-    "shape_residual": {
+    "follow_error": {
       "uids": [0],
-      "reason": "Known chase/reversal deformation on the peel-exit: the 24-horse block compresses while reversing out of a landed charge (shape residual spikes past the 15 wu cavalry threshold at the t300-330 peel samples this clip has to keep in order to pin the peel itself). The same family every long cavalry pursuit shows; the author cannot stage it away without dropping the peel samples the expect needs."
+      "reason": "follow_error, the relational successor of shape_residual, reads uid0 178 against 30 on this tree (dense 2-tick FULL dump, Windows, seed 0, measured 2026-11-13); the slot-based shape_residual this exemption was written against read uid0 178. Original reason: Known chase/reversal deformation on the peel-exit: the 24-horse block compresses while reversing out of a landed charge (shape residual spikes past the 15 wu cavalry threshold at the t300-330 peel samples this clip has to keep in order to pin the peel itself). The same family every long cavalry pursuit shows; the author cannot stage it away without dropping the peel samples the expect needs."
     },
     "overlap": {
       "uids": [0, 1],
