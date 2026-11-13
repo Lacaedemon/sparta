@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/explicatio-half-file-1929.json",
+  "caption": "A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8 (explicatio, B). Each man follows a man he can see. The two middle files stand and each wing opens outward: the rear half of each file steps sideways into the interval on its outer side, then comes up it in column behind its half-file leader once the interval has opened where he is. The front rank ends within 2 mm of the line it stood on. No two men come closer than 0.44 m, centre to centre, where men shoulder to shoulder stand 0.45 m apart. Before, the block re-centred, so its front rank walked back 1.54 m, and the rear half of each file walked forward through its front half: two men came within 0.11 m of each other, and a pair stood within a body's radius in 90 of the 278 samples taken every 2 ticks from just after the order to tick 600.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}

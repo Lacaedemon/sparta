@@ -1217,6 +1217,282 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 	return out
 
 
+# --- The explicatio drills ---------------------------------------------------
+# Doubling the front with the men the block already has (explicatio): the files double and the
+# depth halves. Who moves into the new files, and whom each man follows there, is the drill; the
+# sources, quoted, are in docs/historical-reshaping-maneuvers.md ("The explicatio drills").
+#
+# - HALF_FILE, the default. Each file's rear half marches up the interval beside it, led by the
+#   half-file leader, the hemilochites (Asclepiodotus 2.2). Bingham's note on Aelian 29.3 (1616)
+#   gives this drill: "these middle men with the hinder halfe file march vp to the front".
+# - ALTERNATE_RANK. Every second man of each file, counting the file leader as the first, steps
+#   into the interval beside the man ahead of him: every epistates, as Asclepiodotus 2.3 names
+#   them, the front-rank and rear-rank men alternating down the file. Polyaenus,
+#   Stratagems 2.10.4: Cleandridas ordered the epistatai to pass over into the place of a
+#   parastates, a side-man (the sim's rendering of the Greek), and so made his line much longer;
+#   Bingham's note on Aelian 29.3 reads it as inserting "the euen ranks man by man into the odde".
+#
+# Both double the number of men in front. Aelian's doubling in number keeps the length (29.3, as
+# Asclepiodotus 10.17). The sim keeps the file pitch, so its length doubles too: the insertion
+# with Asclepiodotus's opening out, doubling of place (10.18), done at once, as Polyaenus's line
+# grew "much longer".
+#
+# Which files stand is the sim's reading of Aelian 33, on opening a closed phalanx again: held on
+# the right flank, "the rightwing-corner-file to stand ... and the rest proceeding on to the
+# Target", the intervals opening on each file's left; held on the left, the mirror; and widened
+# about the middle, "the right Diphalange turning to the Pike, and the left Diphalange to the
+# Target", each wing opening outward. (Bingham's note on the chapter has "The files next the
+# middle section stand fast" but then turns each wing inward, against Aelian's text; the sim
+# follows the text.) So the intervals of the left wing open on the left of its files and those
+# of the right wing on the right, and the files next to the middle stand: the two middle files
+# of an even count, the middle file and the one on its left of an odd count. The leader of the
+# standing file is the guide the front rank dresses on.
+#
+# Nobody walks to a slot. Each man follows a man he can see (explicatio_follow_plan,
+# SoldierFollow): every man behind the head of his file keeps a rank's distance behind the man
+# ahead of him; the man whose role is to lead a new file up an interval (SoldierRole) comes up
+# beside the leader of the file it opened from as the interval opens; and each file leader who
+# stays keeps his distance from the next file leader toward the file that stands, dressing his
+# depth on the guide, who holds his ground.
+# TODO(#1969): no key or order deals ALTERNATE_RANK yet; only Battle.enqueue_file_double's
+# caller can name it.
+enum ExplicatioDrill { NONE = 0, HALF_FILE = 1, ALTERNATE_RANK = 2 }
+## Roles a man takes in an explicatio's new file: the man who leads a column up an interval.
+## HEMILOCHITES leads a half-file (HALF_FILE); EPISTATES, the first epistates, the man behind the
+## file leader, leads the column of every epistates of the file (ALTERNATE_RANK). NONE for everyone else. The follow plan
+## reads it: only a man with a role leads a column (explicatio_follow_plan).
+enum SoldierRole { NONE = 0, HEMILOCHITES = 1, EPISTATES = 2 }
+
+
+## Where an explicatio's intervals open, for a widen of `old_files` files held on `held_flank`
+## (-1 the left, +1 the right, 0 about the middle): the first old file whose interval opens on
+## its right; old files below it open theirs on the left (Aelian 33, above). Held on the left
+## every interval opens on the right (0), held on the right every one on the left (`old_files`),
+## and about the middle each wing opens outward (old_files / 2: with an odd count the middle
+## file's interval opens on its right, so the right wing gains one file more than the left).
+static func explicatio_lane_split(old_files: int, held_flank: int) -> int:
+	if held_flank < 0:
+		return 0
+	if held_flank > 0:
+		return old_files
+	return old_files / 2
+
+
+## The old file whose leader stands in an explicatio of `old_files` files held on `held_flank`
+## (as explicatio_lane_split): the left corner file, the right corner file, or about the middle
+## old file old_files / 2, the right-hand of the two middle files of an even count or the middle
+## file of an odd one, which with the file on its left keeps its ground as the wings open outward
+## (Aelian 33, above).
+static func explicatio_stand_old_file(old_files: int, held_flank: int) -> int:
+	if held_flank < 0:
+		return 0
+	if held_flank > 0:
+		return old_files - 1
+	return old_files / 2
+
+
+## Whether new file `f` of an explicatio whose intervals split at `lane_split`
+## (explicatio_lane_split) is a file that stays (the front of an old file) rather than an
+## interval. Old file k becomes new files 2k and 2k + 1: the one that stays is 2k when k's
+## interval opens on its right, 2k + 1 when it opens on its left.
+static func explicatio_file_stays(f: int, lane_split: int) -> bool:
+	return posmod(f, 2) == (0 if f / 2 >= lane_split else 1)
+
+
+## The file whose leader becomes the guide when the leader of `stand_file` has fallen and nobody
+## has closed up into his place: of the files that stay (explicatio_file_stays) and have a leader
+## (`led`, a set of file ids keyed in a Dictionary), the one nearest `stand_file`, the lower of a
+## tie. `stand_file` itself while it has a leader; -1 when no file that stays has one.
+static func explicatio_guide_file(led: Dictionary, stand_file: int, lane_split: int) -> int:
+	if led.has(stand_file):
+		return stand_file
+	var best: int = -1
+	for f in led:
+		if not explicatio_file_stays(f, lane_split):
+			continue
+		var d: int = absi(f - stand_file)
+		if best < 0 or d < absi(best - stand_file) or (d == absi(best - stand_file) and f < best):
+			best = f
+	return best
+
+
+## The explicatio deal of a file-major block on `old_files` files into twice as many, by
+## `drill` (ExplicatioDrill), with the intervals split at `lane_split`
+## (explicatio_lane_split). `file_ids` and `ranks` are the block's held assignment,
+## index-aligned; an empty or wrong-sized `ranks` means each man's rank is his order among the
+## earlier entries of his file, as file_major_block_slots reads it. Old file k becomes new files
+## 2k and 2k + 1, its interval the one on the side its lane opens (explicatio_file_stays).
+##
+## HALF_FILE: old file k of length L keeps its front half, h = ceil(L / 2) men at ranks 0 to
+## h - 1, at the same ranks; the man at rank h + r takes rank r of the interval, so the
+## hemilochites at rank h leads it. ALTERNATE_RANK: the man at rank 2m stays in the file's line
+## at rank m, and the man at rank 2m + 1 takes rank m of the interval, beside the man who stood
+## ahead of him, so the first epistates, at rank 1, leads it. Each file is split by its own length, so
+## a file a casualty has shortened still splits.
+##
+## Returns {"files", "ranks", "roles"}: the new file ids and ranks and each man's SoldierRole.
+## Empty arrays when the inputs do not line up (a file id outside 0..old_files - 1, no men, or
+## no drill), for the caller to deal some other way.
+static func explicatio_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		old_files: int, lane_split: int = 0,
+		drill: int = ExplicatioDrill.HALF_FILE) -> Dictionary:
+	var empty := {"files": PackedInt32Array(), "ranks": PackedInt32Array(),
+			"roles": PackedByteArray()}
+	var n: int = file_ids.size()
+	if n <= 0 or old_files <= 0 \
+			or (drill != ExplicatioDrill.HALF_FILE and drill != ExplicatioDrill.ALTERNATE_RANK):
+		return empty
+	var explicit: bool = ranks.size() == n
+	var lengths := PackedInt32Array()
+	lengths.resize(old_files)
+	var held := PackedInt32Array()
+	held.resize(n)
+	for i in range(n):
+		var k: int = file_ids[i]
+		if k < 0 or k >= old_files:
+			return empty
+		held[i] = ranks[i] if explicit else lengths[k]
+		lengths[k] += 1
+	var out_files := PackedInt32Array()
+	var out_ranks := PackedInt32Array()
+	var roles := PackedByteArray()
+	out_files.resize(n)
+	out_ranks.resize(n)
+	roles.resize(n)
+	for i in range(n):
+		var k: int = file_ids[i]
+		var r: int = held[i]
+		var moves: bool
+		var new_rank: int
+		var role: int = SoldierRole.NONE
+		if drill == ExplicatioDrill.HALF_FILE:
+			var h: int = (lengths[k] + 1) / 2
+			moves = r >= h
+			new_rank = r - h if moves else r
+			if r == h:
+				role = SoldierRole.HEMILOCHITES
+		else:
+			moves = r % 2 == 1
+			new_rank = r / 2
+			if r == 1:
+				role = SoldierRole.EPISTATES
+		var lane: int = 1 if k >= lane_split else 0
+		out_files[i] = 2 * k + (lane if moves else 1 - lane)
+		out_ranks[i] = new_rank
+		roles[i] = role
+	return {"files": out_files, "ranks": out_ranks, "roles": roles}
+
+
+## Whom each man follows while an explicatio is under way, and where he stands relative to him
+## (SoldierFollow): {"leaders": PackedInt32Array, "offsets": PackedVector2Array,
+## "guides": PackedInt32Array}, index-aligned with `file_ids`, `ranks` and
+## `roles` (the dealt assignment, explicit ranks, and each man's SoldierRole). The intervals
+## split at `lane_split` (explicatio_lane_split, explicatio_file_stays). An offset is (to the
+## follower's right, behind him), in world units. `guides` names the guide each file leader dresses his depth
+## on (SoldierFollow): the leader of `stand_file`, so the front rank's line is his (STAND, his
+## ground, for himself; a stand_file with no leader also reads STAND, so the caller re-picks the
+## guide before it gets here, as Unit._take_up_explicatio_guide does); NOT_FOLLOWING for
+## every man behind the head of his file.
+##
+## - The man with a role (SoldierRole) in an interval leads its column: he comes up beside the
+##   leader of the file he opened from, the file that stays next to his, (file id difference)
+##   file pitches to his right, level with him.
+## - Every other man of an interval, and every man behind a file leader in a file that stays,
+##   follows the man ahead of him in his file, a rank pitch behind. A man at the head of an
+##   interval without the role has nobody to follow and nobody gave him the lead: he stays where
+##   he is (SoldierFollow.HOLD).
+## - The leader of a file that stays follows the leader of the next file that stays toward
+##   `stand_file`, (file id difference) file pitches to his right, level with him.
+## - The leader of `stand_file` holds his ground: SoldierFollow.STAND.
+## A man whose man to follow has fallen follows the next one along the same chain, at the
+## matching distance; one with nobody left to follow holds where he is (SoldierFollow.HOLD).
+## A file id grows to the right (file_major_block_slots lays file 0 out on the left). Empty
+## arrays when the ranks or roles do not line up with the files.
+static func explicatio_follow_plan(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		roles: PackedByteArray, lane_split: int, stand_file: int, file_pitch: float,
+		rank_pitch: float) -> Dictionary:
+	var n: int = file_ids.size()
+	var leaders := PackedInt32Array()
+	var offsets := PackedVector2Array()
+	var guides := PackedInt32Array()
+	if ranks.size() != n or roles.size() != n or n == 0:
+		return {"leaders": leaders, "offsets": offsets, "guides": guides}
+	leaders.resize(n)
+	offsets.resize(n)
+	guides.resize(n)
+	guides.fill(SoldierFollow.NOT_FOLLOWING)
+	var at: Dictionary = {}
+	for i in range(n):
+		at[Vector2i(file_ids[i], ranks[i])] = i
+	var guide: int = int(at.get(Vector2i(stand_file, 0), SoldierFollow.STAND))
+	for i in range(n):
+		var f: int = file_ids[i]
+		var r: int = ranks[i]
+		leaders[i] = SoldierFollow.HOLD
+		var stays: bool = explicatio_file_stays(f, lane_split)
+		var leads_column: bool = not stays and roles[i] != SoldierRole.NONE
+		if r > 0 and not leads_column:
+			# The nearest man ahead of him in his file; ranks close up after a casualty, so that
+			# is the man directly ahead unless the arrays are mid-update.
+			for back in range(1, r + 1):
+				var j: int = int(at.get(Vector2i(f, r - back), -1))
+				if j >= 0:
+					leaders[i] = j
+					offsets[i] = Vector2(0.0, back * rank_pitch)
+					break
+			continue
+		if not stays and not leads_column:
+			continue   # the head of an interval nobody gave the lead: he holds
+		guides[i] = guide if guide != i else SoldierFollow.STAND
+		if f == stand_file:
+			leaders[i] = SoldierFollow.STAND
+			continue
+		# The leader of a column comes up beside the file he opened from, the file that stays next
+		# to his interval; the leader of a file that stays dresses on the next file that stays
+		# toward the file that stands, and on along that chain past a fallen link.
+		var g: int
+		if leads_column:
+			g = f + 1 if f / 2 < lane_split else f - 1
+			var j: int = int(at.get(Vector2i(g, 0), -1))
+			if j >= 0:
+				leaders[i] = j
+				offsets[i] = Vector2((f - g) * file_pitch, 0.0)
+			continue
+		var step: int = 1 if stand_file > f else -1
+		g = f + step
+		while true:
+			if explicatio_file_stays(g, lane_split):
+				var j: int = int(at.get(Vector2i(g, 0), -1))
+				if j >= 0:
+					leaders[i] = j
+					offsets[i] = Vector2((f - g) * file_pitch, 0.0)
+					break
+			if g == stand_file:
+				break
+			g += step
+	return {"leaders": leaders, "offsets": offsets, "guides": guides}
+
+
+## The man who takes a fallen man's place in his file: the one at the dead man's `rank` in
+## file `file` once the file has closed up over him (UnitFormation.drop_rank_assignment), or
+## -1 when nobody stands behind him. `file_ids` and `ranks` are the assignment after the dead
+## man's entry was removed; an empty or wrong-sized `ranks` means each man's rank is his order
+## among the earlier entries of his file, so the successor is the first man of that file at or
+## after `removed_index`, where the man behind the dead one now stands.
+static func successor_in_file(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		file: int, rank: int, removed_index: int) -> int:
+	var n: int = file_ids.size()
+	if ranks.size() == n:
+		for j in range(n):
+			if file_ids[j] == file and ranks[j] == rank:
+				return j
+		return -1
+	for j in range(maxi(0, removed_index), n):
+		if file_ids[j] == file:
+			return j
+	return -1
+
+
 ## `ranks` with the entry for the soldier at `index` removed and every SAME-FILE survivor
 ## standing behind him stepped one rank forward, so each file's ranks stay contiguous from 0.
 ##

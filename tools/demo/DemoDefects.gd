@@ -848,15 +848,16 @@ static func _is_numeric_value(v) -> bool:
 ## The expectation fields derived_field supplies.
 const DERIVED_FIELDS: Array[String] = [
 	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
-	"slot_distance_max",
+	"slot_distance_max", "pairs_within_body_radius", "front_rank_line",
 ]
 
 
 ## Expectation fields derived offline from a FULL record (soldiers_full plus motion_ref), for
 ## claims about where each man is sent rather than where the unit is. Null when the record
 ## cannot supply the field (not one of these names, or a dump without soldiers_full), which
-## check_expectations reports as uncheckable. All but the last measure sideways from the unit's
-## position.
+## check_expectations reports as uncheckable. The first three measure sideways from the unit's
+## position; grid_off_heading is an angle, slot_distance_max a distance in any direction, and
+## the last two read the bodies themselves.
 ## The first two read every man's body against his own slot along the unit's lateral axis (its
 ## facing turned a quarter); the third reads every slot against the grid's own footprint, along
 ## the grid's own file axis:
@@ -885,8 +886,16 @@ const DERIVED_FIELDS: Array[String] = [
 ## - slot_distance_max: the farthest any man's slot lies from where he stands, in world units
 ##   to 0.1, in any direction. Unlike the lateral fields it sees a walk in depth, such as a
 ##   re-square that sends a man to the other end of his own file.
+## - pairs_within_body_radius: how many pairs of the unit's men stand with their centres closer
+##   than one body radius (motion_ref.soldier_body_radius), each overlapping the other by more
+##   than half his body: a man walking through another rather than past him. An exact count.
+## - front_rank_line: [nearest, farthest] the front rank stands along the unit's facing, in world
+##   units to 0.01: the men whose slot lies within half a rank pitch (motion_ref.rank_pitch) of
+##   the front-most slot, read off their bodies. A front rank standing on one line reads one
+##   value twice; pin it with that value and a `tol` stated in rank pitches.
 ##
-## Sampled the tick after a reshape, before the men have walked, they measure the deal itself.
+## Sampled the tick after a reshape, before the men have walked, the first five measure the deal
+## itself.
 static func derived_field(u: Dictionary, field: String):
 	if not DERIVED_FIELDS.has(field):
 		return null
@@ -908,10 +917,15 @@ static func derived_field(u: Dictionary, field: String):
 			farthest = maxf(farthest, Vector2(pos[i][0], pos[i][1]).distance_to(
 					Vector2(slots[i][0], slots[i][1])))
 		return snappedf(farthest, 0.1)
+	if field == "pairs_within_body_radius":
+		return _pairs_within_body_radius(pos, ref)
 	var centre_pair: Array = u.get("position", [])
 	var facing_pair: Array = u.get("facing", [])
 	if centre_pair.size() != 2 or facing_pair.size() != 2:
 		return null
+	if field == "front_rank_line":
+		return _front_rank_line(pos, slots, Vector2(float(facing_pair[0]), float(facing_pair[1])),
+				ref)
 	var centre := Vector2(float(centre_pair[0]), float(centre_pair[1]))
 	if field == "slots_beyond_flanks":
 		return _slots_beyond_flanks(slots, centre, ref)
@@ -932,6 +946,43 @@ static func derived_field(u: Dictionary, field: String):
 	if field == "slots_across_centreline":
 		return crossed
 	return snappedf(excess, 0.1)
+
+
+## pairs_within_body_radius (see derived_field): how many pairs of the men at `pos` stand with
+## their centres closer than one body radius, motion_ref.soldier_body_radius. Null with no body
+## radius dumped.
+static func _pairs_within_body_radius(pos: Array, ref: Dictionary):
+	var r: float = float(ref.get("soldier_body_radius", 0.0))
+	if r <= 0.0:
+		return null
+	var pairs: int = 0
+	for i in range(pos.size()):
+		var a := Vector2(pos[i][0], pos[i][1])
+		for j in range(i + 1, pos.size()):
+			if a.distance_to(Vector2(pos[j][0], pos[j][1])) < r:
+				pairs += 1
+	return pairs
+
+
+## front_rank_line (see derived_field): [nearest, farthest] along `facing`, to 0.01, of the men
+## at `pos` whose entry in `slots` lies within half a rank pitch, motion_ref.rank_pitch, of the
+## front-most slot. Null with no rank pitch or no facing.
+static func _front_rank_line(pos: Array, slots: Array, facing: Vector2, ref: Dictionary):
+	var half: float = float(ref.get("rank_pitch", 0.0)) * 0.5
+	if half <= 0.0 or facing == Vector2.ZERO:
+		return null
+	var f: Vector2 = facing.normalized()
+	var front: float = -INF
+	for s in slots:
+		front = maxf(front, Vector2(s[0], s[1]).dot(f))
+	var lo: float = INF
+	var hi: float = -INF
+	for i in range(pos.size()):
+		if front - Vector2(slots[i][0], slots[i][1]).dot(f) < half:
+			var d: float = Vector2(pos[i][0], pos[i][1]).dot(f)
+			lo = minf(lo, d)
+			hi = maxf(hi, d)
+	return [snappedf(lo, 0.01), snappedf(hi, 0.01)]
 
 
 ## grid_off_heading (see derived_field): the angle in degrees, to 0.1, between the unit record's

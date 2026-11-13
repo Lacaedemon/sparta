@@ -69,6 +69,10 @@ var forced_seed: int = -1
 #               "anchor_offset"?: float (UnitFormation.anchor_shift-derived local-X shift for
 #                   an asymmetric (anchored) -4 resize; omitted when 0.0 = the plain centred
 #                   resize every other frontage change already uses),
+#               "explicatio"?: int (a -4 resize that is an explicatio drill, the B key: the
+#                   UnitFormation.ExplicatioDrill Unit.set_frontage deals; omitted when NONE),
+#               "explicatio_held"?: int (the flank that drill holds, UnitFormation.Anchor:
+#                   -1 left, +1 right; omitted when 0 = CENTRE),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
 #               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED),
 #               "form_up_group"?: int (the shared id every per-unit order from the same
@@ -337,7 +341,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		group_attack: int = 0, anchor_offset: float = 0.0,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
-		line_index: int = -1, reinforce: int = 0) -> void:
+		line_index: int = -1, reinforce: int = 0, explicatio: int = 0,
+		explicatio_held: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	_order_stream.append(ReplayOrderEntryRef.build(tick, uids, pos, target_uid,
@@ -345,7 +350,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 			group_attack, anchor_offset,
 			form_up_group, walk_advance_toggle, reform_toggle,
 			file_major_reform_mode_toggle,
-			line_index, reinforce))
+			line_index, reinforce, explicatio, explicatio_held))
 
 
 ## PLAYBACK: reposition the order-read cursor (via ReplayOrders.rewind_cursor_to_tick)

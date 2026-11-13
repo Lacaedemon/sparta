@@ -117,6 +117,8 @@ static func demote(u: Unit) -> void:
 	# the bodies left off, and promotion re-seeds them from it. Read BEFORE the tier
 	# flips, since mean_soldier_stamina reads the aggregate once the unit is far-tier.
 	u.far_stamina = u.mean_soldier_stamina()
+	# An explicatio under way ends with the grid laid on the men, while there are men to lay it on.
+	u._end_explicatio_drill()
 	u.tier = FormationTier.FAR
 	u._sim_soldier_pos = PackedVector2Array()
 	u._sim_body_vel = PackedVector2Array()
@@ -143,6 +145,8 @@ static func demote(u: Unit) -> void:
 	# And the depth-reflection walker flags. Defensive: promote() builds the bodies on their
 	# slots, so no man is still walking the depth when the arcs could next read the flags.
 	u._sim_soldier_reflect_walker = PackedByteArray()
+	# And each man's role: the men promote() builds are new, so none leads a column.
+	u._sim_soldier_role = PackedByteArray()
 	# And a router's per-man feed-forward record, so a later promotion reads no change from it.
 	u._body_flight_ff_prev = PackedVector2Array()
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks

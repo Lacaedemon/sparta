@@ -485,6 +485,10 @@ static func step(unit: Unit, delta: float) -> void:
 	# the flight's feed-forward otherwise carries a man still closing on his slot after a turn
 	# of the flight straight onto the rock. Only on a map with block terrain, and only routers.
 	var routing_near_terrain: bool = routing and not terrain_guard.is_empty()
+	# A man in the follow mode (Unit.follow_leader, SoldierFollow) steers on another man: his
+	# slot this tick is his place beside or behind that man, and he heads for it the way a man in
+	# a file does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
+	var follow_width: float = unit.follow_line_width()
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
@@ -503,6 +507,11 @@ static func step(unit: Unit, delta: float) -> void:
 		# march for the uncrowded bulk.
 		var feed_forward: Vector2 = unit._sim_steer[i] if is_engaged[i] == 1 \
 				else march_vel + unit._sim_steer[i]
+		# A following man steers on his place beside or behind the man he follows, which the
+		# arrival term closes on; he carries no march feed-forward of the block's.
+		var leader: int = unit.follow_leader(i)
+		if leader != SoldierFollow.NOT_FOLLOWING:
+			feed_forward = unit._sim_steer[i]
 		# During an in-place turn the slot targets rotate with unit.facing, which would drag
 		# bodies to intermediate positions and back. Drop the arrival term so bodies aim only at
 		# the feed-forward (~zero for a turn in place); they decelerate to rest where they stand
@@ -513,8 +522,15 @@ static func step(unit: Unit, delta: float) -> void:
 		if turn_rate != 0.0 and is_engaged[i] == 0:
 			var arm: Vector2 = own_slot - unit.position
 			feed_forward += Vector2(-arm.y, arm.x) * turn_rate
-		var to_slot: Vector2 = Vector2.ZERO if turning \
-				else arrival_target(unit, i, own_slot, n, march_frac, straight_march)
+		var to_slot: Vector2 = Vector2.ZERO
+		if not turning:
+			if leader != SoldierFollow.NOT_FOLLOWING:
+				var man_facing: Vector2 = unit._sim_soldier_facing[i] \
+						if i < unit._sim_soldier_facing.size() else unit.facing
+				to_slot = SoldierFollowSteer.steer_point(unit._sim_soldier_pos[i], man_facing, own_slot,
+						follow_width, unit.follow_room(i)) - unit._sim_soldier_pos[i]
+			else:
+				to_slot = arrival_target(unit, i, own_slot, n, march_frac, straight_march)
 		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
 		# reaches it (v = sqrt(2 a d)), capped at the unit's jog pace, then move the body's
 		# velocity toward that desired velocity at the bounded acceleration. No spring, so no
@@ -1295,6 +1311,14 @@ static func _any_body_off_slot(unit: Unit, n: int, target_slots: PackedVector2Ar
 static func couple(unit: Unit, delta: float) -> void:
 	var n: int = unit._sim_soldier_pos.size()
 	if n == 0:
+		return
+	# While an explicatio is under way the men follow each other, not the grid, and the block
+	# stands where they stand: `position` is read off them (Unit.explicatio_grid_position).
+	if unit.explicatio_drill_active():
+		unit._step_slots_for_couple_valid = false
+		if delta > 0.0:
+			unit._body_follow_vel = (unit.explicatio_grid_position() - unit.position) / delta
+		unit.position = unit.explicatio_grid_position()
 		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
 	# bodies arrive onto the swinging slots a few frames behind. Their centroid therefore lags the

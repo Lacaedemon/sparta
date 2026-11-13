@@ -3,8 +3,9 @@ extends GutTest
 ## scene, spawn the armies, and drive the maneuver through the recorded order path
 ## (Battle.enqueue_file_double) exactly as the hotkey does. Steps the full simulation tick
 ## by tick and asserts the resulting frontage AND that the soldier bodies ease into the
-## reshaped slots at velocity -- no body teleports, and the regiment centre stays put (the
-## reshape changes the formation, not the unit position).
+## reshaped slots at velocity -- no body teleports. A duplicatio keeps the regiment centre
+## where it was; an explicatio is a drill (Unit._begin_explicatio) whose front rank stays on its
+## line, and whose centre is read off the men as the block grows shallower.
 
 # The regiment centre couples toward its soldiers' body centroid (SoldierBodies.couple),
 # so reshaping the block shifts the centre by the small amount the centroid moves as the
@@ -44,6 +45,14 @@ func _target_unit(tree: SceneTree) -> Unit:
 	return target
 
 
+## How far ahead along `forward` the front-most of `points` stands.
+func _front(points: PackedVector2Array, forward: Vector2) -> float:
+	var best: float = -INF
+	for p in points:
+		best = maxf(best, p.dot(forward))
+	return best
+
+
 func test_explicatio_widens_the_line_without_teleporting_bodies() -> void:
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(battle)
@@ -55,7 +64,8 @@ func test_explicatio_widens_the_line_without_teleporting_bodies() -> void:
 		return
 
 	var start_frontage: int = UnitFormation.frontage(target)
-	var start_pos: Vector2 = target.position
+	var forward: Vector2 = target.facing
+	var start_front: float = _front(target._sim_soldier_pos, forward)
 	battle.enqueue_file_double([target.uid], 1)   # explicatio
 	assert_eq(UnitFormation.frontage(target), start_frontage * 2,
 		"explicatio doubles the frontage")
@@ -70,8 +80,12 @@ func test_explicatio_widens_the_line_without_teleporting_bodies() -> void:
 
 	assert_lt(worst_step, 6.0,
 		"bodies ease into the reshaped slots at velocity, no teleport (worst %.3f px)" % worst_step)
-	assert_lt(target.position.distance_to(start_pos), CENTRE_SETTLE_TOLERANCE_PX,
-		"the reshape moves the formation, not the regiment centre")
+	# The explicatio is a drill (Unit._begin_explicatio): the front rank keeps its ground, and the
+	# regiment's centre is read off its men as the block grows shallower, not held where it was.
+	assert_almost_eq(_front(target._sim_soldier_pos, forward), start_front,
+		0.25 * target.rank_pitch_wu(), "the front rank keeps its ground")
+	assert_lt(target.position.distance_to(target.explicatio_grid_position()), 0.01,
+		"the regiment centre is read off its men")
 	# The widened block is broader (more files) and shallower than it started.
 	var wide_bbox: Vector2 = _bbox(target._sim_soldier_pos)
 	assert_gt(wide_bbox.length(), 0.0, "the reshaped block has a real footprint")
@@ -187,7 +201,7 @@ func test_explicatio_right_anchored_holds_the_right_flank_in_place() -> void:
 		"bodies ease into the anchored slots at velocity, no teleport (worst %.3f px)" % worst_step)
 
 
-func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_body_centroid_shifted() -> void:
+func test_explicatio_right_anchored_settles_with_the_front_held_and_body_centroid_shifted() -> void:
 	# Regression test: SoldierBodies.couple() slides `position` toward the soldier bodies'
 	# own centroid each tick to correct genuine off-formation drift (friendly-avoidance,
 	# knockback). An anchored explicatio/duplicatio makes the TARGET slot centroid itself
@@ -198,10 +212,11 @@ func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_bo
 	# pulled tens of world units off, and the render's selection ring (drawn at `position`)
 	# visibly no longer centred on the widened block, even though the immediately-read slot
 	# geometry (the sibling test above) looked correct the instant the order was issued.
-	# This test steps the FULL sim long enough for the bodies to actually settle and checks
-	# both ends of the same regression: `position` stays put, AND the body centroid ends up
-	# genuinely off-centre (proving the widen is actually asymmetric in the live render, not
-	# just in the instantaneous target math).
+	# The explicatio is now a drill in which `position` is read off the men rather than coupled
+	# to them. This test steps the FULL sim and checks that the front rank stays on its line,
+	# that `position` is the men's, and that the body centroid ends up off-centre across the
+	# front (proving the widen is actually asymmetric in the live render, not just in the
+	# instantaneous target math).
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	add_child_autofree(battle)
 	for _k in range(40):                      # spawn the armies and let the bodies settle
@@ -211,7 +226,8 @@ func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_bo
 	if target == null:
 		return
 
-	var start_pos: Vector2 = target.position
+	var forward: Vector2 = target.facing
+	var start_front: float = _front(target._sim_soldier_pos, forward)
 	var start_bbox: Vector2 = _bbox(target._sim_soldier_pos)
 	var start_centroid := Vector2.ZERO
 	for p in target._sim_soldier_pos:
@@ -225,10 +241,12 @@ func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_bo
 	for _i in range(300):
 		await get_tree().physics_frame
 
-	assert_almost_eq(target.position.x, start_pos.x, 1.0,
-		"the regiment centre holds still through an anchored widen, exactly like the centred one")
-	assert_almost_eq(target.position.y, start_pos.y, 1.0,
-		"the regiment centre holds still through an anchored widen, exactly like the centred one")
+	# The explicatio is a drill (Unit._begin_explicatio): the front rank keeps its ground and the
+	# regiment centre is read off the men, never dragged after them by the coupling.
+	assert_almost_eq(_front(target._sim_soldier_pos, forward), start_front,
+		0.25 * target.rank_pitch_wu(), "the front rank keeps its ground through an anchored widen")
+	assert_lt(target.position.distance_to(target.explicatio_grid_position()), 0.01,
+		"the regiment centre is read off its men")
 
 	var end_centroid := Vector2.ZERO
 	for p in target._sim_soldier_pos:
@@ -239,11 +257,12 @@ func test_explicatio_right_anchored_settles_with_the_regiment_centre_held_and_bo
 	# The widened block is measurably wider than it started (more files).
 	assert_gt(end_bbox.x, start_bbox.x + CENTRE_SETTLE_TOLERANCE_PX,
 		"the anchored widen genuinely broadens the block's world footprint")
-	# An anchored widen is NOT a plain centred widen: the body centroid must shift by a
-	# real amount (half the width gained, landing on the un-anchored flank) rather than
-	# staying near the pre-widen centroid the way test_explicatio_widens_the_line_... does.
-	assert_gt(start_centroid.distance_to(end_centroid), CENTRE_SETTLE_TOLERANCE_PX,
-		"the anchored widen visibly shifts the soldiers' own centroid off the old centre " +
+	# An anchored widen is NOT a plain centred widen: the body centroid must shift ACROSS the
+	# front by a real amount (half the width gained, landing on the un-anchored flank). Any
+	# explicatio moves the centroid forward as the block grows shallower with its front held,
+	# so only the shift across the front tells the anchor's asymmetry apart.
+	var across := Vector2(-forward.y, forward.x)
+	assert_gt(absf((end_centroid - start_centroid).dot(across)), CENTRE_SETTLE_TOLERANCE_PX,
+		"the anchored widen visibly shifts the soldiers' own centroid across the front " +
 		"(a plain centred widen would not) -- this is the render-visible asymmetry the " +
-		"anchor is FOR; a regiment-centre-drags-to-cancel-it bug would collapse this back " +
-		"toward zero")
+		"anchor is FOR")

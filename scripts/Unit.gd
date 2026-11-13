@@ -6288,10 +6288,39 @@ func _reset_shield_hold_angles() -> void:
 ## `anchor_offset` is in the unmirrored local frame (unmirrored_anchor_offset is the standing
 ## offset in that frame), so a standing about-face mirror is baked first: written under the
 ## mirror, the shift would land on the opposite flank.
-func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
+##
+## `explicatio_drill` (UnitFormation.ExplicatioDrill) names the drill a widen is (the B key, the
+## turn-and-unfold combo), as against any other change of width that happens to double the
+## files (NONE). A standing file-major block doubled by a drill does the drill
+## (_begin_explicatio), from wherever its men stand: each man follows a man he can see until
+## every man has taken his place (_can_deal_explicatio says which blocks can). Any other change,
+## a drill that cannot double the files, a block on the march, a block whose grid stands
+## turned from its facing, and the combo's widen, which doubles the turned block's files against
+## the width it had before the turn and so is the drill only for a block as deep as it was wide,
+## re-deal the files from the bodies as before (_ensure_file_assignment). `held_flank` is the
+## flank the order holds (UnitFormation.Anchor: -1 left, +1 right, 0 about the middle), whose
+## file stands (UnitFormation.explicatio_lane_split); it is the order's choice, not read off
+## `anchor_offset`, which a held widen before this one leaves standing.
+func set_frontage(files: int, anchor_offset: float = 0.0,
+		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
+		held_flank: int = UnitFormation.Anchor.CENTRE) -> void:
 	_bake_formation_mirror()
+	_end_explicatio_drill()   # a new width supersedes a drill still under way
 	var old_files: int = UnitFormation.frontage(self)
-	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
+	var target_files: int = clampi(files, 1, maxi(1, max_soldiers))
+	var dealt: Dictionary = {}
+	if explicatio_drill != UnitFormation.ExplicatioDrill.NONE \
+			and _can_deal_explicatio(old_files, target_files):
+		dealt = UnitFormation.explicatio_assignment(_sim_soldier_file, _sim_soldier_rank,
+				old_files, UnitFormation.explicatio_lane_split(old_files, held_flank),
+				explicatio_drill)
+		if (dealt["files"] as PackedInt32Array).size() != soldiers:
+			# _can_deal_explicatio checked the assignment the deal splits, so this is a bug: say
+			# so, and widen with the lateral deal rather than leave the files half dealt.
+			push_error("Unit.set_frontage: the explicatio deal of %d men on %d files came back "
+					% [soldiers, old_files] + "empty; widening with the lateral deal instead")
+			dealt = {}
+	frontage_override = target_files
 	frontage_anchor_offset = anchor_offset
 	if frontage_override != old_files:
 		clear_couple_transit()   # a new frontage re-deals every slot (see set_formation)
@@ -6302,7 +6331,348 @@ func set_frontage(files: int, anchor_offset: float = 0.0) -> void:
 		# arm the watch using the reshape-specific bound (old shape's diagonal plus the
 		# new one's), captured before the frontage actually changes underneath it.
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
+	if not dealt.is_empty():
+		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill)
 	note_front_depth()   # a narrower frontage deepens the block
+
+
+## Whether a change from `old_files` to `new_files` can be done as an explicatio drill, from what
+## the men are doing: a file-major line (not a square) doubling its files, standing (the drill
+## on the march is still to do), not fighting, with an assignment on the old files for the drill to
+## split, whose files run the way its men face. The men need not stand on their slots: the drill
+## reads each man's file, rank and body where he is. But each man follows the man ahead of him in
+## his file and dresses to his own right, so the grid's front must be the men's front: a block
+## whose grid stands turned from its facing (the half-turn fold an about-face leaves, or a lag the
+## grid still trails) has its file leaders behind its men and its file ids growing to their left,
+## and a drill dealt on it would send each file through the file beside it. Brings the assignment
+## up to date first, as a slot query would, which deals the files from where the men stand when
+## the width has changed under them.
+# TODO(#1968): deal the drill on a grid turned from its men, reading files and ranks the way
+# the men face.
+func _can_deal_explicatio(old_files: int, new_files: int) -> bool:
+	if new_files != old_files * 2 or soldiers <= 0 or in_square() \
+			or not _effective_file_major_reform() or _sim_soldier_pos.size() < soldiers \
+			or state != State.IDLE or has_move_target or is_engaged() \
+			or cos(grid_fold()) < 1.0 - 1e-6:   # square to the facing, to float rounding
+		return false
+	_ensure_file_assignment(soldiers, old_files)
+	return _sim_soldier_file.size() == soldiers and _file_assignment_files == old_files
+
+
+## Begin the explicatio `drill` the deal `dealt` (UnitFormation.explicatio_assignment) sets out,
+## from `old_files` files held on `held_flank` (-1 left, +1 right, 0 about the middle): install
+## each man's new file, rank and role, and choose the file that stands
+## (UnitFormation.explicatio_stand_old_file), or the nearest file casualties have left a man in.
+## Its leader holds the ground he stands on; every other man follows a man he can see
+## (UnitFormation.explicatio_follow_plan, _refresh_explicatio_follow) until every man has taken
+## his place (_advance_explicatio_drill).
+func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill: int) -> void:
+	var files_out: PackedInt32Array = dealt["files"]
+	var ranks_out: PackedInt32Array = dealt["ranks"]
+	var split: int = UnitFormation.explicatio_lane_split(old_files, held_flank)
+	var wanted: int = UnitFormation.explicatio_stand_old_file(old_files, held_flank)
+	# The file leader of each old file that still has men stays at rank 0 of its new file.
+	var stand: int = -1
+	var stand_file: int = -1
+	for d in range(old_files):
+		for k in [wanted - d, wanted + d]:
+			if k < 0 or k >= old_files or stand >= 0:
+				continue
+			var f: int = 2 * k + (0 if k >= split else 1)
+			for i in range(soldiers):
+				if files_out[i] == f and ranks_out[i] == 0:
+					stand = i
+					stand_file = f
+					break
+	if stand < 0:
+		push_error("Unit._begin_explicatio: no file leader to stand among %d men; the drill "
+				% soldiers + "does not start and the men take their slots")
+	_sim_soldier_file = files_out
+	_sim_soldier_rank = ranks_out
+	_sim_soldier_role = dealt["roles"]
+	_file_assignment_files = old_files * 2
+	note_file_assignment_changed()
+	if stand < 0:
+		return
+	_explicatio_lane_split = split
+	_explicatio_stand_file = stand_file
+	_explicatio_stand_point = _sim_soldier_pos[stand]
+	_explicatio_following = PackedByteArray()
+	_explicatio_following.resize(soldiers)
+	_explicatio_following.fill(1)
+	_explicatio_drill = drill
+	_explicatio_follow_frame = -1
+
+
+## Whether an explicatio drill is under way: the men follow each other, not the slot grid.
+func explicatio_drill_active() -> bool:
+	return _explicatio_drill != UnitFormation.ExplicatioDrill.NONE
+
+
+## Read this physics tick's follow plan of the explicatio under way into the caches
+## (_explicatio_leaders, _explicatio_places, _explicatio_rooms), once a tick, from where the men
+## stand (UnitFormation.explicatio_follow_plan, SoldierFollow.places,
+## SoldierFollowSteer.lane_blockers). A man in an interval, its leader and every man of his
+## column, comes up while nobody of another file stands in his lane, from level with him to a
+## rank ahead, within explicatio_lane_clear() of his place's line; every other man has all the
+## room he needs. A man whose lane is held by men who have all stopped following has it shut
+## (_explicatio_shut). The men are looked up in cells of the block's own frame
+## (_explicatio_cells), so each man reads only the men near his way. Read afresh when the tick
+## or `count` changes, so a casualty during the tick is read anew. True when the caches hold a
+## plan for `count` men; false, with them empty, when no drill is under way, the arrays do not
+## line up, or no file that stays has a leader to be the guide.
+func _refresh_explicatio_follow(count: int) -> bool:
+	var frame: int = Engine.get_physics_frames()
+	if _explicatio_follow_frame == frame and _explicatio_follow_count == count:
+		return _explicatio_places.size() == count
+	_explicatio_leaders = PackedInt32Array()
+	_explicatio_places = PackedVector2Array()
+	_explicatio_rooms = PackedFloat32Array()
+	_explicatio_shut = PackedByteArray()
+	_explicatio_follow_frame = frame
+	_explicatio_follow_count = count
+	if not explicatio_drill_active() or _sim_soldier_pos.size() < count \
+			or _sim_soldier_file.size() != count or _sim_soldier_rank.size() != count \
+			or _sim_soldier_role.size() != count or _sim_soldier_facing.size() < count \
+			or not _take_up_explicatio_guide(count):
+		return false
+	var plan: Dictionary = UnitFormation.explicatio_follow_plan(_sim_soldier_file,
+			_sim_soldier_rank, _sim_soldier_role, _explicatio_lane_split, _explicatio_stand_file,
+			file_pitch_wu(), rank_pitch_wu())
+	var leaders: PackedInt32Array = plan["leaders"]
+	if leaders.size() != count:
+		return false
+	var points := PackedVector2Array()
+	points.resize(count)
+	points.fill(_explicatio_stand_point)
+	_explicatio_leaders = leaders
+	var bodies: PackedVector2Array = _sim_soldier_pos.slice(0, count)
+	_explicatio_places = SoldierFollow.places(bodies, _sim_soldier_facing.slice(0, count),
+			leaders, plan["offsets"], points, plan["guides"])
+	_explicatio_rooms.resize(count)
+	_explicatio_rooms.fill(1.0)
+	_explicatio_shut.resize(count)
+	_explicatio_shut.fill(0)
+	var clear: float = explicatio_lane_clear()
+	var reach: float = maxf(rank_pitch_wu(), clear)
+	var cells: Dictionary = _explicatio_cells(bodies, reach)
+	var lined_up: bool = _explicatio_following.size() == count
+	for i in range(count):
+		var f: int = _sim_soldier_file[i]
+		if UnitFormation.explicatio_file_stays(f, _explicatio_lane_split):
+			continue
+		# His place's line where it passes level with him, along his own facing: a man turned a
+		# little off the block's facing has his line pass level with him well off his place's.
+		var own_front: Vector2 = _sim_soldier_facing[i].normalized()
+		var level: Vector2 = _explicatio_places[i] \
+				+ own_front * (bodies[i] - _explicatio_places[i]).dot(own_front)
+		var near: PackedInt32Array = _explicatio_cell_men(cells, bodies[i], level, reach, clear,
+				soldier_body_radius())
+		var lane: PackedInt32Array = SoldierFollowSteer.lane_blockers(bodies[i],
+				_sim_soldier_facing[i], _explicatio_places[i], bodies, near, _sim_soldier_file, f,
+				clear, rank_pitch_wu(), soldier_body_radius())
+		if lane.is_empty():
+			continue
+		_explicatio_rooms[i] = 0.0
+		var moving: bool = not lined_up
+		for j in lane:
+			if lined_up and _explicatio_following[j] == 1:
+				moving = true
+		_explicatio_shut[i] = 0 if moving else 1
+	return true
+
+
+## The most a man's own facing is taken to turn off the block's while an explicatio runs, for the
+## cells his lane is read from (_explicatio_cell_men): a quarter of a radian, about 14 degrees.
+const EXPLICATIO_TILT_MAX: float = 0.25
+
+
+## How far off a man's way in an explicatio another file's man must stand for him not to stand
+## in it: the lesser of a body's width, so that two bodies pass side by side without touching,
+## and the file pitch less REFORM_SETTLE_EPS, since the men beside his line will stand no farther
+## off it than the pitch, and on their places only to within that distance. 8 wu at the 9 wu
+## pitch of close order, 9 wu (a body) in open order, 5.75 wu in a 6.75 wu shield wall.
+func explicatio_lane_clear() -> float:
+	return minf(2.0 * soldier_body_radius(), file_pitch_wu() - REFORM_SETTLE_EPS)
+
+
+## `bodies` filed into square cells `cell` wu wide in the block's own frame (its facing and its
+## right), keyed Vector2i(across, along), for _explicatio_cell_men.
+func _explicatio_cells(bodies: PackedVector2Array, cell: float) -> Dictionary:
+	var front: Vector2 = facing.normalized()
+	var right: Vector2 = SoldierFollow.right_of(front)
+	var cells: Dictionary = {}
+	for j in range(bodies.size()):
+		var key := Vector2i(floori(bodies[j].dot(right) / cell), floori(bodies[j].dot(front) / cell))
+		if not cells.has(key):
+			cells[key] = PackedInt32Array()
+		cells[key].push_back(j)
+	return cells
+
+
+## The men of `cells` (_explicatio_cells, `cell` wu wide) in the cells around a man at `pos`
+## whose place's line passes level with him at `place`, his lane `clear` wide each side of it,
+## from `behind` behind him to `cell` ahead: every cell that lane could touch for a man whose own
+## facing is turned up to EXPLICATIO_TILT_MAX off the block's. Across, out from the nearer and
+## the farther of him and that line by the lane's far corner, `cell` sin(EXPLICATIO_TILT_MAX) +
+## `clear` across from the line, in whole cells. Along, from the cell of the lane's rearmost point
+## to that of its foremost: a lane corner stands `clear` + d (d his distance off his line)
+## across his own front, which a turn of up to EXPLICATIO_TILT_MAX carries (`clear` + d)
+## sin(EXPLICATIO_TILT_MAX) along the block's, behind him past `behind` and ahead past `cell`.
+func _explicatio_cell_men(cells: Dictionary, pos: Vector2, place: Vector2, cell: float,
+		clear: float, behind: float) -> PackedInt32Array:
+	var front: Vector2 = facing.normalized()
+	var right: Vector2 = SoldierFollow.right_of(front)
+	var out_cells: int = ceili((cell * sin(EXPLICATIO_TILT_MAX) + clear) / cell)
+	var a0: int = floori(minf(pos.dot(right), place.dot(right)) / cell) - out_cells
+	var a1: int = floori(maxf(pos.dot(right), place.dot(right)) / cell) + out_cells
+	var sway: float = (clear + (place - pos).length()) * sin(EXPLICATIO_TILT_MAX)
+	var l0: int = floori((pos.dot(front) - behind - sway) / cell)
+	var l1: int = floori((pos.dot(front) + cell + sway) / cell)
+	var out := PackedInt32Array()
+	for x in range(a0, a1 + 1):
+		for y in range(l0, l1 + 1):
+			var key := Vector2i(x, y)
+			if cells.has(key):
+				out.append_array(cells[key])
+	return out
+
+
+## The guide's file: while the leader of the file that stands leads it, nothing changes. When he
+## has fallen and nobody has closed up into his place, the leader of the nearest file that stays
+## (UnitFormation.explicatio_guide_file) becomes the guide, holding the ground he stands on, so
+## the front rank dresses on a man, never on a point no man occupies. False, said out loud, when
+## no file that stays has a leader left: the drill then has no guide and ends.
+func _take_up_explicatio_guide(count: int) -> bool:
+	var leader_of: Dictionary = {}
+	for i in range(count):
+		if _sim_soldier_rank[i] == 0:
+			leader_of[_sim_soldier_file[i]] = i
+	var f: int = UnitFormation.explicatio_guide_file(leader_of, _explicatio_stand_file,
+			_explicatio_lane_split)
+	if f < 0:
+		push_error("Unit._take_up_explicatio_guide: no file that stays has a leader to be the "
+				+ "guide; the explicatio ends with the grid laid on the men")
+		return false
+	if f != _explicatio_stand_file:
+		_explicatio_stand_file = f
+		_explicatio_stand_point = _sim_soldier_pos[leader_of[f]]
+	return true
+
+
+## Whom man `i` follows this tick (SoldierFollow): the index of that man, SoldierFollow.STAND or
+## HOLD for a man who follows nobody but keeps to his place, or SoldierFollow.NOT_FOLLOWING for a
+## man who keeps to his slot: every man when no explicatio is under way, and in one, a man who
+## has taken his place (_advance_explicatio_drill).
+func follow_leader(i: int) -> int:
+	if not _refresh_explicatio_follow(soldiers) or i < 0 or i >= soldiers \
+			or _explicatio_following.size() != soldiers or _explicatio_following[i] == 0:
+		return SoldierFollow.NOT_FOLLOWING
+	return _explicatio_leaders[i]
+
+
+## Whether man `i` may come up along his front this tick (SoldierFollowSteer.steer_point's
+## `room`): 0 while another file's man stands in his lane, else 1, as for a man in no interval.
+func follow_room(i: int) -> float:
+	if not _refresh_explicatio_follow(soldiers) or i < 0 or i >= soldiers:
+		return 1.0
+	return _explicatio_rooms[i]
+
+
+## How far off his place's line a following man still gains no ground along it
+## (SoldierFollowSteer.steer_point): a body's width, beyond which he clears the man of his own
+## line, or the file pitch where the files stand closer than that, beyond which he stands on
+## the next file's line.
+func follow_line_width() -> float:
+	return minf(file_pitch_wu(), 2.0 * soldier_body_radius())
+
+
+## Advance an explicatio drill under way, before the bodies step. Each man who is still
+## following takes his place, and stops following, once the man he follows has taken his (or he
+## follows nobody) and he stands within REFORM_SETTLE_EPS of his place, or a man of another
+## regiment presses on him (SoldierSteering's push, this tick's `_sim_steer`), so he can come no
+## nearer. A man in an interval stops for a press only once it has room for him where he is
+## (follow_room 1): until then the men in his lane, not the press, hold him back. And he stops,
+## room or none, once every man standing in his lane has stopped following, so it will open no
+## further (a friend pressing them, say). After he
+## stops following he keeps to his place as a man keeps to his slot. The drill ends when no
+## man is still following, and at once when the block marches, fights, routs, squares, changes
+## width, loses its file-major grid, or its men no longer line up with the roles the drill dealt
+## them (a reinforcement re-deals the block). Either way the slot grid takes over from where the
+## men stand (_end_explicatio_drill).
+func _advance_explicatio_drill() -> void:
+	if not explicatio_drill_active():
+		return
+	if state != State.IDLE or has_move_target or is_engaged() or in_square() \
+			or not _effective_file_major_reform() or soldiers <= 0 \
+			or _file_assignment_files != formation_files(soldiers) \
+			or _explicatio_following.size() != soldiers \
+			or not _refresh_explicatio_follow(soldiers):
+		_end_explicatio_drill()
+		return
+	var still: bool = false
+	for i in range(soldiers):
+		if _explicatio_following[i] == 0:
+			continue
+		var a: int = _explicatio_leaders[i]
+		var placed: bool = _sim_soldier_pos[i].distance_to(_explicatio_places[i]) \
+				<= REFORM_SETTLE_EPS
+		var shut: bool = _explicatio_shut[i] == 1
+		var pressed: bool = i < _sim_steer.size() and _sim_steer[i] != Vector2.ZERO \
+				and _explicatio_rooms[i] >= 1.0
+		if (a < 0 or _explicatio_following[a] == 0) and (placed or pressed or shut):
+			_explicatio_following[i] = 0
+		else:
+			still = true
+	if not still:
+		_end_explicatio_drill()
+
+
+## End an explicatio drill under way: the slot grid takes over, laid on the men where they stand
+## (explicatio_grid_position).
+func _end_explicatio_drill() -> void:
+	if not explicatio_drill_active():
+		return
+	_explicatio_drill = UnitFormation.ExplicatioDrill.NONE
+	_explicatio_leaders = PackedInt32Array()
+	_explicatio_places = PackedVector2Array()
+	_explicatio_rooms = PackedFloat32Array()
+	_explicatio_shut = PackedByteArray()
+	_explicatio_following = PackedByteArray()
+	_explicatio_follow_frame = -1
+	position = explicatio_grid_position()
+	_render_dirty = true
+
+
+## Where `position` puts the slot grid on the men as they stand: the grid's centroid on theirs.
+## While an explicatio is under way the block's position is this reading of its men, taken each
+## tick (SoldierBodies.couple), and the grid is laid there when the drill ends.
+func explicatio_grid_position() -> Vector2:
+	var n: int = mini(soldiers, _sim_soldier_pos.size())
+	if n <= 0:
+		return position
+	var local: PackedVector2Array = formation_slots(n, false, false)
+	if local.size() != n:
+		return position
+	var ang: float = soldier_block_world_angle()
+	var body_sum := Vector2.ZERO
+	var slot_sum := Vector2.ZERO
+	for i in range(n):
+		var slot: Vector2 = local[i]
+		if _formation_mirror_x:
+			slot.x = -slot.x
+		slot_sum += slot.rotated(ang)
+		body_sum += _sim_soldier_pos[i]
+	return (body_sum - slot_sum) / float(n)
+
+
+## `slots` (slot frame) with each man's slot set to his place in the explicatio under way, so
+## whatever reads the slots this tick, the bodies' steering and the demo dumps included, reads
+## where the man is going.
+func _apply_explicatio_places(slots: PackedVector2Array, count: int) -> PackedVector2Array:
+	if slots.size() != count or not _refresh_explicatio_follow(count):
+		return slots
+	return to_slot_frame(_explicatio_places)
 
 
 ## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
@@ -6797,6 +7167,37 @@ var _sim_soldier_rank: PackedInt32Array = PackedInt32Array()
 # duplicatio, the automatic ranks-closed narrowing) and the assignment should reflow fresh
 # rather than keep stale file ids from a now-different frontage. -1 = never assigned yet.
 var _file_assignment_files: int = -1
+# Each man's role (UnitFormation.SoldierRole), index-aligned with _sim_soldier_pos: the man an
+# explicatio made leader of his column up an interval (the hemilochites of a half-file, the
+# epistates of the alternate-rank drill). The follow plan reads it: only the man with the role
+# leads his column (UnitFormation.explicatio_follow_plan). It belongs to the files the explicatio
+# dealt: SoldierMelee.reap trims it and hands a fallen leader's role to the man who closes up into
+# his place, and any re-deal of the files clears it (_ensure_file_assignment,
+# install_file_assignment, append_soldier_bodies). Empty when no explicatio dealt the files.
+var _sim_soldier_role: PackedByteArray = PackedByteArray()
+# The explicatio drill under way (UnitFormation.ExplicatioDrill; NONE when none is): while it
+# runs, every man follows a man he can see (_refresh_explicatio_follow) until he has taken his
+# place, and `position` is read from the men (explicatio_grid_position). _explicatio_lane_split
+# is where its intervals open (UnitFormation.explicatio_lane_split), _explicatio_stand_file the
+# file whose leader holds his ground, _explicatio_stand_point that ground, and
+# _explicatio_following 1 for each man, index-aligned with the bodies, who has not yet taken his
+# place (_advance_explicatio_drill).
+var _explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE
+var _explicatio_lane_split: int = 0
+var _explicatio_stand_file: int = -1
+var _explicatio_stand_point: Vector2 = Vector2.ZERO
+var _explicatio_following: PackedByteArray = PackedByteArray()
+# This tick's follow plan of the explicatio under way (_refresh_explicatio_follow): whom each man
+# follows, his place and the room he has to step into it, read once a tick from where the men
+# stand, and the tick it was read on.
+var _explicatio_leaders: PackedInt32Array = PackedInt32Array()
+var _explicatio_places: PackedVector2Array = PackedVector2Array()
+var _explicatio_rooms: PackedFloat32Array = PackedFloat32Array()
+# 1 for a man in an interval whose lane is held by men who have all stopped following, so it
+# will open no further.
+var _explicatio_shut: PackedByteArray = PackedByteArray()
+var _explicatio_follow_frame: int = -1
+var _explicatio_follow_count: int = -1
 
 # Persistent per-soldier SQUARE slot assignment, index-aligned with _sim_soldier_pos:
 # _sim_soldier_square_slot[i] is the index, within the square grid UnitFormation.block_slots
@@ -7149,6 +7550,8 @@ func formation_slots(count: int, apply_relief_corridor: bool = true,
 		var out := UnitFormation.file_major_block_slots(
 				_sim_soldier_file, files, file_pitch_wu(), rank_pitch_wu(), _sim_soldier_rank)
 		slots = UnitFormation.apply_frontage_anchor_offset(out, frontage_anchor_offset)
+		if apply_traverse_arcs:
+			slots = _apply_explicatio_places(slots, count)
 	else:
 		var row_files: int = formation_files(count)
 		var row_grid: PackedVector2Array = UnitFormation.slots(self, count)
@@ -7245,6 +7648,7 @@ func _ensure_file_assignment(count: int, files: int) -> bool:
 	var reshaped: bool = _file_assignment_files != files
 	var live := _slot_frame_positions(count) if reshaped else PackedVector2Array()
 	var dealt: bool = false
+	_sim_soldier_role = PackedByteArray()   # the roles belonged to the files an explicatio dealt
 	if live.is_empty():
 		_sim_soldier_file = UnitFormation.file_ids_in_index_order(capacities)
 		_sim_soldier_rank = PackedInt32Array()   # array order IS the depth order here
@@ -7332,6 +7736,9 @@ func append_soldier_bodies(other: Unit) -> void:
 	_sim_soldier_shield_id.append_array(other._sim_soldier_shield_id)
 	_sim_soldier_shield_hold_angle.append_array(other._sim_soldier_shield_hold_angle)
 	_sim_soldier_facing.append_array(other._sim_soldier_facing)
+	# The insertion re-deals the files, so no man leads a column an explicatio dealt; an
+	# explicatio under way then ends (_advance_explicatio_drill).
+	_sim_soldier_role = PackedByteArray()
 
 
 ## Install an explicit file-major assignment -- `file_ids` and `ranks` index-aligned with the
@@ -7352,6 +7759,7 @@ func install_file_assignment(file_ids: PackedInt32Array, ranks: PackedInt32Array
 	if old_files < 0:
 		old_files = UnitFormation.frontage(self)
 	clear_couple_transit()   # a fresh file assignment re-deals every slot (see set_formation)
+	_sim_soldier_role = PackedByteArray()   # the roles belonged to the files an explicatio dealt
 	_sim_soldier_file = file_ids
 	_sim_soldier_rank = ranks
 	note_file_assignment_changed()
@@ -7946,6 +8354,9 @@ func _apply_file_double_step(step: Order) -> void:
 		var current: int = UnitFormation.frontage(self)
 		if _holds_quarter_fold():
 			current = UnitFormation.transposed_files(soldiers, current)
+			# The held files now run along the depth: the next deal reads them afresh from
+			# where the men stand, across the new facing.
+			_file_assignment_files = -1
 			_formation_angle = 0.0
 			_absorbed_fold = 0.0
 			_drill_turn_fold = 0.0
@@ -7963,7 +8374,8 @@ func _apply_file_double_step(step: Order) -> void:
 			_resquare_pending = true
 		files = UnitFormation.widened_files(soldiers, current) if step.dir > 0 \
 				else UnitFormation.narrowed_files(current)
-	set_frontage(files, step.frontage_anchor_offset)
+	set_frontage(files, step.frontage_anchor_offset,
+			step.explicatio_drill if step.dir > 0 else UnitFormation.ExplicatioDrill.NONE)
 
 
 ## True while the slot grid's turn off the heading (grid_fold: the folded maneuver rotation plus
@@ -9395,6 +9807,7 @@ func seed_sim_soldiers() -> void:
 ## live in SoldierBodies.step (the engaged front ranks arrive at their slots under
 ## bounded force and hold displacement; the unengaged bulk tracks its moving slots).
 func step_sim_soldiers(delta: float) -> void:
+	_advance_explicatio_drill()
 	SoldierBodies.step(self, delta)
 
 
@@ -12620,6 +13033,12 @@ func to_snapshot_dict() -> Dictionary:
 		"row_layout_files": _row_layout_files,
 		"row_slot_dealt": _row_slot_dealt,
 		"sim_soldier_reflect_walker": _sim_soldier_reflect_walker.duplicate(),
+		"explicatio_drill": _explicatio_drill,
+		"explicatio_lane_split": _explicatio_lane_split,
+		"explicatio_following": _explicatio_following.duplicate(),
+		"explicatio_stand_file": _explicatio_stand_file,
+		"explicatio_stand_point": _explicatio_stand_point,
+		"sim_soldier_role": _sim_soldier_role.duplicate(),
 		"under_fire": _under_fire, "under_fire_can_reply": _under_fire_can_reply,
 		"in_enemy_contact": _in_enemy_contact, "router_front_in_melee": _router_front_in_melee,
 		"router_left_contact": _router_left_contact, "router_anchor_contact": _router_anchor_contact,
@@ -13012,6 +13431,18 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_sim_soldier_file = (d["sim_soldier_file"] as PackedInt32Array).duplicate()
 	_sim_soldier_rank = (d["sim_soldier_rank"] as PackedInt32Array).duplicate()
 	note_file_assignment_changed()
+	# An explicatio under way rides the assignment just restored; an older snapshot carries
+	# none, and the men take their slots.
+	_explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.NONE))
+	_explicatio_lane_split = int(d.get("explicatio_lane_split", 0))
+	_explicatio_following = (d.get("explicatio_following", PackedByteArray()) as PackedByteArray) \
+			.duplicate()
+	_explicatio_stand_file = int(d.get("explicatio_stand_file", -1))
+	_explicatio_stand_point = d.get("explicatio_stand_point", Vector2.ZERO)
+	_explicatio_follow_frame = -1
+	# Each man's role; an older snapshot carries none, so nobody leads a column.
+	_sim_soldier_role = (d.get("sim_soldier_role", PackedByteArray()) as PackedByteArray) \
+			.duplicate()
 	# An older snapshot without the pairing restores none, and the first step re-pairs. So
 	# does a restore into an engine younger than the pairing's age (the frame would be
 	# negative, which SoldierBodies reads as no pairing): a fresh pairing, not a crash.

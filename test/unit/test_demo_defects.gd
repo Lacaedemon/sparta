@@ -1020,6 +1020,38 @@ func test_derived_slot_distance_sees_a_walk_in_depth() -> void:
 			"bodies and slots out of step are uncheckable, not measured short")
 
 
+func test_derived_pairs_within_body_radius_counts_men_walking_through_each_other() -> void:
+	# Bodies of radius 4.5: men at 0 and 4 overlap by more than half a body, the man at 12 stands
+	# clear of both, and the man at 16.5 stands exactly a radius from him, which does not count.
+	var u: Dictionary = _derived_record([[0.0, 0.0], [4.0, 0.0], [12.0, 0.0], [16.5, 0.0]],
+			[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
+	assert_null(DemoDefects.derived_field(u, "pairs_within_body_radius"),
+			"no body radius dumped is uncheckable")
+	u["motion_ref"]["soldier_body_radius"] = 4.5
+	assert_eq(DemoDefects.derived_field(u, "pairs_within_body_radius"), 1, "one pair overlaps")
+	u["soldiers_full"]["pos"][3] = [16.4, 0.0]
+	assert_eq(DemoDefects.derived_field(u, "pairs_within_body_radius"), 2,
+			"just inside a radius, it counts")
+
+
+func test_derived_front_rank_line_reads_the_front_ranks_bodies_along_the_facing() -> void:
+	# Facing +y. Two ranks a pitch of 8 apart: the slots at y 20 are the front rank, and their
+	# men stand at y 19 and 21.5; the second rank's man at y 30 is ahead of them all, but his slot
+	# is a rank behind, so he is not of the front rank.
+	var u: Dictionary = _derived_record([[0.0, 19.0], [10.0, 21.5], [0.0, 30.0]],
+			[[0.0, 20.0], [10.0, 20.0], [0.0, 12.0]])
+	assert_null(DemoDefects.derived_field(u, "front_rank_line"), "no rank pitch is uncheckable")
+	u["motion_ref"]["rank_pitch"] = 8.0
+	assert_eq(DemoDefects.derived_field(u, "front_rank_line"), [19.0, 21.5])
+	u["facing"] = [0.0, -1.0]
+	assert_eq(DemoDefects.derived_field(u, "front_rank_line"), [-30.0, -30.0],
+			"faced the other way, the front rank is the slot at y 12, its man at y 30")
+	var check: Array = DemoDefects.check_expectations([{"tick": 5, "uid": 0,
+			"field": "front_rank_line", "value": [-30.0, -30.0], "tol": 0.5}],
+			[{"tick": 5, "units": [u]}])
+	assert_true(check[0]["pass"], "an expectation reads it, with a tol on each end")
+
+
 func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:
 	# A narrowing: the man at x 40 stands outside the new block (half-width 10), so his walk in
 	# to its near edge is not excess; the man at the centre stepping out to -10 is.

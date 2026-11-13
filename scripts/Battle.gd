@@ -1818,7 +1818,7 @@ const SIM_SOLDIER_ARRAY_KEYS: Array[String] = [
 	"sim_soldier_pos", "sim_body_vel", "sim_steer", "sim_soldier_hp",
 	"sim_soldier_weapon_id", "sim_soldier_shield_id", "sim_soldier_shield_hold_angle",
 	"sim_prone", "sim_soldier_stamina", "sim_soldier_facing", "sim_soldier_file",
-	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken",
+	"sim_soldier_rank", "sim_soldier_square_slot", "sim_soldier_broken", "sim_soldier_role",
 ]
 
 
@@ -1857,6 +1857,8 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	ud["engaged_target_pairing_canonical"] = PackedInt32Array()
 	ud["engaged_target_soldier_count"] = -1
 	ud["engaged_target_pairing_age_ticks"] = -1
+	# An explicatio under way is the whole block's: the men left behind form up afresh.
+	ud["explicatio_drill"] = UnitFormation.ExplicatioDrill.NONE
 	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
 	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
 	# retreating main body.
@@ -1959,7 +1961,9 @@ func _physics_process(delta: float) -> void:
 					int(o.get("reform_toggle", UnitSettingToggle.LEAVE)),
 					int(o.get("file_major_reform_mode_toggle", REFORM_MODE_TOGGLE_LEAVE)),
 					int(o.get("line", LINE_INDEX_UNCHANGED)),
-					int(o.get("reinforce", ReinforceAxis.NONE)))
+					int(o.get("reinforce", ReinforceAxis.NONE)),
+					int(o.get("explicatio", UnitFormation.ExplicatioDrill.NONE)),
+					int(o.get("explicatio_held", UnitFormation.Anchor.CENTRE)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -2627,8 +2631,12 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## centre and the "held" flank would jump. The resulting absolute offset is carried on
 ## the same command, so re-applying it on the tick is idempotent and it rides the replay
 ## stream exactly like the centred maneuver.
+##
+## A widen is an explicatio drill, `drill` (UnitFormation.ExplicatioDrill): the half-file
+## drill unless the caller names another. A narrow ignores it.
 func enqueue_file_double(uids: Array, direction: int,
-		anchor: int = UnitFormation.Anchor.CENTRE) -> void:
+		anchor: int = UnitFormation.Anchor.CENTRE,
+		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
 		return
 	for uid in uids:
@@ -2658,6 +2666,13 @@ func enqueue_file_double(uids: Array, direction: int,
 			"frontage": files,
 			"anchor_offset": anchor_offset,
 		}
+		# A widen is an explicatio drill (Unit.set_frontage), not a plain resize to that width.
+		# It carries the flank it holds (UnitFormation.Anchor), the order's own choice, not one read
+		# off the offset, which a held widen before it leaves standing.
+		if direction > 0 and drill != UnitFormation.ExplicatioDrill.NONE:
+			cmd["explicatio"] = drill
+			if anchor != UnitFormation.Anchor.CENTRE:
+				cmd["explicatio_held"] = anchor
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
 
@@ -2970,10 +2985,12 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 		var files: int = int(cmd.get("frontage", 0))
 		if files > 0:
 			var anchor_offset: float = float(cmd.get("anchor_offset", 0.0))
+			var drill: int = int(cmd.get("explicatio", UnitFormation.ExplicatioDrill.NONE))
+			var held: int = int(cmd.get("explicatio_held", UnitFormation.Anchor.CENTRE))
 			for uid in cmd["units"]:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
-					u.set_frontage(files, anchor_offset)
+					u.set_frontage(files, anchor_offset, drill, held)
 					# Same idle-only queue write as the formation branch above.
 					if u.current_order == null:
 						u.set_current_order(Order.new_frontage(files, anchor_offset))

@@ -543,7 +543,7 @@ Two optional keys widen what an entry can say:
   A uid that never appeared, or any snapshot inside the range with no `units` list,
   fails rather than passing.
 
-Five more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
+Seven more fields are derived from a FULL dump (`SPARTA_DEMO_STATE_FULL=1`, which CI's
 defect scan uses) rather than read from the compact record (`DemoDefects.derived_field`).
 The first three measure sideways from the unit's position.
 The first two compare every man's body with his own slot, along the unit's lateral axis.
@@ -599,7 +599,22 @@ Sampled the tick after a reshape, they show where the reshape sends the men befo
   Pin it with `"value": 0` and a `tol` in world units with a stated basis,
   such as a number of rank pitches (`motion_ref.rank_pitch`).
 
-A dump without the full arrays cannot supply any of the first three fields or `slot_distance_max`,
+- `pairs_within_body_radius` -- how many pairs of the unit's men stand with their centres
+  closer than one body radius (`motion_ref.soldier_body_radius`),
+  each overlapping the other by more than half his body:
+  a man walking through another rather than past him.
+  It is an exact count; pin it with `"value": 0`.
+
+- `front_rank_line` -- `[nearest, farthest]` the front rank stands along the unit's facing,
+  in world units, rounded to 0.01:
+  the men whose slot lies within half a rank pitch (`motion_ref.rank_pitch`) of the front-most slot,
+  read off their bodies.
+  A front rank standing on one line reads the same value twice.
+  Pin it with that value twice and a `tol` in rank pitches;
+  the tol applies to each end.
+
+A dump without the full arrays cannot supply any of the first three fields, `slot_distance_max`,
+`pairs_within_body_radius` or `front_rank_line`,
 and one without `motion_ref.slot_grid` cannot supply `grid_off_heading`.
 Neither can one whose per-soldier bodies and slots are empty or differ in count
 (a casualty the body layer has not caught up with yet).
