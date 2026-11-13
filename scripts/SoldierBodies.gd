@@ -302,9 +302,15 @@ static func step(unit: Unit, delta: float) -> void:
 		return
 	# A chase that has just ended (its quarry fell, rallied or got clear) leaves each rider where
 	# he rode, with nothing left to remember; the unit forms up where its men stand, as a rally
-	# does, rather than each man riding back through the others to his old place.
+	# does, rather than each man riding back through the others to his old place. A unit left
+	# standing (IDLE) first lets its riders pull up from the gallop, as a rally does
+	# (pull_up_rallied); one given somewhere to go forms up at once.
 	if not unit._sim_flight_dir.is_empty():
-		unit._reform_where_men_stand()
+		if unit.state == Unit.State.IDLE:
+			unit._sim_flight_dir = PackedVector2Array()
+			unit._rally_pending = true
+		else:
+			unit._reform_where_men_stand()
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
@@ -702,8 +708,9 @@ static func march_share_frac(dist: float, pitch: float, from_pitches: float,
 
 ## One tick of a rallied unit's men pulling up from their flight: each slows along his own run
 ## at `rate` (world units/s^2, his braking rate), faces it while he still moves, and runs on at
-## what he kept. Returns false, touching nobody, once no man of the first `n` is faster than a
-## jog: the men have pulled up, and the caller lays the grid out where they stand.
+## what he kept, giving way at once to a friend whose body touches his (SoldierKeepClear), up to
+## a jog. Returns false, touching nobody, once no man of the first `n` is faster than a jog: the
+## men have pulled up, and the caller lays the grid out where they stand.
 static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bool:
 	var jog_sq: float = unit.jog_speed * unit.jog_speed
 	var running: bool = false
@@ -713,10 +720,11 @@ static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bo
 			break
 	if not running:
 		return false
+	var clear: PackedVector2Array = SoldierKeepClear.bias(unit, n, unit.jog_speed)
 	for i in range(n):
 		var v: Vector2 = unit._sim_body_vel[i].move_toward(Vector2.ZERO, rate * delta)
 		unit._sim_body_vel[i] = v
-		unit._sim_soldier_pos[i] += v * delta
+		unit._sim_soldier_pos[i] += (v + clear[i]).limit_length(maxf(v.length(), unit.jog_speed)) * delta
 		if v.length_squared() > REST_SPEED * REST_SPEED:
 			unit._sim_soldier_facing[i] = v.normalized()
 	unit._render_dirty = true

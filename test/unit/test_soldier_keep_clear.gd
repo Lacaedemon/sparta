@@ -45,3 +45,32 @@ func test_two_pursuing_riders_touching_give_way_to_each_other_at_once() -> void:
 	SoldierPursuitStep.step(p, 2, {}, 1.0 / 60.0)
 	assert_gt(p._sim_soldier_pos[1].x - p._sim_soldier_pos[0].x, gap,
 			"they part sideways in the one tick, not only as fast as they can turn")
+
+
+func test_men_pulling_up_give_way_to_a_friend_they_touch() -> void:
+	var u: Unit = _unit(2)
+	u._rout()
+	u._rally()   # its men pull up on their own
+	var gap: float = u.soldier_body_radius()
+	u._sim_soldier_pos[0] = AT
+	u._sim_soldier_pos[1] = AT + Vector2(gap, 0)
+	u._sim_body_vel[0] = Vector2(0, -u.jog_speed * 2.0)   # both still running north
+	u._sim_body_vel[1] = Vector2(0, -u.jog_speed * 2.0)
+	assert_true(SoldierBodies.pull_up_rallied(u, 2, 60.0, 1.0 / 60.0), "setup: still running")
+	assert_gt(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x, gap, "they part sideways as they slow")
+
+
+func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:
+	var r: Unit = _unit(1)
+	r.team = 0
+	r._rout()
+	var p: Unit = _unit(2)
+	p.team = 1
+	p.is_cavalry = true
+	p.target_enemy = r
+	p.state = Unit.State.MOVING
+	SoldierPursuitStep.step(p, 2, {}, 1.0 / 60.0)
+	p.state = Unit.State.IDLE   # its quarry is gone and it has nowhere to go
+	p.step_sim_soldiers(1.0 / 60.0)
+	assert_true(p._rally_pending, "its riders pull up from the gallop before it forms up")
+	assert_true(p._sim_flight_dir.is_empty(), "with no chase left to remember")

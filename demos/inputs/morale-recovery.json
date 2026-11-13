@@ -20,7 +20,7 @@
   "defect_exemptions": {
     "misslotted": {
       "uids": [0],
-      "reason": "misslotted reads uid0 1.0 against 0.25 after the rally re-forms the block, on main c36560fa as on #1949's branch (dense 2-tick FULL dumps, seeds 0 to 4, Windows, measured 2026-11-13), while the dump's relations are exact there: at tick 480 on seed 0 each of the twelve front-rank men stands 18.0 wu behind his leader along the facing and 0.0 wu to the side, the place his relation gives him. The reading is the relational misslot of #1976 on a block re-formed where its men stand, not a swap, so it is exempted here until that reading is re-checked."
+      "reason": "misslotted reads uid0 1.0 against 0.25 after the rally re-forms the block, on main c36560fa as on #1949's branch (dense 2-tick FULL dumps, seeds 0 to 4, Windows, measured 2026-11-13), while the dump's relations are exact there: at tick 480 on seed 0 each of the twelve front-rank men stands 18.0 wu behind his leader along the facing and 0.0 wu to the side, the place his relation gives him. The reading is the relational misslot of #1976 on a block re-formed where its men stand, not a swap, so it is exempted here until that reading is re-checked (#1981)."
     }
   }
 }
