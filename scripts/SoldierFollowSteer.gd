@@ -28,6 +28,8 @@ static func steer_point(pos: Vector2, facing: Vector2, target: Vector2, line_wid
 		return target   # falling back into his place cuts across no file ahead of him
 	var share: float = clampf(room, 0.0, 1.0)
 	var on_line: float = clampf(1.0 - absf(across) / line_width, 0.0, 1.0)
+	# TODO(#1974): the step across is taken whole; a man should not step sideways into a body
+	# beside him. Gating it on the space beside him left held drills that never ended.
 	return pos + right * across + front * along * minf(on_line, share)
 
 

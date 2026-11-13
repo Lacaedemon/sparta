@@ -313,6 +313,8 @@ func test_no_two_men_come_onto_each_other() -> void:
 			UnitFormation.Anchor.LEFT]:
 		var units: Array = await _stage([_spearmen()])
 		var u: Unit = units[0]
+		# TODO(#1974): one body radius once men avoid each other body to body; the centred and both
+		# held cases measure 4.44, 4.33 and 4.33 wu.
 		var floor_wu: float = 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
 		_battle.enqueue_file_double([u.uid], 1, anchor)
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
@@ -1347,6 +1349,8 @@ func test_the_drill_plays_out_in_loose_order_and_in_a_shield_wall() -> void:
 		var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "mode %d: the drill ended" % mode)
 		assert_eq(UnitFormation.frontage(u), 2 * files, "mode %d: the files doubled" % mode)
+		# TODO(#1974): one body radius in the shield wall too, which measures 3.75 wu, once men
+		# avoid each other body to body.
 		var floor_wu: float = u.soldier_body_radius() if mode == Unit.FORMATION_NORMAL \
 				else 2.0 * u.soldier_body_radius() * DemoDefects.OVERLAP_BODY_FRAC
 		assert_gte(walk["closest"], floor_wu,
