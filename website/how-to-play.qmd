@@ -1277,8 +1277,9 @@ Every variant works with both the half-file drill and the drill in which every s
   Every original file keeps its place, file leader included,
   and each new file comes up in the gap beside the file it opened from (Asclepiodotus: "between the original files"),
   so every interval opens on one side, the spear side or the shield side.
-  Asked for outward or inward, the game uses the spear side, its own choice since the sources do not say.
-  The one new file beyond the last original file lengthens the line by half a file's old spacing on that flank.
+  Asked for outward or inward in a widen about the middle (<kbd>B</kbd>), the game uses the spear side, its own choice since the sources do not say.
+  A widen held on a flank (<kbd>Shift+B</kbd>, <kbd>Ctrl+B</kbd>) already opens every interval away from the held flank, so the held flank keeps its ground.
+  The one new file beyond the last original file lengthens the line by half a file's old spacing on the open flank.
   A block already in tight order, a shield wall, a testudo or a square has no closer order to take, and is not given the order.
 
 ::: {#fig-explicatio-inward .demo}

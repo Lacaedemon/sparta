@@ -6308,7 +6308,8 @@ func _reset_shield_hold_angles() -> void:
 ## closer order to take cannot keep its ground, and that widen is refused, said out loud, with
 ## the width left as it was (Battle.enqueue_file_double never issues one, and a combo step skips
 ## it, _apply_file_double_step). A widen on the same ground opens every interval on one side
-## (UnitFormation.explicatio_ground_side), so every file it had keeps its ground.
+## (UnitFormation.explicatio_ground_side: the spear side for OUTWARD or INWARD about the middle,
+## the side away from a held flank), so every file it had keeps its ground.
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
 		held_flank: int = UnitFormation.Anchor.CENTRE,
@@ -6328,7 +6329,8 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 	_bake_formation_mirror()
 	_end_explicatio_drill()   # a new width supersedes a drill still under way
 	var dealt: Dictionary = {}
-	var side: int = UnitFormation.explicatio_ground_side(explicatio_side, explicatio_ground)
+	var side: int = UnitFormation.explicatio_ground_side(explicatio_side, explicatio_ground,
+			held_flank)
 	var split: int = UnitFormation.explicatio_lane_split(old_files, held_flank, side)
 	var inward: bool = UnitFormation.explicatio_inward(held_flank, side)
 	if explicatio_drill != UnitFormation.ExplicatioDrill.NONE \

@@ -174,9 +174,11 @@ Whether the doubled line keeps its pitch or its ground (`UnitFormation.Explicati
   That needs every interval on the same side of its file, so the same ground takes the spear side or the shield side, the sources saying neither.
   The outward reading would leave the two middle original files with no gap between them, and the inward reading would leave two gaps there,
   so under either some original files could not keep their places.
-  Asked for either, the sim takes the spear side instead.
+  Asked for either in a widen about the middle (B), the sim takes the spear side instead.
   That default is the sim's choice.
-  The one new file beyond the last original file then lengthens the line by half the old pitch,
+  A widen held on a flank (Shift+B, Ctrl+B) already opens every interval away from the held flank, outward or inward,
+  so it keeps that side and the held flank keeps its ground.
+  The one new file beyond the last original file then lengthens the line by half the old pitch on the open flank,
   on the right on the spear side and on the left on the shield side, which is also the sim's inference.
   Bingham's note on 29.3 says it "must be done in open order".
   A block already at locked shields, or in a shield wall, testudo or square, has no closer order to take,

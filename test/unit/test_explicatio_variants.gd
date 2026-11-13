@@ -459,15 +459,65 @@ func test_a_combo_same_ground_step_without_a_closer_order_is_skipped() -> void:
 	assert_lt(UnitFormation.frontage(u), files, "a narrowing step ignores the ground")
 
 
-## On the same ground OUTWARD and INWARD read as the spear side; every other side, and every side
-## when the line lengthens, is as named.
+## On the same ground about the middle OUTWARD and INWARD read as the spear side; held on a flank
+## they keep their side, which already opens every interval away from it; every other side, and
+## every side when the line lengthens, is as named.
 func test_the_same_ground_opens_on_one_side() -> void:
 	for side in [OUTWARD, INWARD]:
 		assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND), SPEAR_SIDE)
+		assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND, 0), SPEAR_SIDE)
 		assert_eq(UnitFormation.explicatio_ground_side(side, LENGTHEN), side)
+		for held in [-1, 1]:
+			assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND, held), side,
+				"side %d held %d keeps its side" % [side, held])
 	for side in [SPEAR_SIDE, SHIELD_SIDE]:
-		assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND), side)
+		for held in [-1, 0, 1]:
+			assert_eq(UnitFormation.explicatio_ground_side(side, SAME_GROUND, held), side)
 		assert_eq(UnitFormation.explicatio_ground_side(side, LENGTHEN), side)
+
+
+## Held on a flank on the same ground (Shift+B, Ctrl+B), outward or inward: every interval opens
+## away from the held flank, the held corner file and every original file leader keep their
+## ground, the held flank stands, and the one new file beyond the last original file falls on the
+## open flank, half an old pitch out.
+func test_a_same_ground_widen_held_on_a_flank_holds_it() -> void:
+	for combo in [[UnitFormation.Anchor.RIGHT, OUTWARD], [UnitFormation.Anchor.LEFT, OUTWARD],
+			[UnitFormation.Anchor.RIGHT, INWARD]]:
+		var held: int = combo[0]
+		var side: int = combo[1]
+		var what: String = "held %d side %d" % [held, side]
+		var u: Unit = await _stage()
+		u.set_formation(Unit.FORMATION_NORMAL)
+		for _i in range(DRILL_TICKS):
+			await get_tree().physics_frame
+		var old_pitch: float = u.file_pitch_wu()
+		var right: Vector2 = _right(u)
+		var before: Vector2 = _extent(u, right)
+		var leaders_before: Dictionary = _file_leaders_across(u, right)
+		assert_eq(leaders_before.size(), 9, "%s: precondition: a leader for each file" % what)
+		_battle.enqueue_file_double([u.uid], 1, held, HALF_FILE, side, SAME_GROUND)
+		assert_true(u.explicatio_drill_active(), "%s: the widen is the drill" % what)
+		assert_eq(u._explicatio_lane_split, 9 if held > 0 else 0,
+			"%s: every interval opens away from the held flank" % what)
+		assert_eq(u._explicatio_stand_file, 17 if held > 0 else 0,
+			"%s: the held corner file stands" % what)
+		var walk: Dictionary = await _walk(u, DRILL_TICKS)
+		_assert_drill(u, walk, 18, _floor(u, HALF_FILE), what)
+		var after: Vector2 = _extent(u, right)
+		var quarter: float = 0.25 * u.file_pitch_wu()
+		if held > 0:
+			assert_almost_eq(after.y, before.y, quarter, "%s: the held right flank stands" % what)
+			assert_almost_eq(before.x - after.x, 0.5 * old_pitch, quarter,
+				"%s: the left flank gains half an old pitch" % what)
+		else:
+			assert_almost_eq(after.x, before.x, quarter, "%s: the held left flank stands" % what)
+			assert_almost_eq(after.y - before.y, 0.5 * old_pitch, quarter,
+				"%s: the right flank gains half an old pitch" % what)
+		var drift: float = 0.0
+		for i in leaders_before:
+			drift = maxf(drift, absf(u._sim_soldier_pos[i].dot(right) - leaders_before[i]))
+		assert_lt(drift, quarter, "%s: a file leader moved %.2f wu across the front" % [what, drift])
+		await _free_battle()
 
 
 ## Held on a flank there is no inward reading: an inward widen held on the right is the outward

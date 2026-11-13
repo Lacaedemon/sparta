@@ -1291,10 +1291,12 @@ enum ExplicatioSide { OUTWARD = 0, INWARD = 1, SPEAR_SIDE = 2, SHIELD_SIDE = 3 }
 ##   Every original file keeps its place and each new file comes up in the gap beside the file it
 ##   opened from, so every interval opens on the same side: SPEAR_SIDE or SHIELD_SIDE, the sources
 ##   being silent on which. OUTWARD would leave the two middle files with no gap between them and
-##   INWARD would leave two gaps there; asked for either, the sim takes the spear side
-##   (explicatio_ground_side), its own choice; so the one new file beyond the last original file
-##   lengthens the line by half an old pitch on the right (the left on the shield side), also the
-##   sim's inference. Bingham's note on 29.3 says it "must be done in open order"; a block already
+##   INWARD would leave two gaps there; asked for either about the middle, the sim takes the
+##   spear side (explicatio_ground_side), its own choice. A widen held on a flank already opens
+##   every interval on the side away from the held flank, OUTWARD or INWARD, so it keeps that
+##   side and the held flank keeps its ground. The one new file beyond the last original file
+##   lengthens the line by half an old pitch on the open flank (the right on the spear side, the
+##   left on the shield side), also the sim's inference. Bingham's note on 29.3 says it "must be done in open order"; a block already
 ##   at locked shields has no closer order to take, and its widen is refused
 ##   (Unit.denser_formation_mode).
 enum ExplicatioGround { LENGTHEN = 0, SAME_GROUND = 1 }
@@ -1327,11 +1329,14 @@ static func explicatio_lane_split(old_files: int, held_flank: int,
 	return old_files / 2
 
 
-## The side an explicatio of `side` on `ground` (ExplicatioGround) opens its intervals on: `side`,
-## except that on the same ground only a one-sided split puts each new file in the gap beside the
-## file it opened from, so OUTWARD and INWARD read as SPEAR_SIDE there, the sim's default.
-static func explicatio_ground_side(side: int, ground: int) -> int:
-	if ground == ExplicatioGround.SAME_GROUND \
+## The side an explicatio of `side` on `ground` (ExplicatioGround) held on `held_flank` (-1 left,
+## +1 right, 0 about the middle) opens its intervals on: `side`, except that on the same ground
+## only a one-sided split puts each new file in the gap beside the file it opened from, so a widen
+## about the middle reads OUTWARD and INWARD as SPEAR_SIDE, the sim's default. Held on a flank,
+## OUTWARD and INWARD already open every interval away from it (explicatio_lane_split), and keep
+## that side.
+static func explicatio_ground_side(side: int, ground: int, held_flank: int = 0) -> int:
+	if ground == ExplicatioGround.SAME_GROUND and held_flank == 0 \
 			and (side == ExplicatioSide.OUTWARD or side == ExplicatioSide.INWARD):
 		return ExplicatioSide.SPEAR_SIDE
 	return side
