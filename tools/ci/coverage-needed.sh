@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Decide whether a pull request needs the instrumented coverage run (#1963).
+# Decide whether a pull request needs the instrumented coverage run.
 #
 # The coverage run takes 30 to 45+ minutes. The run is a superset of the plain test run,
 # so it may be skipped only for a diff that cannot change any file the suite reads or

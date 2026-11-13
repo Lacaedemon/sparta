@@ -43,7 +43,7 @@ jobs:
       - name: Decide whether the coverage run is needed
         # The run takes 30 to 45+ minutes. A pull request that changes only docs,
         # the website, benchmarks, agent notes or unrelated workflows changes no file
-        # the suite reads, so every step below is skipped for it (#1963).
+        # the suite reads, so every step below is skipped for it.
         # Pushes to main and manual runs always run. tools/ci/coverage-needed.sh
         # fails open: an undecidable diff runs the coverage.
         id: needed
@@ -78,8 +78,8 @@ jobs:
         # history) fails rather than passing silently.
         env:
           GODOT_BIN: godot
-          # The suite alone has run 30 to 45+ minutes on the shared runners; a 2700 s
-          # budget was hit by 17 of the last 38 runs (#1963), so this leaves headroom.
+          # The suite alone has run 30 to 45+ minutes on the shared runners, and the old
+          # 2700 s budget killed 17 of 38 recent runs, so 5400 s leaves headroom.
           # It is still a hard kill: a hang fails the job loudly.
           SPARTA_CHECK_COVERAGE_TIMEOUT: 5400
           SPARTA_CHECK_PATCH_COVERAGE_BASE: origin/${{ github.base_ref || 'main' }}

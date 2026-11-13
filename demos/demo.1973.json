@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Changes only CI tooling: the Coverage job skips its run on pull requests that touch no file the test suite reads, and its time budget rises to 5400 s. No game code, scene or asset changes, so no battle behaves differently and a recorded battle cannot show it."
+}
