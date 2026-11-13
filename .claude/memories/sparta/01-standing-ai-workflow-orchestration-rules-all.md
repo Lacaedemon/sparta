@@ -117,6 +117,18 @@ modifier or an instant state switch that ignores it. Concretely:
   When a defect sits in such a layer,
   the fix is to move the behaviour down to the men, not to add a rule on top.
 
+- **No slots as world-space targets.**
+  The owner (2026-11-12) agreed that slots belong to the same banned family as snaps and anchors.
+  A man's place in the formation is historical and stays, as identity:
+  his file, his rank, his file leader, and the men beside him that he dresses on.
+  What is banned is a slot as a world-space point
+  that the formation computes for each man and steers him onto.
+  A man's target comes from the men he can see
+  (the man ahead in his file, his file leader, his neighbours),
+  not from a grid laid down by the unit.
+  Code that still steers men onto computed slot points is a defect to replace,
+  tracked under the bottom-up plan (#1950, with the slot audit in its comments) and #1972.
+
 When implementing or reviewing a new mechanic, ask: does this emerge from the
 individual-level physics already in place, or is it a shortcut layered on top? Prefer
 the former; flag the latter as a candidate for this list.
@@ -132,6 +144,21 @@ A mismatch is a defect, not a style point,
 and clean demo verdicts do not show a drill is right.
 When the sources describe more than one way to do a drill,
 implement each as its own named drill rather than merging them.
+
+The owner (2026-11-12): "when the historical records differ or ambiguous,
+let's implement all plausible versions;
+later we can offer them to users as command options and/or tech-tree unlocks",
+and "let's name each variant succinctly and clearly".
+So where the sources disagree, or leave a step open,
+build every plausible reading as its own variant,
+each with a short, clear name and the passage it rests on.
+Do not pick one reading and drop the others,
+and do not leave a reading only in the docs.
+Worked instance:
+the explicatio's stand file follows Aelian ch. 33's text (each wing opens outward),
+while Bingham's 1616 note on it turns the wings inward;
+both are plausible readings, so both become named variants.
+
 Worked instance:
 #1948 found that main's explicatio re-centres the block
 and walks each file's rear half through its front half.
