@@ -139,6 +139,8 @@ DEMOS=(
   "march_start_catch_up|demos/inputs/march-start-catch-up-1880.json|30|160|640|input"
   "cavalry_wheel_past_threshold|demos/inputs/cavalry-wheel-past-threshold-1915.json|30|260|720|input"
   "explicatio_half_file|demos/inputs/explicatio-half-file-1929.json|30|300|720|input"
+  "explicatio_inward|demos/inputs/explicatio-inward-1971.json|30|320|720|input"
+  "explicatio_same_ground|demos/inputs/explicatio-same-ground-1971.json|30|330|720|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

@@ -1,0 +1,27 @@
+{
+  "_comment": "A lone block of 60 Spearmen (5 files of 12, close order, 9 wu pitch) facing south, doubled to 10 files of 6 by the half-file explicatio held on the right flank (Shift+B) and read on the spear side: every file's rear half steps into the interval on its right, since neither Xenophon (Cyropaedia 2.3.21) nor Polyaenus (Stratagems 2.10.4) says which side, and comes up it behind its hemilochites. The right corner file stands, so its own interval opens beyond it: the right (west) flank steps out 1 file pitch (x 742 to 733) and the left (east) 4 (x 778 to 814). Outward, as Aelian 33 has it, every interval of a widen held on the right opens on the left and the right flank keeps its ground. So the block's position ends at x 751. The front rank keeps its line at y 349.5. The nearest two men came 5.34 wu apart, more than the 4.5 wu body radius, at tick 208. The drill ends by tick 502. Measured 2026-11-13 on FULL 2-tick dumps from the order to tick 760, seed run 0; the drill plays out identically on seed runs 0 to 4 (no enemy, no roll). On main, which has no readings, the script's explicatio block is not read and B deals the default drill, so the position expect fails there. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd, whose explicatio block sets the readings the B key deals (tools/demo/DemoExplicatio.gd); world coordinates; physics ticks (60/s).",
+  "seed": "19713",
+  "drill": true,
+  "explicatio": {"drill": "half_file", "side": "spear_side"},
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 760, "y": 300, "count": 60, "frontage": 5, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 760.0, "y": 330.0, "zoom": 2.4}
+  ],
+  "steps": [
+    {"tick": 12, "click": [760, 300]},
+    {"tick": 36, "key": "B", "shift": true}
+  ],
+  "state": [8, 38, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720],
+  "expect": [
+    {"tick": 38, "uid": 0, "field": "frontage", "value": 10},
+    {"tick": 120, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 180, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 240, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 600, "uid": 0, "field": "front_rank_line", "value": [349.5, 349.5], "tol": 2.25},
+    {"tick": 660, "uid": 0, "field": "front_rank_line", "value": [349.5, 349.5], "tol": 2.25},
+    {"tick": 720, "uid": 0, "field": "front_rank_line", "value": [349.5, 349.5], "tol": 2.25},
+    {"tick": 720, "uid": 0, "field": "position", "value": [751.0, 326.97], "tol": 2.25}
+  ]
+}

@@ -1963,7 +1963,9 @@ func _physics_process(delta: float) -> void:
 					int(o.get("line", LINE_INDEX_UNCHANGED)),
 					int(o.get("reinforce", ReinforceAxis.NONE)),
 					int(o.get("explicatio", UnitFormation.ExplicatioDrill.NONE)),
-					int(o.get("explicatio_held", UnitFormation.Anchor.CENTRE)))
+					int(o.get("explicatio_held", UnitFormation.Anchor.CENTRE)),
+					int(o.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD)),
+					int(o.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -2633,15 +2635,25 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## stream exactly like the centred maneuver.
 ##
 ## A widen is an explicatio drill, `drill` (UnitFormation.ExplicatioDrill): the half-file
-## drill unless the caller names another. A narrow ignores it.
+## drill unless the caller names another, read as `side` (UnitFormation.ExplicatioSide, the side
+## of each file its interval opens on) and `ground` (UnitFormation.ExplicatioGround, whether the
+## line keeps its pitch or its ground), outward and lengthening unless the caller names others.
+## A narrow ignores all three. A widen on the same ground is not issued to a unit that has no
+## closer order of spacing to take (Unit.denser_formation_mode): it cannot keep its ground.
 func enqueue_file_double(uids: Array, direction: int,
 		anchor: int = UnitFormation.Anchor.CENTRE,
-		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE) -> void:
+		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE,
+		side: int = UnitFormation.ExplicatioSide.OUTWARD,
+		ground: int = UnitFormation.ExplicatioGround.LENGTHEN) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
 		return
 	for uid in uids:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
+			continue
+		var same_ground: bool = direction > 0 and drill != UnitFormation.ExplicatioDrill.NONE \
+				and ground == UnitFormation.ExplicatioGround.SAME_GROUND
+		if same_ground and UnitRef.denser_formation_mode(u.formation_mode) < 0:
 			continue
 		var current: int = UnitFormation.frontage(u)
 		var files: int
@@ -2673,6 +2685,10 @@ func enqueue_file_double(uids: Array, direction: int,
 			cmd["explicatio"] = drill
 			if anchor != UnitFormation.Anchor.CENTRE:
 				cmd["explicatio_held"] = anchor
+			if side != UnitFormation.ExplicatioSide.OUTWARD:
+				cmd["explicatio_side"] = side
+			if ground != UnitFormation.ExplicatioGround.LENGTHEN:
+				cmd["explicatio_ground"] = ground
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
 
@@ -2987,10 +3003,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			var anchor_offset: float = float(cmd.get("anchor_offset", 0.0))
 			var drill: int = int(cmd.get("explicatio", UnitFormation.ExplicatioDrill.NONE))
 			var held: int = int(cmd.get("explicatio_held", UnitFormation.Anchor.CENTRE))
+			var side: int = int(cmd.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD))
+			var ground: int = int(cmd.get("explicatio_ground",
+					UnitFormation.ExplicatioGround.LENGTHEN))
 			for uid in cmd["units"]:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
-					u.set_frontage(files, anchor_offset, drill, held)
+					u.set_frontage(files, anchor_offset, drill, held, side, ground)
 					# Same idle-only queue write as the formation branch above.
 					if u.current_order == null:
 						u.set_current_order(Order.new_frontage(files, anchor_offset))

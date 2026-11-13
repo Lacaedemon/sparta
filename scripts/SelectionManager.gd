@@ -182,6 +182,15 @@ var _rmb_shift: bool = false   # Shift state captured at right-button press
 # the persisted default so a menu change to it snaps the live mode over (see _on_settings_changed).
 var _form_up_dist: int = FormUpDist.EQUAL_DEPTH_SPACE
 var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH_SPACE
+# The explicatio the B key and its held-flank forms deal (UnitFormation.ExplicatioDrill) and its
+# readings: the side each file's interval opens on (UnitFormation.ExplicatioSide) and whether the
+# line keeps its pitch or its ground (UnitFormation.ExplicatioGround). The half-file drill, outward
+# and lengthening, until something chooses another; a scripted demo sets them
+# (tools/demo/DemoExplicatio.gd).
+# TODO(#1969): give the player a control that chooses them.
+var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
+var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
+var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
 # Live cycle list: the enabled subset of modes the Y-key steps through, in canonical order.
 # Derived from Settings.form_up_dist_cycle; rebuilt whenever that setting changes.
 var _form_up_dist_cycle: Array = FORM_UP_DIST_CYCLE.duplicate()
@@ -1730,7 +1739,8 @@ func _resize_frontage(delta: int) -> void:
 ## (UnitFormation.Anchor) picks which flank stays fixed for an asymmetric explicatio --
 ## CENTRE (default) is the plain symmetric maneuver. Routed through Battle so it reshapes
 ## each unit from its own current width, is recorded, and replays exactly -- the same path
-## as the [ / ] single-file resize, one whole factor instead of one file. Blocked during
+## as the [ / ] single-file resize, one whole factor instead of one file. A widen is the
+## explicatio explicatio_drill, read as explicatio_side and explicatio_ground. Blocked during
 ## playback, and while a grip drag owns the width (see _resize_frontage).
 func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:
@@ -1738,7 +1748,8 @@ func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTR
 	var uids: Array = _selected_uids()
 	if uids.is_empty():
 		return
-	_battle.enqueue_file_double(uids, direction, anchor)
+	_battle.enqueue_file_double(uids, direction, anchor, explicatio_drill, explicatio_side,
+			explicatio_ground)
 	_refresh_hud()
 	Sfx.play(&"order")
 

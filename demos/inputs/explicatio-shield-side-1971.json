@@ -1,0 +1,27 @@
+{
+  "_comment": "A lone block of 70 Spearmen (7 files of 10, close order, 9 wu pitch) facing east, doubled to 14 files of 5 by the alternate-rank explicatio (Polyaenus, Stratagems 2.10.4) read on the shield side: every epistates, every second man of his file, steps into the interval on the left of the man who stood ahead of him, whichever wing he is in, since Polyaenus does not say which side. The middle file (old file 3) stands. The left flank steps out 4 file pitches (y 353 to 317) and the right 3 (407 to 434); outward the left would step out 3 and the right 4. So the block's position ends at y 375.5. The front rank keeps its line at x 600.5 (it ran at most 0.96 wu ahead, at tick 120). The nearest two men came 6.28 wu apart, more than the 4.5 wu body radius, at tick 122. The drill ends by tick 342. Measured 2026-11-13 on FULL 2-tick dumps from the order to tick 760, seed run 0; the drill plays out identically on seed runs 0 to 4 (no enemy, no roll). On main, which has no readings, the script's explicatio block is not read and B deals the default drill, so the position expect fails there. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd, whose explicatio block sets the readings the B key deals (tools/demo/DemoExplicatio.gd); world coordinates; physics ticks (60/s).",
+  "seed": "19712",
+  "drill": true,
+  "explicatio": {"drill": "alternate_rank", "side": "shield_side"},
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 560, "y": 380, "count": 70, "frontage": 7, "facing": [1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 580.0, "y": 380.0, "zoom": 2.4}
+  ],
+  "steps": [
+    {"tick": 16, "click": [560, 380]},
+    {"tick": 44, "key": "B"}
+  ],
+  "state": [8, 46, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600],
+  "expect": [
+    {"tick": 46, "uid": 0, "field": "frontage", "value": 14},
+    {"tick": 120, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 180, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 240, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 420, "uid": 0, "field": "front_rank_line", "value": [600.5, 600.5], "tol": 2.25},
+    {"tick": 480, "uid": 0, "field": "front_rank_line", "value": [600.5, 600.5], "tol": 2.25},
+    {"tick": 540, "uid": 0, "field": "front_rank_line", "value": [600.5, 600.5], "tol": 2.25},
+    {"tick": 600, "uid": 0, "field": "position", "value": [582.48, 375.5], "tol": 2.25}
+  ]
+}

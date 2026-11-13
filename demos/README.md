@@ -179,6 +179,16 @@ script under `demos/inputs/`:
   (`demos/inputs/idle-speed-friction.json` and
   `demos/inputs/run-down-a-router.json` are the worked examples).
 
+- `explicatio` (optional object) -- **the explicatio the script's B presses deal**:
+  `{"drill": ..., "side": ..., "ground": ...}`, each optional, by short name
+  (`drill`: `half_file` or `alternate_rank`;
+  `side`: `outward`, `inward`, `spear_side` or `shield_side`;
+  `ground`: `lengthen` or `same_ground`; the first of each is the default).
+  The recorder sets them on the live `SelectionManager`, so B, Shift+B and Ctrl+B still go through the real control path;
+  no key chooses them yet.
+  A block that is not an object, or names a field or reading that does not exist, fails the recording (`DemoExplicatio`).
+  (`demos/inputs/explicatio-inward-1971.json` is the worked example.)
+
 - `doctrine` (optional string) -- override team 1's battle-AI doctrine profile (a
   `DoctrineRegistry` id, e.g. `"aggressive"` or `"cautious"` -- see `data/doctrines/*.json`
   and `docs/battle-ai-design.md`'s phase-3 section). Set before the battle spawns, like
