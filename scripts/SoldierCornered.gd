@@ -9,6 +9,11 @@ extends RefCounted
 ## Half the width of a direction's sector, in radians: ahead, left and right each cover a
 ## quarter-turn, so the three cover everything but the way he came.
 const SECTOR_HALF_ANGLE: float = PI / 4.0
+## How far a body may step past its read spread in a tick; a solver margin, tuned in wu.
+const SPREAD_PAD: float = 10.0
+
+static var _spread_frame: int = -1
+static var _spreads: Dictionary = {}   # foe unit -> [body count, spread] for _spread_frame
 
 
 ## Whether man `i` of `unit`, who wants to run along `own`, is cornered: ahead, left and right of
@@ -39,7 +44,8 @@ static func is_cornered(unit: Unit, i: int, own: Vector2, seen: Dictionary,
 
 
 ## Enemy units of `unit` with a body that could lie within `reach` of `pos`: alive, with bodies,
-## and their position no farther than `reach` plus their farthest body from it.
+## and their position no farther than `reach` plus their farthest body from it (_spread, read
+## once a frame per unit and body count, padded by SPREAD_PAD for the bodies that step after).
 static func foes_near(unit: Unit, pos: Vector2, reach: float) -> Array[Unit]:
 	var out: Array[Unit] = []
 	if not unit.is_inside_tree():
@@ -50,13 +56,29 @@ static func foes_near(unit: Unit, pos: Vector2, reach: float) -> Array[Unit]:
 			if foe == null or foe.team == unit.team or foe.state == Unit.State.DEAD \
 					or foe._sim_soldier_pos.is_empty():
 				continue
-			var spread_sq: float = 0.0
-			for p in foe._sim_soldier_pos:
-				spread_sq = maxf(spread_sq, foe.position.distance_squared_to(p))
-			var bound: float = reach + sqrt(spread_sq)
+			var bound: float = reach + _spread(foe)
 			if foe.position.distance_squared_to(pos) <= bound * bound:
 				out.append(foe)
 	return out
+
+
+## How far a body of `foe` stands from its position, read once a frame and body count and padded
+## by SPREAD_PAD.
+static func _spread(foe: Unit) -> float:
+	var frame: int = Engine.get_physics_frames()
+	if frame != _spread_frame:
+		_spread_frame = frame
+		_spreads.clear()
+	var count: int = foe._sim_soldier_pos.size()
+	var known: Variant = _spreads.get(foe)
+	if known != null and int(known[0]) == count:
+		return float(known[1])
+	var far_sq: float = 0.0
+	for p in foe._sim_soldier_pos:
+		far_sq = maxf(far_sq, foe.position.distance_squared_to(p))
+	var spread: float = sqrt(far_sq) + SPREAD_PAD
+	_spreads[foe] = [count, spread]
+	return spread
 
 
 ## The cornered men of a routed `unit` (those whose chosen direction is ZERO) strike the foes
