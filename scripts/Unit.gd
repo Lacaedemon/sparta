@@ -6310,6 +6310,11 @@ func _reset_shield_hold_angles() -> void:
 ## it, _apply_file_double_step). A widen on the same ground opens every interval on one side
 ## (UnitFormation.explicatio_ground_side: the spear side for OUTWARD or INWARD about the middle,
 ## the side away from a held flank), so every file it had keeps its ground.
+## A narrowing to half the files with an `explicatio_drill` other than NONE, of a block whose
+## files an explicatio dealt (explicatio_undoable), is that explicatio in reverse
+## (_begin_duplicatio): the men who went up the intervals go back, the file that stands chosen
+## by `held_flank`. On the same ground it opens the block one order (sparser_formation_mode),
+## where there is a looser line order to take; otherwise, and with LENGTHEN, the files close up.
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
 		held_flank: int = UnitFormation.Anchor.CENTRE,
@@ -6412,14 +6417,16 @@ static func sparser_formation_mode(mode: int) -> int:
 
 ## Whether a duplicatio of this block can be dealt as the explicatio that dealt its files done in
 ## reverse (DuplicatioDrill): every man still holds the file, rank and role an explicatio dealt
-## him (a re-deal of the files takes the roles away, and a countermarch puts the heads of the
-## intervals at their rear, which DuplicatioDrill.reverse_assignment refuses), and the block is
-## a file-major line standing square to its facing, not fighting, as for the explicatio
-## (_can_deal_explicatio). Battle.enqueue_file_double asks it to mark a narrowing as the drill.
+## him (a re-deal of the files takes the roles away), and the block is a file-major line
+## standing square to its facing, not fighting, as for the explicatio (_can_deal_explicatio).
+## A countermarch or about-face since the explicatio turns the block about and takes the roles
+## away (reform_ranks), and while the mirror it arms stands over the files (_formation_mirror_x)
+## the block is refused as well. Battle.enqueue_file_double asks it to mark a narrowing as the
+## drill.
 func explicatio_undoable() -> bool:
 	if soldiers <= 0 or in_square() or not _effective_file_major_reform() \
 			or _sim_soldier_pos.size() < soldiers or state != State.IDLE or has_move_target \
-			or is_engaged() or cos(grid_fold()) < 1.0 - 1e-6 \
+			or is_engaged() or cos(grid_fold()) < 1.0 - 1e-6 or _formation_mirror_x \
 			or _sim_soldier_role.size() != soldiers:
 		return false
 	var files: int = UnitFormation.frontage(self)
@@ -6429,6 +6436,17 @@ func explicatio_undoable() -> bool:
 			_sim_soldier_rank, _sim_soldier_role, files / 2, _explicatio_lane_split,
 			_explicatio_inward)
 	return not back.is_empty()
+
+
+## The drill a duplicatio of this block undoes (UnitFormation.ExplicatioDrill), read off the
+## roles the explicatio left (DuplicatioDrill.reverse_assignment); NONE when it cannot be undone
+## (explicatio_undoable). Battle.enqueue_file_double records it on the narrowing.
+func explicatio_undo_drill() -> int:
+	if not explicatio_undoable():
+		return UnitFormation.ExplicatioDrill.NONE
+	return DuplicatioDrill.reverse_assignment(_sim_soldier_file, _sim_soldier_rank,
+			_sim_soldier_role, UnitFormation.frontage(self) / 2, _explicatio_lane_split,
+			_explicatio_inward)["drill"]
 
 
 ## Begin the explicatio in reverse that `back` (DuplicatioDrill.reverse_assignment) sets out onto
@@ -9057,6 +9075,10 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 	# again, and any other fold leaves it standing. Setting it outright would instead flip
 	# every off-centre man to the other flank whenever the two disagree.
 	_formation_mirror_x = _formation_mirror_x != is_about_face_fold
+	# Turned about, the heads of an explicatio's intervals stand at its rear: the roles that
+	# would undo it (explicatio_undoable) go, once no drill under way still reads them.
+	if is_about_face_fold and not explicatio_drill_active():
+		_sim_soldier_role = PackedByteArray()
 	if is_quarter_fold or drilled_quarter:
 		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while

@@ -150,18 +150,28 @@ func test_the_duplicatio_undoes_the_explicatio() -> void:
 		assert_gte(await _settle(u), 0, "drill %d: precondition: the explicatio ended" % drill)
 		var front0: float = _front(u)
 		var stayed0: PackedVector2Array = u._sim_soldier_pos.duplicate()
-		_battle.enqueue_file_double([u.uid], -1, CENTRE, drill)
+		# Each man of an interval and the man ahead of him in it, as the explicatio left them.
+		var dealt_at: Dictionary = {}
+		for i in range(u.soldiers):
+			dealt_at[Vector2i(u._sim_soldier_file[i], u._sim_soldier_rank[i])] = i
+		var ahead := PackedInt32Array()
+		for i in range(u.soldiers):
+			ahead.append(int(dealt_at.get(Vector2i(u._sim_soldier_file[i],
+					u._sim_soldier_rank[i] - 1), -1)))
+		# The N key carries the player's drill choice, here the other one: the roles decide.
+		_battle.enqueue_file_double([u.uid], -1, CENTRE,
+				ALTERNATE_RANK if drill == HALF_FILE else HALF_FILE)
 		assert_true(u._explicatio_reverse, "drill %d: the narrowing is the drill" % drill)
 		assert_eq(UnitFormation.frontage(u), 9, "drill %d: 18 files back to 9" % drill)
+		assert_eq(int((_battle._pending_orders.back() as Dictionary)["explicatio"]), drill,
+			"drill %d: the order records the drill the roles say was done" % drill)
 		var returning: PackedByteArray = u._duplicatio_returning.duplicate()
-		var worst := {"front": 0.0, "forward": -INF, "order": -INF, "closest": INF}
+		var worst := {"front": 0.0, "forward": -INF, "order": -INF, "closest": INF, "pairs": 0}
 		var ended: int = -1
 		for t in range(DRILL_TICKS):
 			await get_tree().physics_frame
 			worst["front"] = maxf(worst["front"], absf(_front(u) - front0))
-			var at: Dictionary = {}
 			for i in range(u.soldiers):
-				at[Vector2i(u._sim_soldier_file[i], u._sim_soldier_rank[i])] = i
 				if returning[i] == 0:
 					worst["forward"] = maxf(worst["forward"],
 							(u._sim_soldier_pos[i] - stayed0[i]).dot(u.facing))
@@ -169,9 +179,9 @@ func test_the_duplicatio_undoes_the_explicatio() -> void:
 					worst["closest"] = minf(worst["closest"],
 							u._sim_soldier_pos[i].distance_to(u._sim_soldier_pos[j]))
 			for i in range(u.soldiers):
-				var j: int = int(at.get(Vector2i(u._sim_soldier_file[i], u._sim_soldier_rank[i] - 1),
-						-1))
-				if returning[i] == 1 and j >= 0 and returning[j] == 1:
+				var j: int = ahead[i]
+				if returning[i] == 1 and j >= 0:
+					worst["pairs"] += 1
 					worst["order"] = maxf(worst["order"],
 							(u._sim_soldier_pos[i] - u._sim_soldier_pos[j]).dot(u.facing))
 			if not u.explicatio_drill_active():
@@ -183,7 +193,9 @@ func test_the_duplicatio_undoes_the_explicatio() -> void:
 			"%s: the front moved %.2f wu" % [what, worst["front"]])
 		assert_lt(worst["forward"], 0.25 * u.rank_pitch_wu(),
 			"%s: a man who stayed stepped %.2f wu forward" % [what, worst["forward"]])
-		assert_lt(worst["order"], 0.0, "%s: a returning man came level with the man ahead" % what)
+		assert_gt(worst["pairs"], 0, "%s: precondition: the column order was read" % what)
+		assert_lt(worst["order"], 0.0,
+			"%s: a returning man came level with the man ahead of him in his interval" % what)
 		assert_gte(worst["closest"], u.soldier_body_radius(),
 			"%s: two men came within %.2f wu" % [what, worst["closest"]])
 		assert_eq(u._sim_soldier_file, start_files, "%s: every man is back in his file" % what)
@@ -246,6 +258,56 @@ func test_the_same_ground_opens_the_order() -> void:
 		drift = maxf(drift, absf(u._sim_soldier_pos[i].dot(right) - across0[i]))
 	assert_lt(drift, 0.25 * u.file_pitch_wu(), "a file leader moved %.2f wu across" % drift)
 	assert_eq(Unit.sparser_formation_mode(Unit.FORMATION_LOOSE), -1, "open order opens no further")
+
+
+## A man who falls while the files go back leaves the drill running: the man behind him closes
+## up, and the rest still follow the men they can see until the block stands on 9 files.
+func test_a_casualty_mid_drill_keeps_the_drill() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
+	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
+	_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE)
+	for _t in range(30):
+		await get_tree().physics_frame
+	var victim: int = -1
+	for i in range(u.soldiers):
+		if u._duplicatio_returning[i] == 1 and u._explicatio_following[i] == 1:
+			victim = i
+			break
+	assert_gte(victim, 0, "precondition: a man of an interval is still on his way")
+	var count: int = u.soldiers
+	u._sim_soldier_hp[victim] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_eq(u.soldiers, count - 1, "precondition: he fell")
+	assert_eq(u._duplicatio_returning.size(), u.soldiers, "the drill's own record closes up")
+	await get_tree().physics_frame
+	assert_true(u.explicatio_drill_active(), "the drill runs on")
+	assert_gte(await _settle(u), 0, "and ends")
+	assert_eq(UnitFormation.frontage(u), 9, "on 9 files")
+
+
+## A countermarch since the explicatio turns the block about, so the heads of its intervals stand
+## at its rear: the roles go, and N narrows with the lateral deal. Nor is a block undone while an
+## about-face's mirror still stands over its files.
+func test_a_turned_block_is_not_undone() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
+	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
+	assert_true(u.explicatio_undoable(), "precondition: undoable before the turn")
+	u._formation_mirror_x = true
+	assert_false(u.explicatio_undoable(), "not while the mirror stands")
+	u._formation_mirror_x = false
+	_battle.enqueue_countermarch([u.uid], Unit.CountermarchVariant.CHORAL)
+	var turned: bool = false
+	for _t in range(600):
+		await get_tree().physics_frame
+		turned = turned or u._sim_soldier_role.is_empty()
+		if turned and u.state == Unit.State.IDLE and not u.has_move_target:
+			break
+	assert_true(u._sim_soldier_role.is_empty(), "the countermarch took the roles away")
+	assert_false(u.explicatio_undoable(), "nothing left to undo")
+	_battle.enqueue_file_double([u.uid], -1)
+	assert_false(u.explicatio_drill_active(), "N narrows with the lateral deal")
 
 
 ## A block no explicatio dealt keeps the lateral deal, and its narrowing records no drill.

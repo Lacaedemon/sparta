@@ -233,9 +233,10 @@ A man held off his place by terrain, rather than by another regiment, keeps the 
 ## The duplicatio in reverse
 
 A block whose files an explicatio dealt halves its front (N) by undoing that explicatio.
-Asclepiodotus: "Whenever we wish to return this compact formation to its original position, we shall command the men who have changed their position to counter-march to their original stations" (Tactics 10.20).
-Aelian (29.3, Bingham): "command those, that were inserted, to countermarch to the place, they had before".
-Neither says how the files that stayed close up, or how a man walks back.
+Asclepiodotus 10.20 and Aelian 29.3, quoted above under the doubling "in number", undo the doubling by sending the men who changed their position back to their original stations.
+Both undo the insertion on the same ground (10.17) and the compact formation it made.
+Undoing by the same drill a widen that also opened the files out, the sim's default, is the sim's inference.
+Neither source says how the files that stayed close up, or how a man walks back.
 In the same section Asclepiodotus notes that some condemn such doublings, "especially when the enemy is near".
 
 What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
@@ -259,13 +260,15 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
 Whether the halved block keeps its pitch or its ground is chosen on the order, with the same ground reading as the explicatio's (Alt+Ctrl+B):
 
 - **`lengthen`** (the default): the files keep their pitch and close on the file that stands, so the line halves its length.
-  It undoes the widen that opened the files out (Asclepiodotus 10.18, Polyaenus 2.10.4).
+  It undoes the explicatio's `lengthen`, which opened the files out; no source describes that reverse, so it is the sim's inference.
 - **`same_ground`** (Asclepiodotus 10.20 undoing 10.17, Aelian 29.3): the men who were inserted go back out of the gaps, the files that stayed keep their places, and the block opens one order of spacing, locked shields into compact and compact into open order (Asclepiodotus 4.1).
   A block already in open order, or in any order but the three line orders, has no opener order to take and keeps its pitch, as `lengthen`: that is the sim's choice.
 
 The drill is for a block standing still, square to its facing, and not fighting, as the explicatio is.
-A block no explicatio dealt, or one whose roles a re-deal or a countermarch has taken or turned, narrows with the lateral deal, as before:
+A block no explicatio dealt, or one whose files a re-deal has taken since, narrows with the lateral deal, as before:
 the sources describe no other drill for it.
+So does a block that has countermarched or about-faced since:
+turned about, the head of each interval stands at its rear, and the turn takes the roles away.
 
 ## Game Design and Mechanics Framework
 
