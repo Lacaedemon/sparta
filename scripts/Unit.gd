@@ -10130,11 +10130,11 @@ func _turn_men_to_their_fronts(delta: float) -> void:
 		_duplicatio_facing_owned = false   # another hand took the facings back
 		return
 	var n: int = _sim_soldier_facing.size()
-	var lined: bool = _duplicatio_returning.size() == n and _explicatio_following.size() == n
 	var all_front: bool = true
 	for i in range(n):
-		var about: bool = lined and DuplicatioMarch.faces_about(_duplicatio_march,
-				_duplicatio_returning[i] == 1, _explicatio_following[i] == 1)
+		var about: bool = i < _duplicatio_returning.size() and i < _explicatio_following.size() \
+				and DuplicatioMarch.faces_about(_duplicatio_march, _duplicatio_returning[i] == 1,
+				_explicatio_following[i] == 1)
 		var wanted: Vector2 = -facing if about else facing
 		_sim_soldier_facing[i] = DuplicatioMarch.turn_toward(_sim_soldier_facing[i], wanted,
 				CONVERSIO_TURN_RATE * delta)

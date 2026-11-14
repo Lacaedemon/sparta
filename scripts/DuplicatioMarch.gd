@@ -4,11 +4,11 @@ extends RefCounted
 ## undoes it (Unit._begin_duplicatio). Asclepiodotus 10.20 and Aelian 29.3 say they countermarch
 ## back; neither says how. Each reading is chosen on the order (Alt+N steps it):
 ##   WALK        -- each man drops back down his interval facing front (the sim's inference).
-##   FACE_ABOUT  -- the literal reading: each man faces about where he stands, as every man of a
-##                  countermarch does (Asclepiodotus 10.13 to 10.15), the column marches back with
-##                  its rear man leading, and each man faces front again on his station. Which
-##                  countermarch, if any, the sources mean is not said; this one is the sim's
-##                  inference (docs/historical-reshaping-maneuvers.md).
+##   FACE_ABOUT  -- each man faces about where he stands, as every man of a countermarch ends
+##                  facing about (Asclepiodotus 10.13 to 10.15), the column marches back with its
+##                  rear man leading, and each man faces front again on his station. It is none of
+##                  the three countermarches, and the sources do not say which they mean; this
+##                  reading is the sim's inference (docs/historical-reshaping-maneuvers.md).
 ## A man turns through his own facing at CONVERSIO_TURN_RATE, never in a snap. Pure: functions of
 ## their arguments only.
 
@@ -56,8 +56,9 @@ static func drill_fronts(facings: PackedVector2Array, returning: PackedByteArray
 
 ## Whom each man who went up an interval follows as his column marches back faced about: the plan
 ## `leaders` and `offsets` (DuplicatioDrill.follow_plan, (right, behind) in his drill front's
-## frame) with his entries changed, returned as {"leaders", "offsets"}. The column's rear man leads. A man with a man of his column to stand right
-## behind him (his file's rank + 1, `returning` too) follows that man, a rank pitch ahead of him.
+## frame) with his entries changed, returned as {"leaders", "offsets"}. The column's rear man
+## leads. A man with a man of his column to stand right behind him (his file's rank + 1,
+## `returning` too) follows that man, a rank pitch ahead of him.
 ## Any other follows the nearest man of his file ahead of him who did not go up, that many rank
 ## pitches behind him: the man he will stand behind (every second man), or, for the column's rear
 ## man, his file's last man (the half-file). A man with neither keeps the plan's leader.

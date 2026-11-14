@@ -255,7 +255,7 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   So the men of each interval fall back down it in column and step in behind the man they follow once they are behind him.
   The files that stayed close up only once the intervals beside them are empty.
   That walk, facing front, is the sim's inference, and the default.
-  The sources say "countermarch", and a countermarch turns the men about, so the sim also builds the literal reading, below.
+  The sources say "countermarch", and a countermarch turns the men about, so the sim also builds a reading with the men facing about, below.
 
 - **The face-about reading** (`DuplicatioMarch.FACE_ABOUT`, chosen by Alt+N before N).
   Each man of an interval faces about where he stands, marches back down his interval with its rear man leading, and faces front again on his station.
@@ -277,7 +277,8 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   Each turns a file to face the other way with its leader at its new head.
   Neither 10.20 nor Aelian 29.3 says which the men of an interval perform.
   An interval's men end on stations behind them, facing front, in the order they stood: any of the three, done once, would leave the column facing the rear with its head at the far end, so no man would stand on his own station.
-  The sim's literal reading keeps what every countermarch has, each man facing about, and keeps the order of the column, so its rear man leads it back: that is the sim's inference.
+  The face-about reading is none of the three.
+  It keeps what every countermarch ends with, each man facing about, and keeps the order of the column, so its rear man leads it back: that is the sim's inference.
   A column could also come back in order by doing two countermarches, the Laconian onto the ground behind its rear and then the Cretan on its stations to face front, its men passing each other in the interval.
   That reading is not built ([#1987](https://github.com/Lacaedemon/sparta/issues/1987)).
 

@@ -252,9 +252,9 @@ func test_a_plain_narrowing_ignores_the_reading() -> void:
 	assert_false(u._duplicatio_facing_owned, "nobody turns")
 
 
-## A countermarch cut short (the block ordered to move) leaves no man turned: each turns on to the
-## front at his rate, and the facings go back to the block's heading once all face it.
-func test_a_countermarch_cut_short_turns_the_men_front() -> void:
+## A face-about cut short (the block ordered a step forward) leaves no man turned: each turns on
+## to the front at his rate, and the facings go back to the block's heading once all face it.
+func test_a_face_about_cut_short_turns_the_men_front() -> void:
 	var u: Unit = await _stage()
 	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
 	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
@@ -266,7 +266,9 @@ func test_a_countermarch_cut_short_turns_the_men_front() -> void:
 		if u._sim_soldier_facing[i].dot(u.facing) < 0.0:
 			turned += 1
 	assert_gt(turned, 0, "precondition: men stand turned")
-	u._end_explicatio_drill()
+	_battle.enqueue_nudge([u.uid], _battle.NudgeDir.FORWARD)
+	await get_tree().physics_frame
+	assert_false(u.explicatio_drill_active(), "precondition: the order ends the drill")
 	var prev: PackedVector2Array = u._sim_soldier_facing.duplicate()
 	var max_step: float = Unit.CONVERSIO_TURN_RATE / float(Engine.physics_ticks_per_second)
 	var worst: float = 0.0
@@ -293,6 +295,46 @@ func test_the_reading_rides_the_snapshot() -> void:
 	u.apply_snapshot_dict(d)
 	assert_eq(u._duplicatio_march, FACE_ABOUT, "the reading")
 	assert_true(u._duplicatio_facing_owned, "the hold on the facings")
+	assert_true(u._per_soldier_facing, "and the men keep their own facings")
+	for _t in range(40):
+		await get_tree().physics_frame
+	var about: int = 0
+	for i in range(u.soldiers):
+		if u._sim_soldier_facing[i].dot(u.facing) < -0.99:
+			about += 1
+	assert_gt(about, 0, "the restored drill turns the men about")
+
+
+## A man who falls on his way back takes his own facing with him: every man after him keeps his,
+## the men who stayed keep facing front, and the drill runs on to its end with every man front.
+func test_a_casualty_keeps_each_mans_own_facing() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
+	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
+	_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE, OUTWARD, LENGTHEN, FACE_ABOUT)
+	for _t in range(45):
+		await get_tree().physics_frame
+	var victim: int = -1
+	for i in range(u.soldiers):
+		if u._duplicatio_returning[i] == 1 and u._explicatio_following[i] == 1:
+			victim = i
+			break
+	assert_gte(victim, 0, "precondition: a man of an interval is on his way")
+	var before: PackedVector2Array = u._sim_soldier_facing.duplicate()
+	before.remove_at(victim)
+	u._sim_soldier_hp[victim] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_eq(u._sim_soldier_facing, before, "each man keeps his own facing")
+	await get_tree().physics_frame
+	for i in range(u.soldiers):
+		if u._duplicatio_returning[i] == 0:
+			assert_gt(u._sim_soldier_facing[i].dot(u.facing), 0.999, "man %d, who stayed, faces front" % i)
+	assert_gte(await _settle(u), 0, "the drill ends")
+	for _t in range(120):
+		if not u._duplicatio_facing_owned:
+			break
+		await get_tree().physics_frame
+	assert_false(u._duplicatio_facing_owned, "and every man faces front")
 
 
 ## The replay entry carries the reading, omitted for the walk, and decodes back.
