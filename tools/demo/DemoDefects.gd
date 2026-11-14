@@ -689,7 +689,7 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 	var n: int = s["ticks"].size()
 	# Overlap: any single judged sample with two soldiers effectively co-located. Judged on a
 	# pursuing unit too: its riders chase runners off their places, but never ride through
-	# each other (SoldierKeepClear).
+	# each other (SoldierBodies.standoff_free).
 	out.append(_sustained_verdict(uid, "overlap", s, "nnd_min",
 			two_bodies * OVERLAP_BODY_FRAC, judged_mask(s), 1))
 	var mask: Array = shape_mask(s)

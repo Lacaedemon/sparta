@@ -9367,7 +9367,9 @@ func _advance_moving_wheel(leaf: Order, delta: float) -> bool:
 	leaf.pivot = hinge_new
 	position = hinge_new + (position - hinge_old).rotated(step)
 	for i in range(_sim_soldier_pos.size()):
-		_sim_soldier_pos[i] = hinge_new + (_sim_soldier_pos[i] - hinge_old).rotated(step)
+		var p: Vector2 = _sim_soldier_pos[i]
+		_sim_soldier_pos[i] = UnitManeuver.bounded_wheel_carry(p, hinge_new + (p - hinge_old).rotated(step),
+				_sim_body_vel[i], move_speed * superphysical_speed_frac, delta)
 		_sim_body_vel[i] = _sim_body_vel[i].rotated(step)
 	state = State.MOVING
 	_moved_last_frame = true

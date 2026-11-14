@@ -32,7 +32,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	var top: float = unit.move_speed
 	var cap_floor: float = top * unit.superphysical_speed_frac
 	var field: PathField = PathField.active
-	var clear: PackedVector2Array = SoldierKeepClear.bias(unit, n, top)
+	var contact: PackedVector2Array = SoldierBodies.standoff_free(unit, n, cap_floor)
 	if unit._sim_flight_dir.size() != n:
 		unit._sim_flight_dir.resize(n)
 		for i in range(n):
@@ -44,7 +44,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 			unit._sim_flight_dir[i] = _toward_nearest(pos, quarry)
 		var dir: Vector2 = unit._sim_flight_dir[i]
 		var pace: float = top * (field.speed_at(pos) if field != null else 1.0)
-		var desired: Vector2 = (dir * pace + unit._sim_steer[i] + clear[i]).limit_length(pace)
+		var desired: Vector2 = (dir * pace + unit._sim_steer[i]).limit_length(pace)
 		if not guard.is_empty() and guard["inside"][i] == 0:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel,
 					pos + dir * SoldierFlightStep.LOOK_AHEAD, desired, guard["grown"], accel, delta)
@@ -52,7 +52,8 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		var cap: float = maxf(cap_floor, vel.length())
 		var new_vel: Vector2 = ride(damped, desired, accel, Unit.TURN_RATE, delta).limit_length(cap)
 		unit._sim_body_vel[i] = new_vel
-		unit._sim_soldier_pos[i] = pos + new_vel * delta
+		var shove: Vector2 = contact[i] if not contact.is_empty() else Vector2.ZERO
+		unit._sim_soldier_pos[i] = pos + (new_vel + shove).limit_length(cap) * delta
 		if new_vel.length_squared() > SoldierBodies.REST_SPEED * SoldierBodies.REST_SPEED:
 			unit._sim_soldier_facing[i] = new_vel.normalized()
 			unit._render_dirty = true

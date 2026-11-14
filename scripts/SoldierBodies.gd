@@ -712,9 +712,10 @@ static func march_share_frac(dist: float, pitch: float, from_pitches: float,
 
 ## One tick of a rallied unit's men pulling up from their flight: each slows along his own run
 ## at `rate` (world units/s^2, his braking rate), faces it while he still moves, and runs on at
-## what he kept; his run ends in giving way to a friend whose body touches his (SoldierKeepClear,
-## up to a jog), the velocity he brakes toward. Returns false, touching nobody, once no man of the first `n` is faster than a jog: the
-## men have pulled up, and the caller lays the grid out where they stand.
+## what he kept, and the same body contact as a pursuing rider's (standoff_free) keeps two men
+## who meet from running through each other. Returns false, touching nobody, once no man of the
+## first `n` is faster than a jog: the men have pulled up, and the caller lays the grid out where
+## they stand.
 static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bool:
 	var jog_sq: float = unit.jog_speed * unit.jog_speed
 	var running: bool = false
@@ -724,11 +725,13 @@ static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bo
 			break
 	if not running:
 		return false
-	var clear: PackedVector2Array = SoldierKeepClear.bias(unit, n, unit.jog_speed)
+	var cap: float = unit.move_speed * unit.superphysical_speed_frac
+	var contact: PackedVector2Array = standoff_free(unit, n, cap)
 	for i in range(n):
-		var v: Vector2 = unit._sim_body_vel[i].move_toward(clear[i], rate * delta)
+		var v: Vector2 = unit._sim_body_vel[i].move_toward(Vector2.ZERO, rate * delta)
 		unit._sim_body_vel[i] = v
-		unit._sim_soldier_pos[i] += v * delta
+		var shove: Vector2 = contact[i] if not contact.is_empty() else Vector2.ZERO
+		unit._sim_soldier_pos[i] += (v + shove).limit_length(maxf(cap, v.length())) * delta
 		if v.length_squared() > REST_SPEED * REST_SPEED:
 			unit._sim_soldier_facing[i] = v.normalized()
 	unit._render_dirty = true
@@ -1081,6 +1084,51 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	if not any_unsettled:
 		return PackedVector2Array()
 
+	# The push is capped by the block's state the same way inside a REFORM hold as outside one:
+	# a jog while the block stands (IDLE), the superphysical march cap while it moves.
+	# STANDOFF_MAX_SPEED is lower than either for most unit types, so it is usually the cap
+	# that binds.
+	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
+			else unit.move_speed * unit.superphysical_speed_frac
+	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
+	# The contact band applies in a REFORM hold only (see STANDOFF_CONTACT_SEP_FRAC).
+	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC if holding else 0.0
+	return _standoff_pairs(unit, n, is_engaged, is_settled, min_sep, max_sep_speed, contact_sep,
+			max_sep_speed)
+
+
+## Body contact for men who run free of any slot: a pursuing rider (SoldierPursuitStep) and a
+## rallied man pulling up (pull_up_rallied). The same pair pass as _separate_same_unit, with
+## no slot to be settled on, so every living, unbroken pair closer than min_sep is pushed
+## apart, and with the contact band on, so a pair still closing inside it has its closing
+## cancelled. `man_cap` is the most this contact may change one man's speed by: his own top
+## pace, since two riders closing at a gallop must be stopped at a gallop. Returns the per-man
+## velocities, applied to that tick's displacement only, as step() applies its own.
+static func standoff_free(unit: Unit, n: int, man_cap: float) -> PackedVector2Array:
+	if n < 2:
+		return PackedVector2Array()
+	var two_bodies: float = unit.soldier_body_radius() * 2.0
+	var file_pitch: float = unit.file_pitch_wu()
+	var rank_pitch: float = unit.rank_pitch_wu()
+	var min_pitch: float = minf(file_pitch, rank_pitch) if rank_pitch > 0.0 else file_pitch
+	var min_sep: float = STANDOFF_MIN_SEP_FRAC * minf(two_bodies, min_pitch)
+	if min_sep <= STANDOFF_MIN_SEP_FLOOR:
+		return PackedVector2Array()
+	var none_settled := PackedByteArray()
+	none_settled.resize(n)
+	return _standoff_pairs(unit, n, PackedByteArray(), none_settled, min_sep,
+			minf(STANDOFF_MAX_SPEED, man_cap), min_sep * STANDOFF_CONTACT_SEP_FRAC, man_cap)
+
+
+## The pair pass shared by _separate_same_unit and standoff_free: each living, unbroken,
+## unengaged pair of `unit`'s first `n` men closer than `min_sep` (and not both settled on
+## their slots) is pushed apart along its axis at up to `push_speed` by depth of overlap,
+## inside `contact_sep` also cancelling half its closing speed each, and each man's sum is
+## bounded at `man_cap`.
+static func _standoff_pairs(unit: Unit, n: int, is_engaged: PackedByteArray,
+		is_settled: PackedByteArray, min_sep: float, push_speed: float, contact_sep: float,
+		man_cap: float) -> PackedVector2Array:
+	var max_sep_speed: float = push_speed
 	var cell_size: float = min_sep
 	var inv_cell_size: float = 1.0 / cell_size
 	var cells: Dictionary[Vector2i, PackedInt32Array] = {}
@@ -1099,21 +1147,11 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			cells[ck] = PackedInt32Array()
 		cells[ck].append(i)
 
-	# The push is capped by the block's state the same way inside a REFORM hold as outside one:
-	# a jog while the block stands (IDLE), the superphysical march cap while it moves.
-	# STANDOFF_MAX_SPEED is lower than either for most unit types, so it is usually the cap
-	# that binds.
-	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
-			else unit.move_speed * unit.superphysical_speed_frac
-	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
-
 	var sep_vel := PackedVector2Array()
 	sep_vel.resize(n)
 	sep_vel.fill(Vector2.ZERO)
 	var min_sep_sq: float = min_sep * min_sep
 	var inv_min_sep: float = 1.0 / min_sep
-	# The contact band applies in a REFORM hold only (see STANDOFF_CONTACT_SEP_FRAC).
-	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC if holding else 0.0
 	var has_vel: bool = unit._sim_body_vel.size() == n
 
 	for i in range(n):
@@ -1167,10 +1205,10 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 					sep_vel[j] -= push
 
 	# Bound per-soldier accumulated standoff velocity to the speed cap:
-	var max_sep_sq: float = max_sep_speed * max_sep_speed
+	var max_sep_sq: float = man_cap * man_cap
 	for i in range(n):
 		if sep_vel[i].length_squared() > max_sep_sq:
-			sep_vel[i] = sep_vel[i].limit_length(max_sep_speed)
+			sep_vel[i] = sep_vel[i].limit_length(man_cap)
 
 	return sep_vel
 
