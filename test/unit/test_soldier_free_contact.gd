@@ -55,7 +55,8 @@ func test_a_closing_pair_inside_the_contact_band_has_its_closing_cancelled() -> 
 	var push: PackedVector2Array = SoldierBodies.standoff_free(p, 2, 1000.0)
 	assert_lt(push[0].x, -300.0, "his closing is cancelled, not only the overlap pushed")
 	var capped: PackedVector2Array = SoldierBodies.standoff_free(p, 2, 50.0)
-	assert_almost_eq(capped[0].length(), 50.0, 0.001, "no more than the cap a man is given")
+	assert_gt(capped[0].length(), 50.0, "the push and the stopping each take their own cap")
+	assert_lte(capped[0].length(), 100.001, "neither more than the cap a man is given")
 
 
 func test_the_contact_wins_over_a_mans_own_drive_under_the_cap() -> void:
@@ -122,8 +123,8 @@ func test_the_contact_band_is_the_pairs_own_rule_in_a_march_too() -> void:
 		u._sim_body_vel[1] = Vector2(-closing, 0)
 	place.call(0.0)
 	var still: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
-	assert_gt(still[0].length(), SoldierBodies.STANDOFF_MAX_SPEED,
-		"two men far off their places meet at their own pace, not the walking push")
+	assert_lte(still[0].length(), SoldierBodies.STANDOFF_MAX_SPEED + 0.001,
+		"standing, two men far off their places take the walking push")
 	place.call(100.0)
 	var closing: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
 	assert_almost_eq(closing[0].length() - still[0].length(), 100.0, 0.01,
@@ -133,7 +134,7 @@ func test_the_contact_band_is_the_pairs_own_rule_in_a_march_too() -> void:
 	assert_almost_eq(opening[0], still[0], Vector2(0.001, 0.001), "a pair already parting is only pushed")
 	place.call(10000.0)
 	var capped: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
-	assert_almost_eq(capped[0].length(), cap, 0.01, "no faster than his block may move")
+	assert_almost_eq(capped[0].length() - still[0].length(), cap, 0.01, "no faster than his block may move")
 	# Off their places by less than the out-of-good-order distance, the pair keeps the walking push.
 	var near_off: float = 0.5 * u.standoff_off_slot_pitches * u.file_pitch_wu()
 	var near := PackedVector2Array([AT + Vector2(0, near_off), AT + Vector2(0.4 * r, near_off),
@@ -142,6 +143,9 @@ func test_the_contact_band_is_the_pairs_own_rule_in_a_march_too() -> void:
 	var near_push: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, near, PackedByteArray(), DT)
 	assert_lte(near_push[0].length(), SoldierBodies.STANDOFF_MAX_SPEED + 0.001,
 		"two men near their places take only the walking push, closing or not")
+	place.call(0.0)
+	var near_still: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, near, PackedByteArray(), DT)
+	assert_almost_eq(near_push[0], near_still[0], Vector2(0.001, 0.001), "their closing is not stopped")
 	var on_place := PackedVector2Array([u._sim_soldier_pos[0], u._sim_soldier_pos[1], u._sim_soldier_pos[2]])
 	assert_eq(SoldierBodies._separate_same_unit(u, 3, on_place, PackedByteArray(), DT).size(), 0,
 		"two men on their own places are not a pair to part")
