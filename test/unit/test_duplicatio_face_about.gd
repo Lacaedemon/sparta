@@ -292,6 +292,7 @@ func test_the_reading_rides_the_snapshot() -> void:
 	var d: Dictionary = u.to_snapshot_dict()
 	u._duplicatio_march = WALK
 	u._duplicatio_facing_owned = false
+	u._per_soldier_facing = false
 	u.apply_snapshot_dict(d)
 	assert_eq(u._duplicatio_march, FACE_ABOUT, "the reading")
 	assert_true(u._duplicatio_facing_owned, "the hold on the facings")
