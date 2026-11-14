@@ -146,6 +146,11 @@ func test_the_contact_band_is_the_pairs_own_rule_in_a_march_too() -> void:
 	place.call(0.0)
 	var near_still: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, near, PackedByteArray(), DT)
 	assert_almost_eq(near_push[0], near_still[0], Vector2(0.001, 0.001), "their closing is not stopped")
+	place.call(100.0)
+	var one_off := PackedVector2Array([far[0], near[1], far[2]])
+	var mixed: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, one_off, PackedByteArray(), DT)
+	assert_almost_eq(mixed[0].length() - near_still[0].length(), 100.0, 0.5,
+		"one man far off his place is enough for the pair to take the band")
 	var on_place := PackedVector2Array([u._sim_soldier_pos[0], u._sim_soldier_pos[1], u._sim_soldier_pos[2]])
 	assert_eq(SoldierBodies._separate_same_unit(u, 3, on_place, PackedByteArray(), DT).size(), 0,
 		"two men on their own places are not a pair to part")
