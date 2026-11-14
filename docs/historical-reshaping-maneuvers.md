@@ -258,7 +258,7 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   The sources say "countermarch", and a countermarch proper turns the men about (Asclepiodotus 10.13 to 10.16), which this drill does not do ([#1985](https://github.com/Lacaedemon/sparta/issues/1985)).
 
 - **The front rank holds its line.**
-  The file that stands is the middle file (N), or the held flank's corner file for an order that holds one, as for the explicatio.
+  The file that stands is the one the explicatio stood on, which the block records with the ground: the middle file after a widen about the middle, or the held flank's corner file after one held on a flank, so a held flank does not move on the way back either.
   Its leader is the guide, and every file leader dresses his depth on him.
   If that whole file falls, the leader of the nearest file left becomes the guide.
   He holds the ground he stands on when he takes over, as in the explicatio, and the other files close on him by their relations.
@@ -277,6 +277,7 @@ The drill is for a block standing still, square to its facing, and not fighting,
 A block no explicatio dealt, or one whose files a re-deal has taken since, narrows with the lateral deal, as before.
 The sources describe no other drill for it.
 An about-face or countermarch since the explicatio turns the block about, so the head of each interval stands at its rear.
+While the block stands turned its grid faces away from its men, and it is not undone (`Unit.explicatio_undoable` reads the turned grid).
 The reform that follows the turn takes the roles away, on a full grid as on one with a short rear rank, and the block then narrows with the lateral deal too.
 If an explicatio or duplicatio is still under way at that reform, the roles are kept for it, but a block whose grid is still mirrored by the turn is not undone.
 

@@ -1224,13 +1224,13 @@ As Asclepiodotus has it (Tactics 10.20), "the men who have changed their positio
 The men of each interval fall back down it in column and step in behind the man they will follow once they are behind him.
 The half-file falls in behind its own file, or every second man goes back between the men he stood behind.
 The files then close on the file that stands while the front rank keeps its line.
-That is the middle file for <kbd>N</kbd>, which holds no flank.
-An order that holds a flank closes on that flank's corner file instead, though no key issues one yet.
+That is the file the explicatio stood on: the middle file after <kbd>B</kbd>, or the held flank's corner file after <kbd>Shift+B</kbd> or <kbd>Ctrl+B</kbd>, so that flank does not move.
 The duplicatio undoes the ground the explicatio kept, whatever the ground reading is when you press <kbd>N</kbd>.
 After an explicatio that lengthened the line, the line halves its length again.
 After an explicatio on the same ground, the files that stayed keep their places and the block opens one order of spacing again.
 A block no explicatio dealt, or one that has re-dealt its files since, narrows as it always has.
-So does a block that has about-faced or countermarched since, once the reform after the turn has taken the roles away.
+A block that has about-faced or countermarched since cannot be undone while it stands turned, since its grid then faces away from its men.
+The reform after the turn also takes away the roles the explicatio left, so from then on <kbd>N</kbd> narrows it as it always has.
 
 ::: {#fig-duplicatio-reverse .demo}
 

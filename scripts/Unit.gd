@@ -6312,8 +6312,9 @@ func _reset_shield_hold_angles() -> void:
 ## the side away from a held flank), so every file it had keeps its ground.
 ## A narrowing to half the files with an `explicatio_drill` other than NONE, of a block whose
 ## files an explicatio dealt (explicatio_undoable), is that explicatio in reverse
-## (_begin_duplicatio): the men who went up the intervals go back, the file that stands chosen
-## by `held_flank`. It keeps the ground the explicatio kept (_explicatio_ground), not
+## (_begin_duplicatio): the men who went up the intervals go back, on the file the explicatio
+## stood on (the flank it held, _explicatio_held), not on `held_flank`, so a held flank does not
+## move. It keeps the ground the explicatio kept (_explicatio_ground), not
 ## `explicatio_ground`: an explicatio on the same ground is undone by opening the block one order
 ## (sparser_formation_mode), where there is a looser line order to take; else the files close up.
 func set_frontage(files: int, anchor_offset: float = 0.0,
@@ -6378,8 +6379,9 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 	if not dealt.is_empty():
 		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill, split, inward)
 		_explicatio_ground = explicatio_ground
+		_explicatio_held = held_flank
 	if not back.is_empty():
-		_begin_duplicatio(back, target_files, held_flank)
+		_begin_duplicatio(back, target_files, _explicatio_held)
 	note_front_depth()   # a narrower frontage deepens the block
 
 
@@ -7431,6 +7433,8 @@ var _explicatio_inward: bool = false
 # Whether it kept its pitch or its ground (UnitFormation.ExplicatioGround), which a duplicatio
 # that undoes it keeps too (set_frontage).
 var _explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
+# The flank it held (UnitFormation.Anchor), whose file a duplicatio that undoes it stands on.
+var _explicatio_held: int = UnitFormation.Anchor.CENTRE
 var _explicatio_stand_file: int = -1
 var _explicatio_stand_point: Vector2 = Vector2.ZERO
 var _explicatio_following: PackedByteArray = PackedByteArray()
@@ -13297,6 +13301,7 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_lane_split": _explicatio_lane_split,
 		"explicatio_inward": _explicatio_inward,
 		"explicatio_ground": _explicatio_ground,
+		"explicatio_held": _explicatio_held,
 		"explicatio_reverse": _explicatio_reverse,
 		"duplicatio_returning": _duplicatio_returning.duplicate(),
 		"explicatio_following": _explicatio_following.duplicate(),
@@ -13701,6 +13706,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_explicatio_lane_split = int(d.get("explicatio_lane_split", 0))
 	_explicatio_inward = bool(d.get("explicatio_inward", false))
 	_explicatio_ground = int(d.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN))
+	_explicatio_held = int(d.get("explicatio_held", UnitFormation.Anchor.CENTRE))
 	_explicatio_reverse = bool(d.get("explicatio_reverse", false))
 	_duplicatio_returning = (d.get("duplicatio_returning", PackedByteArray()) as PackedByteArray) \
 			.duplicate()

@@ -327,10 +327,10 @@ func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	var right_anchor: int = UnitFormation.Anchor.RIGHT
 	_battle.enqueue_file_double([u.uid], 1, right_anchor, HALF_FILE)
 	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
-	_battle.enqueue_file_double([u.uid], -1, right_anchor, HALF_FILE)
+	_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE)   # N holds no flank of its own
+	assert_false((_battle._pending_orders.back() as Dictionary).has("explicatio_held"),
+		"the order carries no flank: the explicatio's is the one that stands")
 	assert_true(u._explicatio_reverse, "the narrowing is the drill")
-	assert_eq(int((_battle._pending_orders.back() as Dictionary)["explicatio_held"]), right_anchor,
-		"the order holds the right flank")
 	assert_eq(u._explicatio_stand_file, 8, "the right corner file stands")
 	for _t in range(20):
 		await get_tree().physics_frame
@@ -413,6 +413,13 @@ func test_an_about_face_takes_the_roles_and_keeps_the_files() -> void:
 		assert_gte(await _settle(u), 0, "%d men: precondition: the explicatio ended" % count)
 		assert_eq(count % UnitFormation.frontage(u) == 0, count == 144,
 			"%d men: precondition: the grid is full only for 144" % count)
+		var files_sq: PackedInt32Array = u._sim_soldier_file.duplicate()
+		var ranks_sq: PackedInt32Array = u._sim_soldier_rank.duplicate()
+		u.reform_ranks()   # square to its facing: nobody turned, nobody moved
+		assert_eq(u._sim_soldier_file, files_sq, "%d men: a square re-square keeps the files" % count)
+		assert_eq(u._sim_soldier_rank, ranks_sq, "%d men: and the ranks" % count)
+		assert_false(u._sim_soldier_role.is_empty(),
+			"%d men: and the roles, the block not being turned" % count)
 		u.conversio()
 		for _t in range(120):
 			await get_tree().physics_frame
@@ -451,6 +458,79 @@ func test_a_turned_block_is_not_undone() -> void:
 	assert_false(u.explicatio_undoable(), "nothing left to undo")
 	_battle.enqueue_file_double([u.uid], -1)
 	assert_false(u.explicatio_drill_active(), "N narrows with the lateral deal")
+
+
+## A key press as the SelectionManager reads it.
+func _key(keycode: int, alt: bool = false, ctrl: bool = false, shift: bool = false) -> InputEventKey:
+	var ev := InputEventKey.new()
+	ev.keycode = keycode
+	ev.physical_keycode = keycode
+	ev.pressed = true
+	ev.alt_pressed = alt
+	ev.ctrl_pressed = ctrl
+	ev.shift_pressed = shift
+	return ev
+
+
+## The explicatio and its undoing through the real keys: the chords that choose a reading, then B
+## (or Shift+B, holding the right flank), then N. Every man ends at his pre-explicatio file and
+## rank, the line's flanks stand where they stood before B (the held one never moving), and the
+## drill ends: for an inward widen (Alt+Shift+B), one held on the right flank (Shift+B), and the
+## alternate-rank drill (Alt+B).
+func test_the_keys_undo_each_reading() -> void:
+	var cases: Array = [
+		["inward", [_key(KEY_B, true, false, true)], _key(KEY_B)],
+		["held right", [], _key(KEY_B, false, false, true)],
+		["alternate rank", [_key(KEY_B, true)], _key(KEY_B)],
+	]
+	for case in cases:
+		var what: String = case[0]
+		var u: Unit = await _stage()
+		var sm: Node = _battle.get_node("SelectionManager")
+		sm._select(u)
+		for chord in case[1]:
+			assert_true(sm._dispatch_key(chord), "%s: the chord is handled" % what)
+		var files0: PackedInt32Array = u._sim_soldier_file.duplicate()
+		var ranks0: PackedInt32Array = _ranks(u)
+		var right: Vector2 = SoldierFollow.right_of(u.facing.normalized())
+		var lo0: float = INF
+		var hi0: float = -INF
+		for p in u._sim_soldier_pos:
+			lo0 = minf(lo0, p.dot(right))
+			hi0 = maxf(hi0, p.dot(right))
+		assert_true(sm._dispatch_key(case[2]), "%s: B is handled" % what)
+		assert_gte(await _settle(u), 0, "%s: precondition: the explicatio ended" % what)
+		var hi_wide: float = -INF
+		for p in u._sim_soldier_pos:
+			hi_wide = maxf(hi_wide, p.dot(right))
+		assert_true(sm._dispatch_key(_key(KEY_N)), "%s: N is handled" % what)
+		assert_true(u._explicatio_reverse, "%s: N undoes the explicatio" % what)
+		var held_worst: float = 0.0
+		var ended: int = -1
+		for t in range(DRILL_TICKS):
+			await get_tree().physics_frame
+			if what == "held right":
+				var hi: float = -INF
+				for p in u._sim_soldier_pos:
+					hi = maxf(hi, p.dot(right))
+				held_worst = maxf(held_worst, absf(hi - hi_wide))
+			if not u.explicatio_drill_active():
+				ended = t
+				break
+		var quarter: float = 0.25 * u.file_pitch_wu()
+		assert_gte(ended, 0, "%s: the drill ended" % what)
+		assert_eq(u._sim_soldier_file, files0, "%s: every man is back in his file" % what)
+		assert_eq(_ranks(u), ranks0, "%s: and at his rank" % what)
+		var lo: float = INF
+		var hi_end: float = -INF
+		for p in u._sim_soldier_pos:
+			lo = minf(lo, p.dot(right))
+			hi_end = maxf(hi_end, p.dot(right))
+		assert_almost_eq(lo, lo0, quarter, "%s: the left flank stands where it stood" % what)
+		assert_almost_eq(hi_end, hi0, quarter, "%s: the right flank stands where it stood" % what)
+		assert_lt(held_worst, quarter,
+			"%s: the held flank moved %.2f wu while the files went back" % [what, held_worst])
+		await _free_battle()
 
 
 ## A block no explicatio dealt keeps the lateral deal, and its narrowing records no drill.
