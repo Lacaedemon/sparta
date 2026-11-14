@@ -107,14 +107,18 @@ const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # the two still walk into each other, so a man the arrival or a crowd at his back drives on
 # at more than that push could walk on through a neighbour (a crowded re-slot brought pairs
 # within 1.7 wu, against 9 wu for two bodies, with the pass running; a foot block coming out of
-# a press after a rout, 1.60 wu against 2.25). In a REFORM hold every man is walking to his own
-# slot, so every closing pair takes it, its push and stopping held together to the walking
-# push. Outside a hold the rule is the pair's own: a closing pair at least one of whom stands
-# more than Unit.standoff_off_slot_pitches file pitches off his place takes it, its stopping up
-# to the speed the block's men may move at, so a man coming back from far off at a jog or a
-# gallop cannot walk through another. A pair near its places takes the overlap push alone, so
-# the pushes a march or a fight carries are left as they were: the march moves both men alike,
-# and an engaged man taking knockback is outside the pass.
+# a press after a rout, 1.60 wu against 2.25). The rule is the pair's own, in a REFORM hold as
+# anywhere: a closing pair takes it when one of the two is walking back to his place, more than
+# Unit.standoff_off_slot_pitches file pitches off it with no fighting foe (one not routing)
+# within twice his reach, and its stopping reaches the speed the block's men may move at, so a
+# man coming back from far off at a jog or a gallop cannot walk through another. A pair near
+# its places, or in the press of a fight, takes the overlap push alone, so the pushes a march
+# or a fight carries are left as they were: the march moves both men alike, a man held off his
+# place by the press is not walking back (with the band on such pairs a fight broke at another
+# tick: last-unit-rally seed 0 at 1192 against 976), and an engaged man taking knockback is
+# outside the pass. A routing foe holds no one in the press, so men walking back near a rout
+# keep the band. (Dropping the band a hold once
+# gave every closing pair changed no verdict on 16 re-slot and reform clips over seeds 0 to 4.)
 const STANDOFF_CONTACT_SEP_FRAC: float = 0.5
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
@@ -1097,21 +1101,32 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			else unit.move_speed * unit.superphysical_speed_frac
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
 	# A pair still closing inside the contact band has its closing stopped as well (see
-	# STANDOFF_CONTACT_SEP_FRAC). In a REFORM hold every man is walking to his own slot, so every
-	# closing pair takes it, its stopping and push held together to the push cap. Elsewhere a pair
-	# one of whom stands farther off his place than the distance that marks a block out of good
-	# order above takes it, its stopping up to the speed the block's men may move at.
+	# STANDOFF_CONTACT_SEP_FRAC) when one of the two is walking back to his place: farther off it
+	# than the distance that marks a block out of good order above, with no fighting foe (one not
+	# routing) within twice his reach: a man in the press of a fight is held there by the fight,
+	# not walking back. Its stopping reaches the speed the block's men may move at.
 	var off_place := PackedByteArray()
 	off_place.resize(n)
-	if holding:
-		off_place.fill(1)
-	else:
-		var off_sq: float = pow(unit.standoff_off_slot_pitches * unit.file_pitch_wu(), 2.0)
-		for i in range(mini(n, target_slots.size())):
-			if unit._sim_soldier_pos[i].distance_squared_to(target_slots[i]) > off_sq:
-				off_place[i] = 1
+	var off_sq: float = pow(unit.standoff_off_slot_pitches * unit.file_pitch_wu(), 2.0)
+	var press: float = 2.0 * unit.soldier_reach()
+	for i in range(mini(n, target_slots.size())):
+		var p: Vector2 = unit._sim_soldier_pos[i]
+		if p.distance_squared_to(target_slots[i]) > off_sq and not _foe_within(unit, p, press):
+			off_place[i] = 1
 	return _standoff_pairs(unit, n, is_engaged, is_settled, off_place, min_sep, max_sep_speed,
-			max_sep_speed if holding else speed_cap, holding)
+			speed_cap)
+
+
+## Whether a body of a fighting enemy unit of `unit` (one not routing) stands within `dist` of
+## `pos`.
+static func _foe_within(unit: Unit, pos: Vector2, dist: float) -> bool:
+	for foe in SoldierCornered.foes_near(unit, pos, dist):
+		if foe.state == Unit.State.ROUTING:
+			continue
+		for q in foe._sim_soldier_pos:
+			if q.distance_squared_to(pos) <= dist * dist:
+				return true
+	return false
 
 
 ## Body contact for men who run free of any slot: a pursuing rider (SoldierPursuitStep) and a
@@ -1139,7 +1154,7 @@ static func standoff_free(unit: Unit, n: int, man_cap: float) -> PackedVector2Ar
 	all_off.resize(n)
 	all_off.fill(1)   # a man with no place is never on it
 	return _standoff_pairs(unit, n, PackedByteArray(), none_settled, all_off, min_sep, man_cap,
-			man_cap, false)
+			man_cap)
 
 
 ## A free-running man's velocity for this tick's displacement: his own `vel` plus the body
@@ -1166,12 +1181,11 @@ static func with_contact(vel: Vector2, shove: Vector2, cap: float) -> Vector2:
 ## slots, is pushed apart along its axis by depth of overlap, each man's push bounded at
 ## `push_speed`. A pair inside the contact band (STANDOFF_CONTACT_SEP_FRAC of `min_sep`) that is
 ## still closing, at least one of whom is off his place (`off_place`), has its closing stopped
-## as well, half by each man, each man's stopping bounded at `stop_cap`. With `joint`, a man's
-## push and stopping are bounded together at `push_speed` instead, as in a REFORM hold. The rule
-## is the pair's own, decided by where the two stand and how they move.
+## as well, half by each man, each man's stopping bounded at `stop_cap`. The rule is the pair's
+## own, decided by where the two stand and how they move.
 static func _standoff_pairs(unit: Unit, n: int, is_engaged: PackedByteArray,
 		is_settled: PackedByteArray, off_place: PackedByteArray, min_sep: float,
-		push_speed: float, stop_cap: float, joint: bool) -> PackedVector2Array:
+		push_speed: float, stop_cap: float) -> PackedVector2Array:
 	var max_sep_speed: float = push_speed
 	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC
 	var cell_size: float = min_sep
@@ -1250,22 +1264,15 @@ static func _standoff_pairs(unit: Unit, n: int, is_engaged: PackedByteArray,
 						var closing: float = (unit._sim_body_vel[j] - unit._sim_body_vel[i]).dot(axis)
 						if closing > 0.0:
 							stop = axis * (closing * 0.5)
-					if joint:
-						push += stop
-					else:
-						stop_vel[i] += stop
-						stop_vel[j] -= stop
+					stop_vel[i] += stop
+					stop_vel[j] -= stop
 					sep_vel[i] += push
 					sep_vel[j] -= push
 
-	# Bound each man's push and his stopping, each to its own cap, or together to the push cap:
+	# Bound each man's push and his stopping, each to its own cap:
 	var max_sep_sq: float = max_sep_speed * max_sep_speed
 	var stop_cap_sq: float = stop_cap * stop_cap
 	for i in range(n):
-		if joint:
-			if sep_vel[i].length_squared() > max_sep_sq:
-				sep_vel[i] = sep_vel[i].limit_length(max_sep_speed)
-			continue
 		if sep_vel[i].length_squared() > max_sep_sq:
 			sep_vel[i] = sep_vel[i].limit_length(max_sep_speed)
 		if stop_vel[i].length_squared() > stop_cap_sq:
