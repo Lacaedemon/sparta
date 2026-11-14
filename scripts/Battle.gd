@@ -3783,7 +3783,7 @@ func unit_by_uid(uid: int) -> UnitRef:
 ## nearest enemy closes inside PROMOTE_RANGE reconstructs its per-soldier state
 ## (TierTransition.promote, seeded off uid/tick/battle seed); a close-tier unit whose
 ## nearest enemy recedes past DEMOTE_RANGE — and that holds no in-flight per-soldier
-## context (TierTransition.can_demote) — collapses to its aggregate fields. Routers are not
+## context (TierTransition.can_demote) -- collapses to its aggregate fields. Routers are not
 ## among the units judged here (a routing unit keeps its own tier until it rallies back into
 ## "units"), and are not among the enemies measured, with one exception: a unit whose own
 ## target routs counts the centre distance to that quarry as one more gap, so it promotes and
