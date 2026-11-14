@@ -6695,6 +6695,11 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 			heads[i] = int(led.get(_sim_soldier_file[i], -1))
 		fronts = DuplicatioMarch.drill_fronts(fronts, _duplicatio_returning, heads, facing)
 		_duplicatio_fronts = fronts
+		# Faced about, each column marches back with its rear man leading.
+		var march: Dictionary = DuplicatioMarch.march_plan(_sim_soldier_file, _sim_soldier_rank,
+				_duplicatio_returning, plan["leaders"], plan["offsets"], rank_pitch_wu())
+		plan["leaders"] = march["leaders"]
+		plan["offsets"] = march["offsets"]
 	var places: PackedVector2Array = SoldierFollow.places(bodies, fronts, plan["leaders"],
 			plan["offsets"], points, plan["guides"])
 	for i in range(count):

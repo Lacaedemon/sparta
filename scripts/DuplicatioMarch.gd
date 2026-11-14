@@ -52,3 +52,36 @@ static func drill_fronts(facings: PackedVector2Array, returning: PackedByteArray
 		var h: int = heads[i]
 		out[i] = facings[h] if h >= 0 and h < facings.size() and returning[h] == 0 else fallback
 	return out
+
+
+## Whom each man who went up an interval follows as his column marches back faced about: the plan
+## `leaders` and `offsets` (DuplicatioDrill.follow_plan, (right, behind) in his drill front's
+## frame) with his entries changed, returned as {"leaders", "offsets"}. The column's rear man leads. A man with a man of his column to stand right
+## behind him (his file's rank + 1, `returning` too) follows that man, a rank pitch ahead of him.
+## Any other follows the nearest man of his file ahead of him who did not go up, that many rank
+## pitches behind him: the man he will stand behind (every second man), or, for the column's rear
+## man, his file's last man (the half-file). A man with neither keeps the plan's leader.
+static func march_plan(file_ids: PackedInt32Array, ranks: PackedInt32Array,
+		returning: PackedByteArray, leaders: PackedInt32Array, offsets: PackedVector2Array,
+		rank_pitch: float) -> Dictionary:
+	leaders = PackedInt32Array(leaders)
+	offsets = PackedVector2Array(offsets)
+	var at: Dictionary = {}
+	for i in range(file_ids.size()):
+		at[Vector2i(file_ids[i], ranks[i])] = i
+	for i in range(file_ids.size()):
+		if returning[i] == 0:
+			continue
+		var f: int = file_ids[i]
+		var behind: int = int(at.get(Vector2i(f, ranks[i] + 1), -1))
+		if behind >= 0 and returning[behind] == 1:
+			leaders[i] = behind
+			offsets[i] = Vector2(0.0, -rank_pitch)
+			continue
+		for back in range(1, ranks[i] + 1):
+			var j: int = int(at.get(Vector2i(f, ranks[i] - back), -1))
+			if j >= 0 and returning[j] == 0:
+				leaders[i] = j
+				offsets[i] = Vector2(0.0, back * rank_pitch)
+				break
+	return {"leaders": leaders, "offsets": offsets}

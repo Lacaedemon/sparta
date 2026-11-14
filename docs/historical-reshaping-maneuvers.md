@@ -262,7 +262,10 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   The men who stayed in the files do not turn: they did not change their position.
   He turns through his own facing at the drill's turn rate (`Unit.CONVERSIO_TURN_RATE`, half a second for a half turn), through his right when he faces straight away from where he turns to, never in a snap.
   He faces about until he has taken his station, then turns front again.
-  He follows the same man, covers the same file leader and waits on the same men as in the walk, and steers by his file's front, which he reads off his file leader, since his own facing is turned about.
+  The column's rear man leads it: each man with a man of his own column to stand right behind him follows that man, a rank ahead of him, and the others follow the nearest man of their file ahead of them who stayed (`DuplicatioMarch.march_plan`).
+  So after the half-file drill the column's rear man marches back until he stands as many ranks behind his file's last man as his column has men, and the men before him follow him down.
+  After the every-second-man drill each man follows the man he will stand behind, as in the walk.
+  He covers the same file leader and waits on the same men as in the walk, and steers by his file's front, which he reads off his file leader, since his own facing is turned about.
   Facing the way he goes, he is not held to the slower pace of a man stepping backward (`back_speed_fraction`), so the men are back sooner than in the walk.
   If the drill is cut short, each man still turned turns on to the front at the same rate.
 

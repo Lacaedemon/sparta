@@ -130,6 +130,28 @@ func test_the_drill_front_is_the_file_leaders() -> void:
 	assert_eq(fronts[2], Vector2(0, 1), "no leader: the block's")
 
 
+## Faced about, a column marches back with its rear man leading. After the half-file drill (file
+## 0: two men who stayed, then three who went up) each man of the column follows the man who will
+## stand right behind him, a rank ahead of him, and the rear man the file's last man, three ranks
+## behind him. After every second man (file 1) each follows the man he will stand behind. A man
+## who stayed keeps the plan's leader, and so does a man with nobody to follow.
+func test_the_rear_man_leads_the_column_back() -> void:
+	var files := PackedInt32Array([0, 0, 0, 0, 0, 1, 1, 1, 1, 2])
+	var ranks := PackedInt32Array([0, 1, 2, 3, 4, 0, 1, 2, 3, 0])
+	var returning := PackedByteArray([0, 0, 1, 1, 1, 0, 1, 0, 1, 1])
+	var leaders := PackedInt32Array([-2, 0, 1, 2, 3, -2, 5, 6, 7, -1])
+	var offsets := PackedVector2Array()
+	offsets.resize(10)
+	var plan: Dictionary = DuplicatioMarch.march_plan(files, ranks, returning, leaders, offsets, 8.0)
+	assert_eq(plan["leaders"], PackedInt32Array([-2, 0, 3, 4, 1, -2, 5, 6, 7, -1]), "leaders")
+	assert_eq(plan["offsets"][2], Vector2(0.0, -8.0), "a rank ahead of the man behind him")
+	assert_eq(plan["offsets"][3], Vector2(0.0, -8.0), "and the next")
+	assert_eq(plan["offsets"][4], Vector2(0.0, 24.0), "the rear man three ranks behind the last")
+	assert_eq(plan["offsets"][6], Vector2(0.0, 8.0), "every second man behind his man")
+	assert_eq(plan["offsets"][8], Vector2(0.0, 8.0), "and the next")
+	assert_eq(leaders[2], 1, "the plan given is not changed")
+
+
 # --- Live --------------------------------------------------------------------------------
 
 
@@ -184,7 +206,7 @@ func test_the_countermarch_undoes_the_explicatio() -> void:
 			"%s: a man turned %.3f rad in a tick" % [what, worst["turn"]])
 		assert_lt(worst["front"], 0.25 * u.rank_pitch_wu(),
 			"%s: the front moved %.2f wu" % [what, worst["front"]])
-		assert_gte(worst["closest"], 0.5 * u.soldier_body_radius(),
+		assert_gte(worst["closest"], u.soldier_body_radius(),
 			"%s: two men came within %.2f wu" % [what, worst["closest"]])
 		assert_false(u._duplicatio_facing_owned, "%s: the facings are handed back" % what)
 		assert_false(u._per_soldier_facing, "%s: to the block's heading" % what)
