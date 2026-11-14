@@ -82,9 +82,18 @@ func test_a_rider_whose_place_is_behind_him_reins_in_rather_than_circling() -> v
 	var other: int = 1 - ilarch
 	u._sim_soldier_pos[ilarch] = AT
 	u._sim_soldier_facing[ilarch] = Vector2.UP
-	u._sim_soldier_pos[other] = AT + Vector2(0, -400)   # well past his place, ahead of the ilarch
-	u._sim_body_vel[other] = Vector2(0, -150)   # galloping on away from it
-	for t in range(30):
-		SoldierRally.step(u, 2, DT)
-	assert_lt(u._sim_body_vel[other].length(), 145.0,
-			"within half a second he is reining in to turn back rather than wheeling at the gallop")
+	var off := _offsets(u)
+	var place: Vector2 = AT + (off[other] - off[ilarch]).rotated(Vector2.UP.angle() + PI * 0.5)
+	u._sim_soldier_pos[other] = place + Vector2(80, 0)   # just past his place
+	u._sim_body_vel[other] = Vector2(0, -160)   # galloping across it
+	var swept := 0.0
+	var bearing: float = (u._sim_soldier_pos[other] - place).angle()
+	var ticks := 0
+	while SoldierRally.step(u, 2, DT) and ticks < 1200:
+		var now: float = (u._sim_soldier_pos[other] - place).angle()
+		swept += absf(angle_difference(bearing, now))
+		bearing = now
+		ticks += 1
+	assert_lt(ticks, 1200, "he gets back to his place (%d ticks)" % ticks)
+	# Reining in he swings 1.36 rad round his place; turning at the gallop instead, 1.56.
+	assert_lt(swept, 1.45, "reining in to turn back, not wheeling round his place at the gallop (%.2f rad)" % swept)

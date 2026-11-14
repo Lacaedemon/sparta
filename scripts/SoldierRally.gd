@@ -2,11 +2,11 @@ class_name SoldierRally
 extends RefCounted
 ## Riders a chase left scattered rally on their standard: each rides to his place beside the man
 ## he rallies on, read off the formation's shape (no place on the ground); the ilarch, at the
-## squadron's front angle (Asclepiodotus 7.2), pulls up, and the troop moves off once he sees it
-## formed on him. Whom a man rallies on is a named variant (Unit.chase_rally): FILE (default, the
-## sim's choice), the man ahead in his file, as Xenophon's files follow their leaders, each man
-## with his comrade at his back (Hipparchicus 2); ILARCH, the ilarch himself, as a wedge's riders
-## keep their eyes on their one leader (Asclepiodotus 7.3).
+## squadron's front angle (Asclepiodotus 7.2, Arrian Tactica 16.5), pulls up, and the troop moves
+## off once he sees it formed on him. None of these sources describes a rally after a pursuit, so
+## whom a man rallies on is the sim's inference, a named variant (Unit.chase_rally): FILE (default),
+## the man ahead in his file, as Xenophon's files follow their leaders (Hipparchicus 2); ILARCH, the
+## ilarch, inferred from a wedge's riders watching their one leader (Asclepiodotus 7.3).
 
 enum Mode { FILE, ILARCH }
 

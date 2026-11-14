@@ -169,8 +169,8 @@ var _cached_combat_profile: Dictionary = {}
 # How far this unit, if foot, follows a rout it has broken (SoldierFootPursuit.Mode: FOLLOW, the
 # sim's choice, or SHORT, breaking off once the runners are out of reach, Thucydides 5.73.4).
 @export var foot_pursuit: int = SoldierFootPursuit.Mode.FOLLOW
-# Whom each rider rallies on when a chase ends: the man ahead in his file (FILE) or the ilarch
-# (ILARCH); see SoldierRally.
+# Whom each rider rallies on when a chase ends, both the sim's inference (no source describes a
+# rally after a pursuit): the man ahead in his file (FILE) or the ilarch (ILARCH); see SoldierRally.
 @export var chase_rally: int = SoldierRally.Mode.FILE
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
