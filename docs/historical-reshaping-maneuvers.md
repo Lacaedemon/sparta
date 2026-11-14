@@ -246,6 +246,7 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   A man with the epistates role says every second man went up, so each file and its interval interleave again, the file's men at the even ranks and the interval's at the odd ones.
   Otherwise the half-file went up, and the interval falls in behind the men of its file.
   A file a casualty has shortened still closes into one unbroken file.
+
 - **How they go back.**
   Each man follows the man who will stand ahead of him in his old file, a rank behind, and covers his file leader.
   He steps across to his file's line only while nobody of the other part of the block (the men who went up, or the men who stayed) stands level with him between him and that line.
@@ -253,6 +254,7 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   So the men of each interval fall back down it in column and step in behind the man they follow once they are behind him,
   and the files that stayed close up only once the intervals beside them are empty.
   That walk is the sim's inference: the sources say "countermarch", and a countermarch proper turns the men about (Asclepiodotus 10.13 to 10.16), which this drill does not do ([#1985](https://github.com/Lacaedemon/sparta/issues/1985)).
+
 - **The front rank holds its line.**
   The file that stands is the middle file (N), or the held flank's corner file for an order that holds one, as for the explicatio.
   Its leader is the guide, and every file leader dresses his depth on him.
@@ -260,7 +262,9 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
 Whether the halved block keeps its pitch or its ground is chosen on the order, with the same ground reading as the explicatio's (Alt+Ctrl+B):
 
 - **`lengthen`** (the default): the files keep their pitch and close on the file that stands, so the line halves its length.
-  It undoes the explicatio's `lengthen`, which opened the files out; no source describes that reverse, so it is the sim's inference.
+  It undoes the explicatio's `lengthen`, which opened the files out.
+  No source describes that reverse, so it is the sim's inference.
+
 - **`same_ground`** (Asclepiodotus 10.20 undoing 10.17, Aelian 29.3): the men who were inserted go back out of the gaps, the files that stayed keep their places, and the block opens one order of spacing, locked shields into compact and compact into open order (Asclepiodotus 4.1).
   A block already in open order, or in any order but the three line orders, has no opener order to take and keeps its pitch, as `lengthen`: that is the sim's choice.
 
