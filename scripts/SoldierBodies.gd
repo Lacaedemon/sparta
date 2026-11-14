@@ -305,12 +305,16 @@ static func step(unit: Unit, delta: float) -> void:
 		SoldierFlight.work_usec += Time.get_ticks_usec() - chase_t0
 		return
 	# A chase that has just ended (its quarry fell, rallied or got clear) leaves each rider where
-	# he rode, with nothing left to remember. He rides back to his own place in his unit (the
-	# arrival below), and the ride back is stamped as a transit (_last_redeal_tick), so the demo
-	# defect scan judges it as the walk after a re-deal rather than as a smeared block.
+	# he rode, with nothing left to remember; the unit forms up where its men stand, as a rally
+	# does, rather than each man riding back through the others to his old place. A unit left
+	# standing (IDLE) first lets its riders pull up from the gallop, as a rally does
+	# (pull_up_rallied); one given somewhere to go forms up at once.
 	if not unit._sim_flight_dir.is_empty():
-		unit._sim_flight_dir = PackedVector2Array()
-		unit._last_redeal_tick = Engine.get_physics_frames()
+		if unit.state == Unit.State.IDLE:
+			unit._sim_flight_dir = PackedVector2Array()
+			unit._rally_pending = true
+		else:
+			unit._reform_where_men_stand()
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged

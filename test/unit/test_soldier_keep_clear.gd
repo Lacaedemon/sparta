@@ -62,7 +62,7 @@ func test_men_pulling_up_give_way_to_a_friend_they_touch() -> void:
 	assert_gt(u._sim_body_vel[1].x, 0.0, "the give is in his velocity")
 
 
-func test_a_unit_left_standing_when_its_chase_ends_rides_back_to_its_places() -> void:
+func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:
 	var r: Unit = _unit(1)
 	r.team = 0
 	r._rout()
@@ -74,5 +74,5 @@ func test_a_unit_left_standing_when_its_chase_ends_rides_back_to_its_places() ->
 	SoldierPursuitStep.step(p, 2, {}, 1.0 / 60.0)
 	p.state = Unit.State.IDLE   # its quarry is gone and it has nowhere to go
 	p.step_sim_soldiers(1.0 / 60.0)
-	assert_false(p._rally_pending, "no rally: its riders ride back to their own places")
+	assert_true(p._rally_pending, "its riders pull up from the gallop before it forms up")
 	assert_true(p._sim_flight_dir.is_empty(), "with no chase left to remember")

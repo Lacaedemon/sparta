@@ -488,9 +488,8 @@ var frontage_anchor_offset: float = 0.0
 var _last_reshape_tick: int = -1
 var _last_reshape_widened: bool = false
 # Physics-frame stamp of the last near-quarter re-deal an order's re-square made
-# (_square_fold_for_order taking a quarter line off a fold not already at one), of the last
-# re-forming where the men stand after a rout (_reform_where_men_stand), or of the end of a chase,
-# whose riders ride back to their places (SoldierBodies.step), -1 for never.
+# (_square_fold_for_order taking a quarter line off a fold not already at one), or of the last
+# re-forming where the men stand after a rout or a chase (_reform_where_men_stand), -1 for never.
 # The re-deal swaps the grid's axes, so the men walk to a reshaped footprint as after a frontage
 # change; the demo state dump carries it so the defect scan judges that walk as a reshape's
 # transit. A fold already at a quarter (an exact quarter, or a drilled one) is re-dealt as before
@@ -11340,7 +11339,8 @@ func _rally() -> void:
 	queue_redraw()
 
 
-## Lay a rallied unit's grid out where its men stand: square to the heading they face, which couple() read off them while they
+## Lay a rallied unit's grid out where its men stand (or a unit's whose chase has ended,
+## SoldierBodies.step): square to the heading they face, which couple() read off them while they
 ## ran and pulled up, at their centroid, where couple() left `position`. The re-deal is stamped
 ## (_last_redeal_tick), so the demo defect scan judges the men's walk to their places as a transit.
 ## With rally_deal STAND each man is then dealt the place nearest where he stands
