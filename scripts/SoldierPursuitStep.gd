@@ -43,8 +43,8 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		if (frame + i) % period == 0:
 			unit._sim_flight_dir[i] = _toward_nearest(pos, quarry)
 		var dir: Vector2 = unit._sim_flight_dir[i]
-		var desired: Vector2 = dir * top * (field.speed_at(pos) if field != null else 1.0) \
-				+ unit._sim_steer[i] + clear[i]
+		var pace: float = top * (field.speed_at(pos) if field != null else 1.0)
+		var desired: Vector2 = (dir * pace + unit._sim_steer[i] + clear[i]).limit_length(pace)
 		if not guard.is_empty() and guard["inside"][i] == 0:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel,
 					pos + dir * SoldierFlightStep.LOOK_AHEAD, desired, guard["grown"], accel, delta)
