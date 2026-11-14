@@ -1095,10 +1095,12 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	# block re-forming where its men stood (Unit._stand_reform_until_tick), whose men likewise
 	# each walk to their own new place. Those men come off a flight or a chase still at speed,
 	# so their contact pushes and cancels closing up to the speed cap, as a free-running man's
-	# does (standoff_free), not only at the walking standoff push.
+	# does (standoff_free), not only at the walking standoff push. A foot block following a rout
+	# in its ranks takes the band too: it comes out of the press with its men off their places,
+	# each walking back to his own while the runners pull away (SoldierFootPursuit.follows_rout).
 	var standing_reform: bool = Engine.get_physics_frames() <= unit._stand_reform_until_tick
 	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC \
-			if holding or standing_reform else 0.0
+			if holding or standing_reform or SoldierFootPursuit.follows_rout(unit) else 0.0
 	var contact_cap: float = speed_cap if standing_reform else max_sep_speed
 	return _standoff_pairs(unit, n, is_engaged, is_settled, min_sep, contact_cap, contact_sep,
 			contact_cap)
