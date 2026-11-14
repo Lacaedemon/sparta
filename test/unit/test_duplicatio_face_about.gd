@@ -8,6 +8,7 @@ extends GutTest
 const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
+const HUDScript = preload("res://scripts/HUD.gd")
 const ReplayOrderEntryScript = preload("res://scripts/ReplayOrderEntry.gd")
 const ReplayDecoderScript = preload("res://scripts/ReplayDecoder.gd")
 
@@ -19,6 +20,9 @@ const ALTERNATE_RANK := UnitFormation.ExplicatioDrill.ALTERNATE_RANK
 const CENTRE := UnitFormation.Anchor.CENTRE
 const OUTWARD := UnitFormation.ExplicatioSide.OUTWARD
 const LENGTHEN := UnitFormation.ExplicatioGround.LENGTHEN
+const SAME_GROUND := UnitFormation.ExplicatioGround.SAME_GROUND
+const INWARD := UnitFormation.ExplicatioSide.INWARD
+const RIGHT := UnitFormation.Anchor.RIGHT
 const WALK := DuplicatioMarch.Reading.WALK
 const FACE_ABOUT := DuplicatioMarch.Reading.FACE_ABOUT
 
@@ -29,9 +33,13 @@ var _battle: Node = null
 class StubHud:
 	extends RefCounted
 	var flashes: Array = []
+	var readings: Array = []
 
 	func flash_message(text: String) -> void:
 		flashes.append(text)
+
+	func update_duplicatio(reading: int) -> void:
+		readings.append(reading)
 
 	func show_unit(_u: Node, _count: int) -> void:
 		pass
@@ -372,7 +380,113 @@ func test_alt_n_steps_the_reading_and_orders_nothing() -> void:
 	assert_true(sm._dispatch_key(_key(KEY_N)), "Alt+N is handled")
 	assert_eq(sm.duplicatio_march, FACE_ABOUT, "the countermarch")
 	assert_eq(hud.flashes.back(), "Duplicatio: face about", "and named")
+	assert_eq(hud.readings.back(), FACE_ABOUT, "and shown on the control bar")
 	assert_eq(UnitFormation.frontage(u), start, "Alt+N only chooses; the frontage stays")
 	assert_true(b._pending_orders.is_empty(), "and nothing is enqueued")
 	sm._dispatch_key(_key(KEY_N))
 	assert_eq(sm.duplicatio_march, WALK, "and wraps back to the walk")
+
+
+## The control bar's duplicatio button shows the reading the next N uses, starts on the walk,
+## follows the selection manager when a unit is shown, and steps the reading when pressed.
+func test_the_control_bar_shows_the_reading() -> void:
+	var h = HUDScript.new()
+	add_child_autofree(h)
+	var button: Button = h._ctrl_duplicatio_btn
+	assert_eq(button.text, "Duplicatio: walk", "the bar starts on the walk")
+	h.update_duplicatio(FACE_ABOUT)
+	assert_eq(button.text, "Duplicatio: face about", "a chosen reading shows")
+	var sm = SelectionManagerScript.new()
+	add_child_autofree(sm)
+	h._sel_mgr = sm
+	var u: Unit = UnitScript.new()
+	add_child_autofree(u)
+	h.show_unit(u, 1)
+	assert_eq(button.text, "Duplicatio: walk", "showing a unit reads the selection manager's")
+	sm.toggle_duplicatio_march()
+	assert_eq(sm.duplicatio_march, FACE_ABOUT, "the button steps the reading like Alt+N")
+
+
+## Each man's rank: the held ranks, or his order among the earlier men of his file.
+func _ranks(u: Unit) -> PackedInt32Array:
+	if u._sim_soldier_rank.size() == u.soldiers:
+		return u._sim_soldier_rank.duplicate()
+	var seen: Dictionary = {}
+	var out := PackedInt32Array()
+	for i in range(u.soldiers):
+		var f: int = u._sim_soldier_file[i]
+		out.append(int(seen.get(f, 0)))
+		seen[f] = int(seen.get(f, 0)) + 1
+	return out
+
+
+## Face about after an explicatio dealt with `anchor`, `side` and `ground`, a man of an interval
+## killed mid-march when `casualty`: every man ends on his pre-explicatio file, in the rank he held
+## (or, after a casualty, every file closed up in its old order), faces front, and the drill ends.
+func _face_about_after(anchor: int, side: int, ground: int, casualty: bool) -> void:
+	var what: String = "anchor %d side %d ground %d casualty %s" % [anchor, side, ground, casualty]
+	var u: Unit = await _stage()
+	if ground == SAME_GROUND:
+		u.set_formation(Unit.FORMATION_NORMAL)
+		for _t in range(600):
+			await get_tree().physics_frame   # the block opens out to the new order
+	var files0: Array = Array(u._sim_soldier_file)
+	var ranks0: Array = Array(_ranks(u))
+	_battle.enqueue_file_double([u.uid], 1, anchor, HALF_FILE, side, ground)
+	assert_gte(await _settle(u), 0, "%s: precondition: the explicatio ended" % what)
+	_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE, OUTWARD, LENGTHEN, FACE_ABOUT)
+	assert_true(u._explicatio_reverse, "%s: precondition: the narrowing undoes it" % what)
+	if casualty:
+		for _t in range(45):
+			await get_tree().physics_frame
+		var victim: int = -1
+		for i in range(u.soldiers):
+			if u._duplicatio_returning[i] == 1 and u._explicatio_following[i] == 1:
+				victim = i
+				break
+		assert_gte(victim, 0, "%s: precondition: a man is on his way back" % what)
+		files0.remove_at(victim)
+		ranks0.remove_at(victim)
+		u._sim_soldier_hp[victim] = 0.0
+		SoldierMelee.reap(u, null)
+	assert_gte(await _settle(u, 2000), 0, "%s: the drill ends" % what)
+	for _t in range(180):
+		if not u._duplicatio_facing_owned:
+			break
+		await get_tree().physics_frame
+	assert_false(u._duplicatio_facing_owned, "%s: the facings are handed back" % what)
+	for i in range(u.soldiers):
+		assert_gt(u._sim_soldier_facing[i].dot(u.facing), 0.999, "%s: man %d faces front" % [what, i])
+	assert_eq(Array(u._sim_soldier_file), files0, "%s: every man is back in his file" % what)
+	if not casualty:
+		assert_eq(Array(u._sim_soldier_rank), ranks0, "%s: and his rank" % what)
+		await _free_battle()
+		return
+	# Each file closed up in its old order: its men's ranks run 0, 1, 2 ... in the order they stood.
+	var by_file: Dictionary = {}
+	for i in range(u.soldiers):
+		var f: int = u._sim_soldier_file[i]
+		if not by_file.has(f):
+			by_file[f] = []
+		(by_file[f] as Array).append([int(ranks0[i]), u._sim_soldier_rank[i]])
+	for f in by_file:
+		var men: Array = by_file[f]
+		men.sort_custom(func(a, b): return a[0] < b[0])
+		for k in range(men.size()):
+			assert_eq(men[k][1], k, "%s: file %d closes up in its old order" % [what, f])
+	await _free_battle()
+
+
+func test_face_about_after_a_held_flank() -> void:
+	await _face_about_after(RIGHT, OUTWARD, LENGTHEN, false)
+	await _face_about_after(RIGHT, OUTWARD, LENGTHEN, true)
+
+
+func test_face_about_after_an_inward_explicatio() -> void:
+	await _face_about_after(CENTRE, INWARD, LENGTHEN, false)
+	await _face_about_after(CENTRE, INWARD, LENGTHEN, true)
+
+
+func test_face_about_after_the_same_ground() -> void:
+	await _face_about_after(CENTRE, OUTWARD, SAME_GROUND, false)
+	await _face_about_after(CENTRE, OUTWARD, SAME_GROUND, true)

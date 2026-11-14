@@ -572,12 +572,19 @@ func toggle_explicatio_drill() -> void:
 
 
 ## Alt+N steps how the men an explicatio sent up the intervals march back when N undoes it
-## (DuplicatioMarch.READINGS): the walk, or facing about. It orders nothing.
+## (DuplicatioMarch.READINGS): the walk, or facing about. It orders nothing; the toast and the
+## control bar's duplicatio button name the choice.
 func _step_duplicatio_march() -> void:
 	duplicatio_march = ExplicatioChoice.next(DuplicatioMarch.READINGS, duplicatio_march)
 	if _hud != null:
 		_hud.flash_message("Duplicatio: " + str(DuplicatioMarch.NAMES.get(duplicatio_march, "?")))
+		_hud.update_duplicatio(duplicatio_march)
 	Sfx.play(&"order")
+
+
+## Step the duplicatio's reading, from the control bar's duplicatio button (same as Alt+N).
+func toggle_duplicatio_march() -> void:
+	_step_duplicatio_march()
 
 
 func _announce_explicatio() -> void:

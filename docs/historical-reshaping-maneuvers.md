@@ -270,7 +270,8 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   If the drill is cut short, each man still turned turns on to the front at the same rate.
 
   Why this reading, and why only this one.
-  Asclepiodotus describes three countermarches by file (10.13 to 10.15), and 10.16 the countermarch by rank.
+  Asclepiodotus describes three kinds of countermarch (10.13 to 10.15), each done by file or by rank.
+  10.16 says when the countermarch by rank is used; it adds no fourth kind.
   In the Macedonian the file leaders hold their ground and the files end on the ground before them;
   in the Laconian the file closers hold theirs and the files end beyond them;
   in the Cretan, or Persian, the leader and the closer change places and the files keep their ground.

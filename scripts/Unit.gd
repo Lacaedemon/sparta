@@ -6492,6 +6492,8 @@ func _begin_duplicatio(back: Dictionary, new_files: int, held_flank: int,
 	_explicatio_follow_frame = -1
 	_duplicatio_march = march
 	if march == DuplicatioMarch.Reading.FACE_ABOUT:
+		# TODO(#1955): a unit-level hold on the men's facings, after the existing per-soldier
+		# facing ownership; facing that comes from the men retires it.
 		_per_soldier_facing = true
 		_duplicatio_facing_owned = true
 
