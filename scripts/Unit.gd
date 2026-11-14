@@ -6313,8 +6313,9 @@ func _reset_shield_hold_angles() -> void:
 ## A narrowing to half the files with an `explicatio_drill` other than NONE, of a block whose
 ## files an explicatio dealt (explicatio_undoable), is that explicatio in reverse
 ## (_begin_duplicatio): the men who went up the intervals go back, the file that stands chosen
-## by `held_flank`. On the same ground it opens the block one order (sparser_formation_mode),
-## where there is a looser line order to take; otherwise, and with LENGTHEN, the files close up.
+## by `held_flank`. It keeps the ground the explicatio kept (_explicatio_ground), not
+## `explicatio_ground`: an explicatio on the same ground is undone by opening the block one order
+## (sparser_formation_mode), where there is a looser line order to take; else the files close up.
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
 		held_flank: int = UnitFormation.Anchor.CENTRE,
@@ -6338,7 +6339,9 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 			and explicatio_undoable():
 		back = DuplicatioDrill.reverse_assignment(_sim_soldier_file, _sim_soldier_rank,
 				_sim_soldier_role, target_files, _explicatio_lane_split, _explicatio_inward)
-		if explicatio_ground == UnitFormation.ExplicatioGround.SAME_GROUND:
+		# The men go back to the stations they left: the ground the explicatio kept, not the
+		# order's reading now.
+		if _explicatio_ground == UnitFormation.ExplicatioGround.SAME_GROUND:
 			sparser = sparser_formation_mode(formation_mode)
 	_bake_formation_mirror()
 	_end_explicatio_drill()   # a new width supersedes a drill still under way
@@ -6374,6 +6377,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 		set_formation(sparser)   # the files go back out of the gaps, and the line keeps its ground
 	if not dealt.is_empty():
 		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill, split, inward)
+		_explicatio_ground = explicatio_ground
 	if not back.is_empty():
 		_begin_duplicatio(back, target_files, held_flank)
 	note_front_depth()   # a narrower frontage deepens the block
@@ -6634,14 +6638,17 @@ func _refresh_explicatio_follow(count: int) -> bool:
 
 ## _refresh_explicatio_follow for the explicatio in reverse (_begin_duplicatio): every man follows
 ## the man who will stand ahead of him in his file (DuplicatioDrill.follow_plan) and covers his
-## file leader, taking his line across his front from the leader's place. A man steps across
-## to that line only while nobody of the other part of the block (the men who went up the
+## file leader, taking his line across his front from where the leader stands, so a file closes
+## as its leader does and no man of it cuts ahead of him into the next file's way. A man steps
+## across to that line only while nobody of the other part of the block (the men who went up the
 ## intervals, or the men who stayed in the files) stands level with him, within
 ## explicatio_lane_clear() along his front, between him and it: until then he heads for the
 ## point of his own line level with his place (_duplicatio_steer), so the men of an interval fall
 ## back down it, and step in behind the man they follow once they are behind him; and the files
 ## close up only once the intervals beside them are empty. A man held so at that point, whose
-## way is held by men who have all stopped following, has it shut (_explicatio_shut).
+## way is held by men who have all stopped following, has it shut (_explicatio_shut). When the
+## whole file that stands has fallen, the leader of the nearest file left becomes the guide, his
+## ground his file's place in the closed line beside the ground the fallen file held.
 func _refresh_duplicatio_follow(count: int) -> bool:
 	if _sim_soldier_pos.size() < count or _sim_soldier_file.size() != count \
 			or _sim_soldier_rank.size() != count or _sim_soldier_facing.size() < count \
@@ -6655,8 +6662,11 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 		var f: int = Unit.nearest_led_file(led, _explicatio_stand_file)
 		if f < 0:
 			return false
+		# His ground is his file's place in the closed line beside the ground the fallen file
+		# stood on, that many file pitches across the block's front, wherever he stands now.
+		_explicatio_stand_point += SoldierFollow.right_of(facing.normalized()) \
+				* float(f - _explicatio_stand_file) * file_pitch_wu()
 		_explicatio_stand_file = f
-		_explicatio_stand_point = _sim_soldier_pos[led[f]]
 	var plan: Dictionary = DuplicatioDrill.follow_plan(_sim_soldier_file, _sim_soldier_rank,
 			_explicatio_stand_file, file_pitch_wu(), rank_pitch_wu())
 	var points := PackedVector2Array()
@@ -6670,7 +6680,7 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 		var head: int = int(led.get(_sim_soldier_file[i], -1))
 		if head >= 0 and head != i:
 			var right: Vector2 = SoldierFollow.right_of(_sim_soldier_facing[i].normalized())
-			places[i] += right * (places[head] - places[i]).dot(right)
+			places[i] += right * (bodies[head] - places[i]).dot(right)
 	_explicatio_leaders = plan["leaders"]
 	_explicatio_places = places
 	_duplicatio_steer = places.duplicate()
@@ -7419,6 +7429,9 @@ var _duplicatio_steer: PackedVector2Array = PackedVector2Array()
 var _explicatio_lane_split: int = 0
 # Whether its wings' intervals open toward the middle (UnitFormation.explicatio_inward).
 var _explicatio_inward: bool = false
+# Whether it kept its pitch or its ground (UnitFormation.ExplicatioGround), which a duplicatio
+# that undoes it keeps too (set_frontage).
+var _explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
 var _explicatio_stand_file: int = -1
 var _explicatio_stand_point: Vector2 = Vector2.ZERO
 var _explicatio_following: PackedByteArray = PackedByteArray()
@@ -13283,6 +13296,7 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_drill": _explicatio_drill,
 		"explicatio_lane_split": _explicatio_lane_split,
 		"explicatio_inward": _explicatio_inward,
+		"explicatio_ground": _explicatio_ground,
 		"explicatio_reverse": _explicatio_reverse,
 		"duplicatio_returning": _duplicatio_returning.duplicate(),
 		"explicatio_following": _explicatio_following.duplicate(),
@@ -13686,6 +13700,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.NONE))
 	_explicatio_lane_split = int(d.get("explicatio_lane_split", 0))
 	_explicatio_inward = bool(d.get("explicatio_inward", false))
+	_explicatio_ground = int(d.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN))
 	_explicatio_reverse = bool(d.get("explicatio_reverse", false))
 	_duplicatio_returning = (d.get("duplicatio_returning", PackedByteArray()) as PackedByteArray) \
 			.duplicate()

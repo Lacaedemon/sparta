@@ -56,6 +56,30 @@ func _settle(u: Unit, ticks: int = DRILL_TICKS) -> int:
 	return -1
 
 
+## Each man's rank: the held ranks, or his order among the earlier men of his file.
+func _ranks(u: Unit) -> PackedInt32Array:
+	if u._sim_soldier_rank.size() == u.soldiers:
+		return u._sim_soldier_rank.duplicate()
+	var seen: Dictionary = {}
+	var out := PackedInt32Array()
+	for i in range(u.soldiers):
+		var f: int = u._sim_soldier_file[i]
+		out.append(int(seen.get(f, 0)))
+		seen[f] = int(seen.get(f, 0)) + 1
+	return out
+
+
+## The block's bodies' extent across its front.
+func _width(u: Unit) -> float:
+	var right: Vector2 = SoldierFollow.right_of(u.facing.normalized())
+	var lo: float = INF
+	var hi: float = -INF
+	for p in u._sim_soldier_pos:
+		lo = minf(lo, p.dot(right))
+		hi = maxf(hi, p.dot(right))
+	return hi - lo
+
+
 func _front(u: Unit) -> float:
 	var best: float = -INF
 	for p in u._sim_soldier_pos:
@@ -213,7 +237,8 @@ func test_the_duplicatio_undoes_the_explicatio() -> void:
 		await _free_battle()
 
 
-## Every man covers his file leader: his place's line across his front is the leader's place's,
+## Every man covers his file leader: his place's line across his front runs through where the
+## leader stands, so the file closes as he does,
 ## even where the man he follows still stands in an interval (every second man, where each man of
 ## the file follows a man of the interval).
 func test_each_man_covers_his_file_leader() -> void:
@@ -232,7 +257,9 @@ func test_each_man_covers_his_file_leader() -> void:
 	for i in range(u.soldiers):
 		var right: Vector2 = SoldierFollow.right_of(u._sim_soldier_facing[i].normalized())
 		var h: int = head[u._sim_soldier_file[i]]
-		worst = maxf(worst, absf((places[i] - places[h]).dot(right)))
+		if h == i:
+			continue   # the leader himself closes on the next file, not on his own line
+		worst = maxf(worst, absf((places[i] - u._sim_soldier_pos[h]).dot(right)))
 	assert_lt(worst, 0.01, "a man's place stood %.2f wu off his file leader's line" % worst)
 
 
@@ -241,7 +268,8 @@ func test_each_man_covers_his_file_leader() -> void:
 func test_the_same_ground_opens_the_order() -> void:
 	var u: Unit = await _stage()
 	u.set_formation(Unit.FORMATION_NORMAL)
-	await _settle(u, 600)
+	for _t in range(600):
+		await get_tree().physics_frame   # the block opens out to the new order
 	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE, OUTWARD, SAME_GROUND)
 	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
 	assert_eq(u.formation_mode, Unit.FORMATION_TIGHT, "precondition: closed one order")
@@ -291,8 +319,8 @@ func test_a_casualty_mid_drill_keeps_the_drill() -> void:
 
 
 ## Held on the right flank, the right corner file stands and the order records the held flank. If
-## that whole file falls, the leader of the nearest file left becomes the guide where he stands
-## and the drill runs on to its end.
+## that whole file falls, the leader of the nearest file left becomes the guide, his ground his
+## file's place in the closed line, and the line closes on him at its pitch.
 func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	var u: Unit = await _stage()
 	var right_anchor: int = UnitFormation.Anchor.RIGHT
@@ -303,6 +331,9 @@ func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	assert_eq(int((_battle._pending_orders.back() as Dictionary)["explicatio_held"]), right_anchor,
 		"the order holds the right flank")
 	assert_eq(u._explicatio_stand_file, 8, "the right corner file stands")
+	var front0: float = _front(u)
+	var right: Vector2 = SoldierFollow.right_of(u.facing.normalized())
+	var flank0: float = u._explicatio_stand_point.dot(right)
 	for _t in range(20):
 		await get_tree().physics_frame
 	for i in range(u.soldiers):
@@ -312,7 +343,64 @@ func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	await get_tree().physics_frame
 	assert_true(u.explicatio_drill_active(), "the drill runs on")
 	assert_eq(u._explicatio_stand_file, 7, "the nearest file left stands")
+	assert_almost_eq(u._explicatio_stand_point.dot(right), flank0 - u.file_pitch_wu(), 0.01,
+		"his ground is his file's place in the closed line, a file pitch in from the fallen file's")
 	assert_gte(await _settle(u), 0, "and ends")
+	var lo: float = INF
+	var hi: float = -INF
+	for p in u._sim_soldier_pos:
+		lo = minf(lo, p.dot(right))
+		hi = maxf(hi, p.dot(right))
+	var quarter: float = 0.25 * u.file_pitch_wu()
+	assert_almost_eq(hi, flank0 - u.file_pitch_wu(), quarter, "the new flank file stands in line")
+	assert_almost_eq(hi - lo, 7.0 * u.file_pitch_wu(), quarter, "8 files at their pitch")
+	assert_almost_eq(_front(u), front0, 0.25 * u.rank_pitch_wu(), "the front keeps its line")
+
+
+## The duplicatio undoes the ground the explicatio kept, whatever the order's ground reads at N:
+## every man goes back to his old file and rank, and the block to its old order and length.
+func test_the_duplicatio_undoes_the_explicatios_own_ground() -> void:
+	for grounds in [[LENGTHEN, SAME_GROUND], [SAME_GROUND, LENGTHEN]]:
+		var what: String = "widen %d, N reading %d" % grounds
+		var u: Unit = await _stage()
+		u.set_formation(Unit.FORMATION_NORMAL)
+		for _t in range(600):
+			await get_tree().physics_frame   # the block opens out to the new order
+		var files0: PackedInt32Array = u._sim_soldier_file.duplicate()
+		var ranks0: PackedInt32Array = _ranks(u)
+		var width0: float = _width(u)
+		_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE, OUTWARD, grounds[0])
+		assert_gte(await _settle(u, 2 * DRILL_TICKS), 0, "%s: precondition: the explicatio ended" % what)
+		_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE, OUTWARD, grounds[1])
+		assert_true(u._explicatio_reverse, "%s: the narrowing is the drill" % what)
+		assert_false((_battle._pending_orders.back() as Dictionary).has("explicatio_ground"),
+			"%s: the order carries no ground of its own" % what)
+		assert_gte(await _settle(u, 2 * DRILL_TICKS), 0, "%s: the duplicatio ended" % what)
+		assert_eq(u._sim_soldier_file, files0, "%s: every man is back in his file" % what)
+		assert_eq(_ranks(u), ranks0, "%s: and at his rank" % what)
+		assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "%s: at the old order" % what)
+		assert_almost_eq(_width(u), width0, 0.25 * u.file_pitch_wu(),
+			"%s: the line is as long as it was" % what)
+		await _free_battle()
+
+
+## A plain about-face, the reform after it reading the grid turned about, takes the roles away
+## and leaves every man's file and rank as they were.
+func test_an_about_face_takes_the_roles_and_keeps_the_files() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
+	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
+	u.conversio()
+	for _t in range(120):
+		await get_tree().physics_frame
+	assert_false(u._sim_soldier_role.is_empty(), "precondition: the turn alone keeps the roles")
+	var files0: PackedInt32Array = u._sim_soldier_file.duplicate()
+	var ranks0: PackedInt32Array = u._sim_soldier_rank.duplicate()
+	u.reform_ranks()
+	assert_true(u._sim_soldier_role.is_empty(), "the about-face's reform took the roles away")
+	assert_eq(u._sim_soldier_file, files0, "every man keeps his file")
+	assert_eq(u._sim_soldier_rank, ranks0, "and his rank")
+	assert_false(u.explicatio_undoable(), "nothing left to undo")
 
 
 ## A countermarch since the explicatio turns the block about, so the heads of its intervals stand
