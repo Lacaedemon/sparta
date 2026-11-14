@@ -1091,8 +1091,12 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	var speed_cap: float = unit.jog_speed if unit.state == Unit.State.IDLE \
 			else unit.move_speed * unit.superphysical_speed_frac
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
-	# The contact band applies in a REFORM hold only (see STANDOFF_CONTACT_SEP_FRAC).
-	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC if holding else 0.0
+	# The contact band applies in a REFORM hold only (see STANDOFF_CONTACT_SEP_FRAC), and to a
+	# block re-forming where its men stood (Unit._stand_reform_until_tick), whose men likewise
+	# each walk to their own new place.
+	var standing_reform: bool = Engine.get_physics_frames() <= unit._stand_reform_until_tick
+	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC \
+			if holding or standing_reform else 0.0
 	return _standoff_pairs(unit, n, is_engaged, is_settled, min_sep, max_sep_speed, contact_sep,
 			max_sep_speed)
 

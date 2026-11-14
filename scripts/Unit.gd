@@ -517,6 +517,10 @@ var _order_square_marching: bool = false
 # any re-slot has happened, Engine.get_physics_frames() (>= 0) already exceeds it, so the
 # pass is skipped by default rather than by a special-cased sentinel check.
 var _standoff_settle_until_tick: int = -1
+# Tick until which a unit laid out where its men stand (_reform_where_men_stand) has its men
+# walking to their new places as a block standing to re-form, so the standoff's contact band
+# acts on them as in a REFORM hold (SoldierBodies._separate_same_unit). -1: never armed.
+var _stand_reform_until_tick: int = -1
 # Tick until which SoldierBodies.couple leaves `position` alone on its whole-regiment path
 # (a unit with no engaged front to anchor on). Armed by a reinforcement insertion: the
 # newcomers walk in from a rendezvous behind the host, so for the length of that arrival
@@ -11344,7 +11348,9 @@ func _rally() -> void:
 ## Lay a rallied unit's grid out where its men stand (or a unit's whose chase has ended,
 ## SoldierBodies.step): square to the heading they face, which couple() read off them while they
 ## ran and pulled up, at their centroid, where couple() left `position`. The re-deal is stamped
-## (_last_redeal_tick), so the demo defect scan judges the men's walk to their places as a transit.
+## (_last_redeal_tick), so the demo defect scan judges the men's walk to their places as a transit,
+## and it arms the standoff settle window as every other re-slot does, so the men walking to
+## their places keep apart by the same body contact (SoldierBodies._separate_same_unit).
 ## With rally_deal STAND each man is then dealt the place nearest where he stands
 ## (deal_slots_where_men_stand); with OWN each keeps his own place in his own file.
 func _reform_where_men_stand() -> void:
@@ -11356,6 +11362,8 @@ func _reform_where_men_stand() -> void:
 	_drill_turn_fold = 0.0
 	_render_dirty = true
 	_last_redeal_tick = Engine.get_physics_frames()   # the men walk to their new places
+	_arm_standoff_settle_window(_reform_timeout())
+	_stand_reform_until_tick = _standoff_settle_until_tick
 	if rally_deal == RallyDeal.STAND:
 		deal_slots_where_men_stand()
 
@@ -12143,6 +12151,10 @@ func to_snapshot_dict() -> Dictionary:
 				_standoff_settle_until_tick - Engine.get_physics_frames()
 				if _standoff_settle_until_tick > Engine.get_physics_frames() else -1
 		),
+		"stand_reform_remaining_ticks": (
+				_stand_reform_until_tick - Engine.get_physics_frames()
+				if _stand_reform_until_tick > Engine.get_physics_frames() else -1
+		),
 		"anchor_hold_until_tick": _anchor_hold_until_tick,
 		"anchor_hold_remaining_ticks": (
 				_anchor_hold_until_tick - Engine.get_physics_frames()
@@ -12403,6 +12415,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_last_redeal_tick = int(d.get("last_redeal_tick", -1))
 	_order_square_marching = bool(d.get("order_square_marching", false))
+	var rem_stand: int = int(d.get("stand_reform_remaining_ticks", -1))
+	_stand_reform_until_tick = Engine.get_physics_frames() + rem_stand if rem_stand > 0 else -1
 	if d.has("standoff_settle_remaining_ticks"):
 		var rem_standoff: int = int(d["standoff_settle_remaining_ticks"])
 		_standoff_settle_until_tick = (
