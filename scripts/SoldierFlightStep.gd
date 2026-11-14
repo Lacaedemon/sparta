@@ -6,8 +6,8 @@ extends RefCounted
 ## pace with. Near impassable terrain he veers along the face he is running at
 ## (SoldierBodies.router_terrain_avoid). He faces the way he runs. He looks round only once a
 ## reaction time (Unit.rout_reaction_ticks), on a tick of his own, and runs the way he then chose
-## until he looks again (Unit._sim_flight_dir); a man who finds no way to run stands and fights
-## (SoldierCornered). Called by SoldierBodies.step in place of the slot arrival, after the bodies
+## until he looks again (Unit._sim_flight_dir, SoldierLookRound); a man who finds no way to run
+## stands and fights (SoldierCornered). Called by SoldierBodies.step in place of the slot arrival, after the bodies
 ## are resized and before the terrain backstop.
 
 
@@ -35,7 +35,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		var pos: Vector2 = unit._sim_soldier_pos[i]
 		var vel: Vector2 = unit._sim_body_vel[i]
 		if (frame + i) % period == 0:
-			_look_round(unit, i, frame, grown)
+			SoldierLookRound.look(unit, i, frame, grown)
 		var own: Vector2 = unit._sim_flight_dir[i]
 		var desired: Vector2 = unit._sim_steer[i]
 		if own != Vector2.ZERO:
@@ -66,20 +66,6 @@ static func _size_choices(unit: Unit, n: int) -> void:
 	unit._sim_flight_dir.resize(n)
 	for i in range(have, n):
 		unit._sim_flight_dir[i] = SoldierFlight.refuge_direction(unit, unit._sim_soldier_pos[i])
-
-
-## Man `i` looks round: he chooses his way from what he perceives, or, finding none, turns to
-## the foe nearest him (ZERO in _sim_flight_dir: he stands and fights).
-static func _look_round(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
-	var seen: Dictionary = SoldierFlight.perceived(unit, i, frame)
-	var own: Vector2 = SoldierFlightWay.choose(unit, i, seen["threat"], grown)
-	if SoldierCornered.is_cornered(unit, i, own, seen, grown):
-		var foe: Unit = seen["nearest_unit"]
-		var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
-		if to_foe.length_squared() > 0.0:
-			unit._sim_soldier_facing[i] = to_foe.normalized()
-		own = Vector2.ZERO
-	unit._sim_flight_dir[i] = own
 
 
 ## The file-mate ahead of man `i` along `own`: of the men in front of and behind him in his

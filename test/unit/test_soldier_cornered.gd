@@ -59,7 +59,6 @@ func test_ground_shuts_a_way_as_a_foe_does() -> void:
 	var walls: Array[Rect2] = [Rect2(AT + Vector2(-50, -reach - 5), Vector2(100, 10)),
 			Rect2(AT + Vector2(reach - 5, -50), Vector2(10, 100))]
 	var seen: Dictionary = _seen(r, f, 0)
-	seen["nearest_distance"] = INF   # ground ahead alone opens the check
 	assert_true(SoldierCornered.is_cornered(r, 0, Vector2.UP, seen, walls),
 			"rock ahead and to his right, a foe to his left")
 	var ahead_only: Array[Rect2] = [walls[0]]
@@ -109,7 +108,7 @@ func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() 
 	var period: int = r.rout_reaction_ticks()
 	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
 	# Step until his own look-round tick comes up (the step reads the engine's frame counter).
-	SoldierFlightStep._look_round(r, 0, frame, [] as Array[Rect2])
+	SoldierLookRound.look(r, 0, frame, [] as Array[Rect2])
 	assert_eq(r._sim_flight_dir[0], Vector2.ZERO, "hemmed in, he stands to fight")
 	assert_gt(r.soldier_facing(0).dot((f._sim_soldier_pos[0] - AT).normalized()), 0.99,
 			"facing the foe nearest him")
@@ -117,7 +116,7 @@ func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() 
 	assert_almost_eq(r._sim_body_vel[0].length(), 0.0, 0.001, "and does not run")
 	for k in range(1, 8):   # all but the nearest foe draw off
 		f._sim_soldier_pos[k] = AT + Vector2.UP.rotated(k * PI / 4.0) * 400.0
-	SoldierFlightStep._look_round(r, 0, frame, [] as Array[Rect2])
+	SoldierLookRound.look(r, 0, frame, [] as Array[Rect2])
 	assert_ne(r._sim_flight_dir[0], Vector2.ZERO, "when he next looks round he runs again")
 	assert_gt(period, 0, "sanity: he looks round every %d ticks" % period)
 

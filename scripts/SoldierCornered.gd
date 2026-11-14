@@ -2,9 +2,9 @@ class_name SoldierCornered
 extends RefCounted
 ## A routed man with no way to run turns and fights. He is cornered when the way he wants to
 ## run, and the ways to either side of it, are each shut within his weapon's reach: by
-## impassable ground, or by an enemy body. He then stands, faces the foe nearest him and strikes
-## with the men beside him at his unit's cadence (fight), and runs again once he looks round and
-## finds a way open (SoldierFlightStep).
+## impassable ground, or by an enemy body, with a foe in reach. He then stands, faces the foe nearest
+## him and strikes with the men beside him at his unit's cadence (fight), and runs again once he
+## looks round and finds a way open (SoldierLookRound).
 
 ## Half the width of a direction's sector, in radians: ahead, left and right each cover a
 ## quarter-turn, so the three cover everything but the way he came.
@@ -18,8 +18,8 @@ static var _spreads: Dictionary = {}   # foe unit -> [body count, spread] for _s
 
 ## Whether man `i` of `unit`, who wants to run along `own`, is cornered: ahead, left and right of
 ## `own` are each shut within his reach (Unit.soldier_reach) by `grown` (impassable rects grown by
-## a body radius) or by a body of an enemy unit. `seen` is what he perceives
-## (SoldierFlight.perceived): a man with neither ground nor his nearest foe within reach is not.
+## a body radius) or by a body of an enemy unit, and a foe stands within his reach. `seen` is what
+## he perceives (SoldierFlight.perceived); with no foe in reach he is not, however rock shuts him.
 static func is_cornered(unit: Unit, i: int, own: Vector2, seen: Dictionary,
 		grown: Array[Rect2]) -> bool:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
@@ -28,7 +28,7 @@ static func is_cornered(unit: Unit, i: int, own: Vector2, seen: Dictionary,
 	var shut: Array[bool] = [false, false, false]
 	for k in range(3):
 		shut[k] = PathField.inside_any_rect(pos + dirs[k] * reach, grown)
-	if not (shut[0] or float(seen["nearest_distance"]) <= reach):
+	if seen["nearest_unit"] == null or float(seen["nearest_distance"]) > reach:
 		return false
 	var cos_half: float = cos(SECTOR_HALF_ANGLE)
 	for foe in foes_near(unit, pos, reach):
