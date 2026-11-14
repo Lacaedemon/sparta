@@ -6647,8 +6647,8 @@ func _refresh_explicatio_follow(count: int) -> bool:
 ## back down it, and step in behind the man they follow once they are behind him; and the files
 ## close up only once the intervals beside them are empty. A man held so at that point, whose
 ## way is held by men who have all stopped following, has it shut (_explicatio_shut). When the
-## whole file that stands has fallen, the leader of the nearest file left becomes the guide, his
-## ground his file's place in the closed line beside the ground the fallen file held.
+## whole file that stands has fallen, the leader of the nearest file left becomes the guide and
+## holds the ground he stands on, as in the explicatio.
 func _refresh_duplicatio_follow(count: int) -> bool:
 	if _sim_soldier_pos.size() < count or _sim_soldier_file.size() != count \
 			or _sim_soldier_rank.size() != count or _sim_soldier_facing.size() < count \
@@ -6662,11 +6662,10 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 		var f: int = Unit.nearest_led_file(led, _explicatio_stand_file)
 		if f < 0:
 			return false
-		# His ground is his file's place in the closed line beside the ground the fallen file
-		# stood on, that many file pitches across the block's front, wherever he stands now.
-		_explicatio_stand_point += SoldierFollow.right_of(facing.normalized()) \
-				* float(f - _explicatio_stand_file) * file_pitch_wu()
+		# He holds the ground he stands on, as the explicatio's guide does
+		# (_take_up_explicatio_guide); the other files close on him by their relations.
 		_explicatio_stand_file = f
+		_explicatio_stand_point = _sim_soldier_pos[led[f]]
 	var plan: Dictionary = DuplicatioDrill.follow_plan(_sim_soldier_file, _sim_soldier_rank,
 			_explicatio_stand_file, file_pitch_wu(), rank_pitch_wu())
 	var points := PackedVector2Array()

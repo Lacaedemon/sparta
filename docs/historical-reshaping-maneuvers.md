@@ -261,7 +261,7 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   The file that stands is the middle file (N), or the held flank's corner file for an order that holds one, as for the explicatio.
   Its leader is the guide, and every file leader dresses his depth on him.
   If that whole file falls, the leader of the nearest file left becomes the guide.
-  His ground is his file's place in the closed line, a whole number of file pitches across from the ground the fallen file held, wherever he stands at that moment.
+  He holds the ground he stands on when he takes over, as in the explicatio, and the other files close on him by their relations.
 
 - **The ground the explicatio kept.**
   The men go back to their original stations (10.20), so the duplicatio undoes whichever ground the explicatio kept, and the order does not choose it.

@@ -319,8 +319,9 @@ func test_a_casualty_mid_drill_keeps_the_drill() -> void:
 
 
 ## Held on the right flank, the right corner file stands and the order records the held flank. If
-## that whole file falls, the leader of the nearest file left becomes the guide, his ground his
-## file's place in the closed line, and the line closes on him at its pitch.
+## that whole file falls, the leader of the nearest file left becomes the guide where he stands,
+## as in the explicatio, and the other files close on him by their relations: 8 files at their
+## pitch, the front straight, the new corner file on the right flank, and the drill ending.
 func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	var u: Unit = await _stage()
 	var right_anchor: int = UnitFormation.Anchor.RIGHT
@@ -331,9 +332,6 @@ func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	assert_eq(int((_battle._pending_orders.back() as Dictionary)["explicatio_held"]), right_anchor,
 		"the order holds the right flank")
 	assert_eq(u._explicatio_stand_file, 8, "the right corner file stands")
-	var front0: float = _front(u)
-	var right: Vector2 = SoldierFollow.right_of(u.facing.normalized())
-	var flank0: float = u._explicatio_stand_point.dot(right)
 	for _t in range(20):
 		await get_tree().physics_frame
 	for i in range(u.soldiers):
@@ -343,18 +341,34 @@ func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
 	await get_tree().physics_frame
 	assert_true(u.explicatio_drill_active(), "the drill runs on")
 	assert_eq(u._explicatio_stand_file, 7, "the nearest file left stands")
-	assert_almost_eq(u._explicatio_stand_point.dot(right), flank0 - u.file_pitch_wu(), 0.01,
-		"his ground is his file's place in the closed line, a file pitch in from the fallen file's")
 	assert_gte(await _settle(u), 0, "and ends")
-	var lo: float = INF
-	var hi: float = -INF
-	for p in u._sim_soldier_pos:
-		lo = minf(lo, p.dot(right))
-		hi = maxf(hi, p.dot(right))
+	var right: Vector2 = SoldierFollow.right_of(u.facing.normalized())
+	var front: Vector2 = u.facing.normalized()
+	var head: Dictionary = {}
+	for i in range(u.soldiers):
+		if u._sim_soldier_rank[i] == 0:
+			head[u._sim_soldier_file[i]] = i
+	assert_eq(head.size(), 8, "8 files have a leader")
 	var quarter: float = 0.25 * u.file_pitch_wu()
-	assert_almost_eq(hi, flank0 - u.file_pitch_wu(), quarter, "the new flank file stands in line")
-	assert_almost_eq(hi - lo, 7.0 * u.file_pitch_wu(), quarter, "8 files at their pitch")
-	assert_almost_eq(_front(u), front0, 0.25 * u.rank_pitch_wu(), "the front keeps its line")
+	var worst_pitch: float = 0.0
+	var depth_lo: float = INF
+	var depth_hi: float = -INF
+	var flank: int = -1
+	for f in head:
+		var p: Vector2 = u._sim_soldier_pos[head[f]]
+		depth_lo = minf(depth_lo, p.dot(front))
+		depth_hi = maxf(depth_hi, p.dot(front))
+		if flank < 0 or p.dot(right) > u._sim_soldier_pos[head[flank]].dot(right):
+			flank = f
+		if head.has(f + 1):
+			var gap: float = (u._sim_soldier_pos[head[f + 1]] - p).dot(right)
+			worst_pitch = maxf(worst_pitch, absf(gap - u.file_pitch_wu()))
+	assert_lt(worst_pitch, quarter,
+		"a file leader stood %.2f wu off a pitch from the next file's" % worst_pitch)
+	assert_lt(depth_hi - depth_lo, 0.25 * u.rank_pitch_wu(),
+		"the front is %.2f wu out of straight" % (depth_hi - depth_lo))
+	assert_eq(flank, 7, "file 7 is the right flank file")
+	assert_almost_eq(_width(u), 7.0 * u.file_pitch_wu(), quarter, "8 files at their pitch")
 
 
 ## The duplicatio undoes the ground the explicatio kept, whatever the order's ground reads at N:
