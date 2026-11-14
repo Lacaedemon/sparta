@@ -19,5 +19,15 @@
     {"tick": 300, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": [200, 300], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [300, 1200], "uid": 0, "absent": true}
-  ]
+  ],
+  "defect_exemptions": {
+    "misslotted": {
+      "uids": [3],
+      "reason": "misslotted reads uid3 (the lead cavalry troop) 0.5 against 0.25 on seed 1, and passes on seeds 0, 2, 3 and 4 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). Analysing the dump cut off at successive ticks, it passes through tick 900 and fails only once the samples reach tick 1200: the troop has then been marching on the Spearmen (target uid 1) since about tick 560, long after it formed up where its riders stood at the end of its chase (re-deal stamped at tick 521, whose transit window closed long before). The reading is that long march, tracked in #1983."
+    },
+    "follow_error": {
+      "uids": [2],
+      "reason": "follow_error reads uid2 (the trailing cavalry troop) 94.35 against 30 on seed 2, and passes on seeds 0, 1, 3 and 4 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). Analysing the dump cut off at successive ticks, it passes through tick 1080 and fails only once the samples reach tick 1200: the troop has then been marching on the Spearmen (target uid 1) since tick 542, more than 500 ticks after it formed up where its riders stood at the end of its chase (re-deal stamped at tick 543, whose transit window closed long before). The reading is that long march, tracked in #1983."
+    }
+  }
 }

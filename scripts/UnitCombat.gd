@@ -143,7 +143,12 @@ static func strike(u: Unit, enemy: Unit) -> void:
 	# with no soldier layer still fall through to the formula.
 	if Unit.INDIVIDUAL_COLLISION and not u.is_ranged and u.is_engaged() \
 			and not u._sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
-		u.resolve_soldier_melee(enemy)
+		if enemy.state == Unit.State.ROUTING:
+			# A routed unit's men run where they will: the men with a runner in reach strike.
+			var routed: Array[Unit] = [enemy]
+			SoldierMelee.resolve_men(u, SoldierRoutReach.men_in_reach(u, enemy), routed)
+		else:
+			u.resolve_soldier_melee(enemy)
 		u._approach_velocity = Vector2.ZERO   # spend the charge on this contact strike
 		Sfx.play(&"hit")
 		return
