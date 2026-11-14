@@ -29,7 +29,7 @@ func test_riders_closing_on_one_runner_turn_off_each_other_not_through() -> void
 	assert_almost_eq((clear[0] + clear[1]).length(), 0.0, 0.001, "each the other's way")
 
 
-func test_two_pursuing_riders_touching_give_way_to_each_other_at_once() -> void:
+func test_two_pursuing_riders_touching_give_way_to_each_other() -> void:
 	var r: Unit = _unit(1)
 	r.team = 0
 	r._sim_soldier_pos[0] = AT + Vector2(0, -1000)   # one runner far to the north
@@ -43,8 +43,9 @@ func test_two_pursuing_riders_touching_give_way_to_each_other_at_once() -> void:
 	p._sim_soldier_pos[0] = AT
 	p._sim_soldier_pos[1] = AT + Vector2(gap, 0)
 	SoldierPursuitStep.step(p, 2, {}, 1.0 / 60.0)
-	assert_gt(p._sim_soldier_pos[1].x - p._sim_soldier_pos[0].x, gap,
-			"they part sideways in the one tick, not only as fast as they can turn")
+	assert_gt(p._sim_soldier_pos[1].x - p._sim_soldier_pos[0].x, gap, "they part sideways")
+	assert_gt(p._sim_body_vel[1].x, 0.0, "his velocity carries the give, as any steering does")
+	assert_lt(p._sim_body_vel[0].x, 0.0, "and his friend's the other way")
 
 
 func test_men_pulling_up_give_way_to_a_friend_they_touch() -> void:
@@ -58,6 +59,7 @@ func test_men_pulling_up_give_way_to_a_friend_they_touch() -> void:
 	u._sim_body_vel[1] = Vector2(0, -u.jog_speed * 2.0)
 	assert_true(SoldierBodies.pull_up_rallied(u, 2, 60.0, 1.0 / 60.0), "setup: still running")
 	assert_gt(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x, gap, "they part sideways as they slow")
+	assert_gt(u._sim_body_vel[1].x, 0.0, "the give is in his velocity")
 
 
 func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:

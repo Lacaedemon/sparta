@@ -708,8 +708,8 @@ static func march_share_frac(dist: float, pitch: float, from_pitches: float,
 
 ## One tick of a rallied unit's men pulling up from their flight: each slows along his own run
 ## at `rate` (world units/s^2, his braking rate), faces it while he still moves, and runs on at
-## what he kept, giving way at once to a friend whose body touches his (SoldierKeepClear), up to
-## a jog. Returns false, touching nobody, once no man of the first `n` is faster than a jog: the
+## what he kept; his run ends in giving way to a friend whose body touches his (SoldierKeepClear,
+## up to a jog), the velocity he brakes toward. Returns false, touching nobody, once no man of the first `n` is faster than a jog: the
 ## men have pulled up, and the caller lays the grid out where they stand.
 static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bool:
 	var jog_sq: float = unit.jog_speed * unit.jog_speed
@@ -722,9 +722,9 @@ static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bo
 		return false
 	var clear: PackedVector2Array = SoldierKeepClear.bias(unit, n, unit.jog_speed)
 	for i in range(n):
-		var v: Vector2 = unit._sim_body_vel[i].move_toward(Vector2.ZERO, rate * delta)
+		var v: Vector2 = unit._sim_body_vel[i].move_toward(clear[i], rate * delta)
 		unit._sim_body_vel[i] = v
-		unit._sim_soldier_pos[i] += (v + clear[i]).limit_length(maxf(v.length(), unit.jog_speed)) * delta
+		unit._sim_soldier_pos[i] += v * delta
 		if v.length_squared() > REST_SPEED * REST_SPEED:
 			unit._sim_soldier_facing[i] = v.normalized()
 	unit._render_dirty = true

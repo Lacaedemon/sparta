@@ -44,7 +44,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 			unit._sim_flight_dir[i] = _toward_nearest(pos, quarry)
 		var dir: Vector2 = unit._sim_flight_dir[i]
 		var desired: Vector2 = dir * top * (field.speed_at(pos) if field != null else 1.0) \
-				+ unit._sim_steer[i]
+				+ unit._sim_steer[i] + clear[i]
 		if not guard.is_empty() and guard["inside"][i] == 0:
 			desired = SoldierBodies.router_terrain_avoid(pos, vel,
 					pos + dir * SoldierFlightStep.LOOK_AHEAD, desired, guard["grown"], accel, delta)
@@ -52,9 +52,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		var cap: float = maxf(cap_floor, vel.length())
 		var new_vel: Vector2 = ride(damped, desired, accel, Unit.TURN_RATE, delta).limit_length(cap)
 		unit._sim_body_vel[i] = new_vel
-		# He gives way to a friend he touches at once, as a friendly bias does (SoldierSteering),
-		# not at the pace he can turn his horse.
-		unit._sim_soldier_pos[i] = pos + (new_vel + clear[i]).limit_length(cap) * delta
+		unit._sim_soldier_pos[i] = pos + new_vel * delta
 		if new_vel.length_squared() > SoldierBodies.REST_SPEED * SoldierBodies.REST_SPEED:
 			unit._sim_soldier_facing[i] = new_vel.normalized()
 			unit._render_dirty = true
