@@ -798,9 +798,11 @@ func test_same_unit_standoff_runs_during_reform_hold_of_a_block_in_good_order() 
 ## The standoff push _separate_same_unit gives body 0 of a pair standing `d` apart along x,
 ## with the two bodies' stored velocities set to `v0` and `v1`: in a REFORM hold when
 ## `holding`, otherwise under an armed settle window. With `foe_state` set, one man of an
-## enemy unit in that state stands `foe_gap` from body 0.
+## enemy unit in that state stands `foe_gap` from body 0, fighting the pair's block when
+## `foe_fights_it`.
 func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
-		holding: bool = true, foe_state: int = -1, foe_gap: float = 0.0) -> Vector2:
+		holding: bool = true, foe_state: int = -1, foe_gap: float = 0.0,
+		foe_fights_it: bool = true) -> Vector2:
 	var u := _make_unit(42, 2)
 	u.frontage_override = 1
 	u.position = Vector2(0.0, 50.0)
@@ -813,6 +815,8 @@ func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
 		SoldierBodies.seed(foe)
 		foe._sim_soldier_pos[0] = foe.position
 		foe.state = foe_state
+		if foe_fights_it:
+			foe.target_enemy = u
 	if holding:
 		u.current_order = Order.new_move(u.position)
 		u.current_order.reform_timer = 1.0
@@ -930,6 +934,12 @@ func test_a_pair_both_in_the_press_of_a_fighting_foe_takes_only_the_push() -> vo
 	var f_closing: Vector2 = _standoff_push_on_first_of_pair(
 		d, Vector2.ZERO, Vector2(-10.0, 0.0), true, fighting, far)
 	assert_almost_eq(f_closing.x - f_still.x, -5.0, 0.001, "a foe past twice the reach presses no one")
+	var o_still: Vector2 = _standoff_push_on_first_of_pair(
+		d, Vector2.ZERO, Vector2.ZERO, true, fighting, reach, false)
+	var o_closing: Vector2 = _standoff_push_on_first_of_pair(
+		d, Vector2.ZERO, Vector2(-10.0, 0.0), true, fighting, reach, false)
+	assert_almost_eq(o_closing.x - o_still.x, -5.0, 0.001,
+		"a foe in another block's fight presses no one of this one")
 
 
 func test_same_unit_standoff_leaves_closing_speed_outside_the_contact_band() -> void:
