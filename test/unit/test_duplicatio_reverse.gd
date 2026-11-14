@@ -290,6 +290,31 @@ func test_a_casualty_mid_drill_keeps_the_drill() -> void:
 	assert_eq(UnitFormation.frontage(u), 9, "on 9 files")
 
 
+## Held on the right flank, the right corner file stands and the order records the held flank. If
+## that whole file falls, the leader of the nearest file left becomes the guide where he stands
+## and the drill runs on to its end.
+func test_a_held_flank_stands_and_its_fall_passes_the_guide() -> void:
+	var u: Unit = await _stage()
+	var right_anchor: int = UnitFormation.Anchor.RIGHT
+	_battle.enqueue_file_double([u.uid], 1, right_anchor, HALF_FILE)
+	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
+	_battle.enqueue_file_double([u.uid], -1, right_anchor, HALF_FILE)
+	assert_true(u._explicatio_reverse, "the narrowing is the drill")
+	assert_eq(int((_battle._pending_orders.back() as Dictionary)["explicatio_held"]), right_anchor,
+		"the order holds the right flank")
+	assert_eq(u._explicatio_stand_file, 8, "the right corner file stands")
+	for _t in range(20):
+		await get_tree().physics_frame
+	for i in range(u.soldiers):
+		if u._sim_soldier_file[i] == 8:
+			u._sim_soldier_hp[i] = 0.0
+	SoldierMelee.reap(u, null)
+	await get_tree().physics_frame
+	assert_true(u.explicatio_drill_active(), "the drill runs on")
+	assert_eq(u._explicatio_stand_file, 7, "the nearest file left stands")
+	assert_gte(await _settle(u), 0, "and ends")
+
+
 ## A countermarch since the explicatio turns the block about, so the heads of its intervals stand
 ## at its rear: the roles go, and N narrows with the lateral deal. Nor is a block undone while an
 ## about-face's mirror still stands over its files.
