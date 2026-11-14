@@ -21,13 +21,9 @@
     {"tick": [250, 1200], "uid": 0, "absent": true}
   ],
   "defect_exemptions": {
-    "overlap": {
-      "uids": [2, 3],
-      "reason": "overlap reads the two pursuing cavalry troops, uid2 and uid3, while their riders ride the runners down man by man (SoldierPursuitStep): uid2 0.71, 4.09, 2.00 and 2.78 on seeds 0 to 3 and uid3 2.06, 0.69 and 1.95 on seeds 1, 3 and 4, against 5.0 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). Two riders converging on one runner give way to each other only as fast as their own acceleration and turn allow (SoldierKeepClear, through the velocity integrator), so at a gallop they close inside a quarter of their bodies' width before they part. Body-to-body avoidance between a unit's own men is #1974."
-    },
     "follow_error": {
-      "uids": [2],
-      "reason": "follow_error reads uid2 (the trailing cavalry troop) 45.50 on seed 1 and 37.39 on seed 2 against 30, sustained, late in its long march on the Spearmen (target uid 1), long after its chase ended and it re-formed where its riders stood; on seeds 0, 3 and 4 it reads at most 35.1, 161.2 and 3.1 without lasting long enough to fail (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch; analysing seed 2's dump cut off at successive ticks, it passes through tick 1080 and fails only once the samples reach tick 1200). Main c36560fa drifts the same way on the same march: with this clip's state ticks run on main, uid2 reads 59.3, 59.3 and 58.3 on seeds 0, 1 and 2 against 30. The drift of a long march is #1983."
+      "uids": [2, 3],
+      "reason": "follow_error reads both cavalry troops on seed 3 only, sustained, late in their long march on the Spearmen (target uid 1), long after their chase ended: uid2 71.65 and uid3 159.63 against 30. On seeds 0, 1, 2 and 4 uid2 reads at most 29.4, 9.1, 3.1 and 29.6 and uid3 at most 57.2, 12.0, 29.1 and 29.8 without failing (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). Analysing seed 3's dump cut off at successive ticks, uid2 passes through tick 900 and fails by 1000, and uid3 passes through 900 and fails by 910. uid3 ended its chase and re-formed where its riders stood at tick 375, its men up to 450 wu apart; it marched on the Spearmen at 34 wu/s from then on, and at 902 a rider still stood 240 wu off his place. The failing samples are the first judged ones after the re-form's transit window closes. The branch's previous head 433ac98a reads the same way, uid3 failing at 105.16 by tick 900. Main c36560fa drifts on the same march: with this clip's state ticks run on main, uid2 reads 59.3, 59.3 and 58.3 on seeds 0, 1 and 2, and uid3 about 32 on seed 3. The drift of a long march is #1983."
     }
   }
 }

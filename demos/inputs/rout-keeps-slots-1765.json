@@ -30,11 +30,5 @@
     {"tick": 531, "uid": 0, "field": "state", "value": "IDLE"},
     {"tick": 531, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
     {"tick": 700, "uid": 0, "field": "pairs_within_body_radius", "value": 0}
-  ],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [2],
-      "reason": "overlap reads uid2 (the enemy cavalry, riding the runners down and then forming up where its riders stand) 3.57, 1.42, 2.31, 0.39 and 2.14 against 5.0 on seeds 0 to 4 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch): its riders give way to a friend they touch only as fast as their own acceleration and turn allow (SoldierKeepClear, through the velocity integrator), so riders converging on one runner close inside a quarter of their bodies' width before they part. Body-to-body avoidance between a unit's own men is #1974."
-    }
-  }
+  ]
 }
