@@ -15,13 +15,19 @@ const WAYS: int = 16
 
 ## The way man `i` of `unit` forces out, from the foes he sees within twice his reach: of WAYS
 ## directions round him, the one with the fewest foe bodies in its sector (a half-width of half a
-## way apart either side), and among those the nearest to `own`, the way he wants to run.
-static func way_out(unit: Unit, i: int, own: Vector2) -> Vector2:
+## way apart either side), and among those the nearest to `own`, the way he wants to run. A way
+## shut within his reach by `grown` (impassable rects grown by a body radius) counts as no way at
+## all, as rock shuts a way for SoldierCornered.
+static func way_out(unit: Unit, i: int, own: Vector2, grown: Array[Rect2]) -> Vector2:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
 	var look: float = 2.0 * unit.soldier_reach()
 	var cos_half: float = cos(PI / float(WAYS))
 	var counts := PackedInt32Array()
 	counts.resize(WAYS)
+	for k in range(WAYS):
+		if PathField.inside_any_rect(pos + Vector2.RIGHT.rotated(TAU * k / WAYS) * unit.soldier_reach(),
+				grown):
+			counts[k] = 1 << 30   # rock: no way through
 	for foe in SoldierCornered.foes_near(unit, pos, look):
 		for p in foe._sim_soldier_pos:
 			var to: Vector2 = p - pos

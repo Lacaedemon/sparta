@@ -18,7 +18,7 @@ static func look(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
 	var foe: Unit = seen["nearest_unit"]
 	if foe != null and SoldierCornered.is_cornered(unit, i, own, seen, grown):
 		if unit.cornered == SoldierBreakOut.Mode.CUT:
-			own = SoldierBreakOut.way_out(unit, i, own)   # he forces his way out
+			own = SoldierBreakOut.way_out(unit, i, own, grown)   # he forces his way out
 		else:
 			var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
 			if to_foe.length_squared() > 0.0:

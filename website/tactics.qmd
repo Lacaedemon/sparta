@@ -187,6 +187,14 @@ On this clip's seed the spearmen first get clear of the infantry about three sec
   veers along its face, toward the shorter way round to the far side, while he can
   still turn, instead of running onto the rock and standing there, so a broken block
   pours round a hill in its way rather than piling up against it.
+- **A routing man hemmed in by the enemy** --- foes within his reach ahead and to
+  either side --- by default stands, faces the foe nearest him and fights where he is
+  until a way opens.
+  A unit can instead be set to cut its way out: each such man makes for the opening
+  where the foes round him stand thinnest, nearest the way he wants to run,
+  and strikes only the foe in his way.
+  No source we consulted says which a man caught inside enemy ranks did,
+  so both are the sim's inference.
 - **The battle isn't over while a side is only routing.** A team is beaten only once
   its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,

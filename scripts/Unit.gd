@@ -169,9 +169,6 @@ var _cached_combat_profile: Dictionary = {}
 # How far this unit, if foot, follows a rout it has broken (SoldierFootPursuit.Mode: FOLLOW, the
 # sim's choice, or SHORT, breaking off once the runners are out of reach, Thucydides 5.73.4).
 @export var foot_pursuit: int = SoldierFootPursuit.Mode.FOLLOW
-# Whom each rider rallies on when a chase ends, both the sim's inference (no source describes a
-# rally after a pursuit): the man ahead in his file (FILE) or the ilarch (ILARCH); see SoldierRally.
-@export var chase_rally: int = SoldierRally.Mode.FILE
 # What a routed man cornered by enemy bodies does: stand and fight (STAND, the default) or force
 # his way out where the foes stand thinnest (CUT), both the sim's inference; see SoldierBreakOut.
 @export var cornered: int = SoldierBreakOut.Mode.STAND
@@ -1861,11 +1858,6 @@ var _sim_flight_dir: PackedVector2Array = PackedVector2Array()
 # (SoldierBodies.pull_up_rallied) and `position` reads the men, as for a router. Set by _rally,
 # cleared by the deal and by _rout.
 var _rally_pending: bool = false
-# While riders rally on their standard after a chase (SoldierRally), index-aligned with the
-# bodies: whom each man rallies on (-1 for the ilarch) and his place in the formation's own
-# frame. Empty otherwise.
-var _sim_rally_on: PackedInt32Array = PackedInt32Array()
-var _sim_rally_offset: PackedVector2Array = PackedVector2Array()
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -9590,10 +9582,7 @@ func _advance_moving_wheel(leaf: Order, delta: float) -> bool:
 	var hinge_new: Vector2 = hinge_old + leaf.wheel_translate_dir * (_current_speed * delta)
 	leaf.pivot = hinge_new
 	position = hinge_new + (position - hinge_old).rotated(step)
-	# Riders still rallying on their standard (SoldierRally) ride on their own; the wheel carries
-	# no body until the troop has formed and moved off.
-	var carried: int = 0 if SoldierRally.is_rallying(self) else _sim_soldier_pos.size()
-	for i in range(carried):
+	for i in range(_sim_soldier_pos.size()):
 		var p: Vector2 = _sim_soldier_pos[i]
 		_sim_soldier_pos[i] = UnitManeuver.bounded_wheel_carry(p, hinge_new + (p - hinge_old).rotated(step),
 				_sim_body_vel[i], move_speed * superphysical_speed_frac, delta)
@@ -11364,7 +11353,6 @@ func _rout() -> void:
 	_current_speed = 0.0
 	_rally_pending = false
 	_sim_flight_dir = PackedVector2Array()
-	_sim_rally_on = PackedInt32Array()
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -11580,7 +11568,6 @@ func _rally() -> void:
 func _reform_where_men_stand() -> void:
 	_rally_pending = false
 	_sim_flight_dir = PackedVector2Array()
-	_sim_rally_on = PackedInt32Array()
 	_fold_grid_lag()
 	_formation_angle = 0.0
 	_absorbed_fold = 0.0
@@ -12446,8 +12433,6 @@ func to_snapshot_dict() -> Dictionary:
 		"separation_velocity": _separation_velocity,
 		"far_flee_pace": _far_flee_pace, "rally_pending": _rally_pending,
 		"sim_flight_dir": _sim_flight_dir.duplicate(),
-		"sim_rally_on": _sim_rally_on.duplicate(),
-		"sim_rally_offset": _sim_rally_offset.duplicate(),
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"march_target_frac": _march_target_frac,
 		"march_stopped_ticks": _march_stopped_ticks,
@@ -12469,7 +12454,6 @@ func to_snapshot_dict() -> Dictionary:
 		"rout_herding": rout_herding, "rout_refuge_weight": rout_refuge_weight,
 		"rally_deal": rally_deal, "rout_reaction_time": rout_reaction_time,
 		"foot_pursuit": foot_pursuit,
-		"chase_rally": chase_rally,
 		"cornered": cornered,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
@@ -12733,8 +12717,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_far_flee_pace = float(d.get("far_flee_pace", _far_flee_pace))
 	_rally_pending = bool(d.get("rally_pending", _rally_pending))
 	_sim_flight_dir = PackedVector2Array(d.get("sim_flight_dir", PackedVector2Array()))
-	_sim_rally_on = PackedInt32Array(d.get("sim_rally_on", PackedInt32Array()))
-	_sim_rally_offset = PackedVector2Array(d.get("sim_rally_offset", PackedVector2Array()))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
@@ -12756,7 +12738,6 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_refuge_weight = float(d.get("rout_refuge_weight", rout_refuge_weight))
 	rally_deal = int(d.get("rally_deal", rally_deal))
 	foot_pursuit = int(d.get("foot_pursuit", foot_pursuit))
-	chase_rally = int(d.get("chase_rally", chase_rally))
 	cornered = int(d.get("cornered", cornered))
 	rout_reaction_time = float(d.get("rout_reaction_time", rout_reaction_time))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",

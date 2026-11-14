@@ -145,8 +145,14 @@ func test_a_cornered_man_cuts_his_way_out_where_the_foes_stand_thinnest() -> voi
 	assert_gt(way.dot(Vector2.UP.rotated(3.0 * PI / 4.0)), 0.9, "he makes for the thinnest stretch")
 	var lone := _unit(0, 1)
 	lone._sim_soldier_pos[0] = AT + Vector2(5000, 5000)
-	var even := SoldierBreakOut.way_out(lone, 0, Vector2.LEFT)
+	var none: Array[Rect2] = []
+	var even := SoldierBreakOut.way_out(lone, 0, Vector2.LEFT, none)
 	assert_gt(even.dot(Vector2.LEFT), 0.99, "with no foe about, the way he wants")
+	# Rock across the thin stretch shuts it, as it shuts a way for SoldierCornered.
+	var gap: Vector2 = Vector2.UP.rotated(3.0 * PI / 4.0)
+	var rock: Array[Rect2] = [Rect2(AT + gap * r.soldier_reach() - Vector2(15, 15), Vector2(30, 30))]
+	var round_rock := SoldierBreakOut.way_out(r, 0, Vector2.UP, rock)
+	assert_lt(round_rock.dot(gap), 0.9, "he does not make for a gap the rock shuts")
 
 
 func test_a_man_cutting_out_strikes_only_the_foe_in_his_way() -> void:

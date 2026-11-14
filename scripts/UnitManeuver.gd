@@ -188,11 +188,10 @@ static func wheel_gait_rate(rate_cap: float, gait_speed: float, outer_radius: fl
 ## about the hinge plus the hinge's advance), bounded so that the carry plus the body's own
 ## velocity `own`, which the body step also moves him by, stays under the ceiling the body
 ## step puts on every man: `ceiling` (his unit's top pace times its superphysical fraction),
-## floored at the speed he already carries. It binds whenever a man already moves when the
-## wheel arms: a formed block re-ordered through a sharp turn mid-march (its men moving
-## with the march and the hinge also advancing at its pace) and a rider pulled up from a
-## chase still coasting at a gallop are each carried no faster than that ceiling allows.
-## A block that arms the wheel from a slow walk is left alone (`to` comes back unchanged).
+## floored at the speed he already carries. It binds only when his own speed plus the carry
+## would pass that ceiling: a formed block re-ordered through a sharp turn at a fast pace (its
+## men moving with the march while the hinge advances at the same pace, so the two add) or a
+## rider still coasting at a gallop when the wheel arms. Below it, `to` comes back unchanged.
 static func bounded_wheel_carry(from: Vector2, to: Vector2, own: Vector2, ceiling: float,
 		delta: float) -> Vector2:
 	if delta <= 0.0:

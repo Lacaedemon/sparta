@@ -434,10 +434,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			# Absent from transcripts dumped before the field existed: false there.
 			s["rally_halting"].append(bool(u.get("rally_halting", false)))
-			# Absent from transcripts dumped before the field existed: false there. Riders rallying
-			# on their standard after a chase (`rallying`, SoldierRally) ride off any place as
-			# pursuing riders do, so they read as pursuing here.
-			s["pursuing"].append(bool(u.get("pursuing", false)) or bool(u.get("rallying", false)))
+			# Absent from transcripts dumped before the field existed: false there.
+			s["pursuing"].append(bool(u.get("pursuing", false)))
 			s["counts"].append(bodies.size())
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
