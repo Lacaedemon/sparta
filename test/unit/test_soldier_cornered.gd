@@ -134,7 +134,8 @@ func test_a_cornered_man_cuts_his_way_out_where_the_foes_stand_thinnest() -> voi
 	var pair: Array = _router_and_foes(ring)
 	var r: Unit = pair[0]
 	r._rout()
-	assert_eq(r.cornered, SoldierBreakOut.Mode.CUT, "cutting out is the default")
+	assert_eq(r.cornered, SoldierBreakOut.Mode.STAND, "standing is the default")
+	r.cornered = SoldierBreakOut.Mode.CUT
 	var frame: int = Engine.get_physics_frames()
 	SoldierFlight.prepare(frame, [r, pair[1]], [], null)
 	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
@@ -152,6 +153,7 @@ func test_a_man_cutting_out_strikes_only_the_foe_in_his_way() -> void:
 	var pair: Array = _router_and_foes([Vector2(0, 20)])   # one foe, behind him
 	var r: Unit = pair[0]
 	r._rout()
+	r.cornered = SoldierBreakOut.Mode.CUT
 	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
 	assert_false(SoldierBreakOut.has_foe_to_strike(r, 0, Vector2.UP), "a foe behind is not in his way")
 	assert_false(SoldierBreakOut.fight(r), "so he does not stop to strike him")

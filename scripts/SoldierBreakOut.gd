@@ -2,10 +2,10 @@ class_name SoldierBreakOut
 extends RefCounted
 ## What a routed man cornered by enemy bodies (SoldierCornered) does, a named variant
 ## (Unit.cornered). No source consulted (Xenophon, Polybius, Arrian) says whether a horseman caught
-## inside enemy ranks cuts his way through or stands, so both are the sim's inference. CUT, the
-## default: he forces his way out where the foes round him stand thinnest, the opening nearest the
-## way he wants to run, and strikes only the foe in his way. STAND: he stands where he is, faces
-## the foe nearest him and strikes at whoever is in his reach until a way opens.
+## inside enemy ranks cuts his way through or stands, so both are the sim's inference. STAND, the
+## default: he stands where he is, faces the foe nearest him and strikes at whoever is in his reach
+## until a way opens. CUT: he forces his way out where the foes round him stand thinnest, the
+## opening nearest the way he wants to run, and strikes only the foe in his way.
 
 enum Mode { CUT, STAND }
 

@@ -172,9 +172,9 @@ var _cached_combat_profile: Dictionary = {}
 # Whom each rider rallies on when a chase ends, both the sim's inference (no source describes a
 # rally after a pursuit): the man ahead in his file (FILE) or the ilarch (ILARCH); see SoldierRally.
 @export var chase_rally: int = SoldierRally.Mode.FILE
-# What a routed man cornered by enemy bodies does: force his way out where the foes stand
-# thinnest (CUT) or stand and fight (STAND), both the sim's inference; see SoldierBreakOut.
-@export var cornered: int = SoldierBreakOut.Mode.CUT
+# What a routed man cornered by enemy bodies does: stand and fight (STAND, the default) or force
+# his way out where the foes stand thinnest (CUT), both the sim's inference; see SoldierBreakOut.
+@export var cornered: int = SoldierBreakOut.Mode.STAND
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
