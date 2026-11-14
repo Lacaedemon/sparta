@@ -1265,6 +1265,21 @@ and <kbd>Alt+Ctrl+B</kbd> steps the ground (lengthen, same ground).
 The choice rides on the order, so a saved replay plays it back.
 The computer-controlled side never orders an explicatio on its own, and the turn-and-unfold combo (<kbd>Shift+Q</kbd>, <kbd>Shift+E</kbd>) keeps the defaults.
 
+::: {#fig-explicatio-keys .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/explicatio_keys.jpg">
+  <source src="media/explicatio_keys.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to the alternate rank,
+<kbd>Alt+Shift+B</kbd> steps the side three times to the shield side, and <kbd>B</kbd> deals it on a block of 96 spearmen.
+:::
+
 - **Outward** (the default, Aelian's text, Tactics 33): each wing's intervals open away from the middle, and the files next to the middle stand.
 - **Inward** (Bingham's 1616 note on that chapter): each wing's intervals open toward the middle.
   Both middle intervals then open between the two middle files, so only one of them can stand.
