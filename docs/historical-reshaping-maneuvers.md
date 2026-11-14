@@ -106,8 +106,7 @@ together with Bingham's own notes on the chapter, which are his rather than Aeli
   The sim's loose, normal and tight orders stand at four, two and one times its authored pitch.
 
 The sim models two drills, chosen on the frontage-doubling order (`UnitFormation.ExplicatioDrill`).
-The B key gives the half-file drill.
-No key gives the alternate-rank drill yet ([#1969](https://github.com/Lacaedemon/sparta/issues/1969)).
+The B key gives the half-file drill until Alt+B steps to the alternate-rank drill.
 
 - **Half-file** (the default, Bingham's note on Aelian 29.3).
   Each file's rear half marches up the interval beside its own file, led by its hemilochites, the man who headed the rear half.
@@ -121,8 +120,8 @@ No key gives the alternate-rank drill yet ([#1969](https://github.com/Lacaedemon
 
 Where the sources differ or are silent, each reading is its own variant, with a short name, chosen on the same order as the drill.
 Every variant works with both drills.
-The B key deals the defaults; no key chooses another yet ([#1969](https://github.com/Lacaedemon/sparta/issues/1969)),
-but the order (`Battle.enqueue_file_double`, `Order.new_file_double`) and the replay entry (`"explicatio_side"`, `"explicatio_ground"`) carry each one.
+The B key deals the chosen reading, the defaults until Alt+B (drill), Alt+Shift+B (side) or Alt+Ctrl+B (ground) steps one;
+the order (`Battle.enqueue_file_double`, `Order.new_file_double`) and the replay entry (`"explicatio_side"`, `"explicatio_ground"`) carry each one.
 
 Which side of each file its interval opens on (`UnitFormation.ExplicatioSide`):
 

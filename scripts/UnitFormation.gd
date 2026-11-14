@@ -1254,9 +1254,6 @@ static func deal_ranks_by_depth(positions: PackedVector2Array,
 # beside the leader of the file it opened from as the interval opens; and each file leader who
 # stays keeps his distance from the next file leader toward the file that stands, dressing his
 # depth on the guide, who holds his ground.
-# TODO(#1969): no key deals ALTERNATE_RANK, or any ExplicatioSide or ExplicatioGround but the
-# default, yet; Battle.enqueue_file_double's caller, an Order, a replay entry and
-# SelectionManager's explicatio fields can name them.
 enum ExplicatioDrill { NONE = 0, HALF_FILE = 1, ALTERNATE_RANK = 2 }
 ## Which side of each file its interval opens on, where the sources differ or are silent
 ## (docs/historical-reshaping-maneuvers.md, "The explicatio drills"):

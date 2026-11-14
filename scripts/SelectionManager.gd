@@ -186,8 +186,7 @@ var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH_SPACE
 # readings: the side each file's interval opens on (UnitFormation.ExplicatioSide) and whether the
 # line keeps its pitch or its ground (UnitFormation.ExplicatioGround). The half-file drill, outward
 # and lengthening, until something chooses another; a scripted demo sets them
-# (tools/demo/DemoExplicatio.gd).
-# TODO(#1969): give the player a control that chooses them.
+# (tools/demo/DemoExplicatio.gd). Alt+B, Alt+Shift+B and Alt+Ctrl+B step them (ExplicatioChoice).
 var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
 var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
@@ -426,6 +425,8 @@ func _dispatch_fixed_chord(event: InputEventKey) -> bool:
 ## Route a gameplay hotkey to its action. Returns true if a known action fired (so the
 ## caller records the keystroke for the demo overlay), false for an unhandled key.
 func _dispatch_key(event: InputEventKey) -> bool:
+	if _dispatch_explicatio_choice(event):
+		return true
 	if _dispatch_fixed_chord(event):
 		return true
 
@@ -535,6 +536,40 @@ func _cycle_form_up_dist(reverse: bool = false) -> void:
 		_hud.flash_message("Form-up: " + str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")))
 	Sfx.play(&"order")
 	queue_redraw()
+
+
+## Alt+B steps the explicatio's drill, Alt+Shift+B the side its intervals open on and Alt+Ctrl+B
+## the ground it keeps, each to its next reading (ExplicatioChoice). The B, Shift+B and Ctrl+B that
+## deal the explicatio read the choice; Alt alone never orders anything. False for any other key.
+func _dispatch_explicatio_choice(event: InputEventKey) -> bool:
+	if not event.alt_pressed or not _is_key(event, KEY_B):
+		return false
+	if event.shift_pressed:
+		explicatio_side = ExplicatioChoice.next(ExplicatioChoice.SIDES, explicatio_side)
+	elif event.ctrl_pressed:
+		explicatio_ground = ExplicatioChoice.next(ExplicatioChoice.GROUNDS, explicatio_ground)
+	else:
+		explicatio_drill = ExplicatioChoice.next(ExplicatioChoice.DRILLS, explicatio_drill)
+	_announce_explicatio()
+	return true
+
+
+## The chosen explicatio worded for the HUD and the toast ("half-file, outward, lengthen").
+func get_explicatio_summary() -> String:
+	return ExplicatioChoice.summary(explicatio_drill, explicatio_side, explicatio_ground)
+
+
+## Step the drill, from the control bar's explicatio button (same as Alt+B).
+func toggle_explicatio_drill() -> void:
+	explicatio_drill = ExplicatioChoice.next(ExplicatioChoice.DRILLS, explicatio_drill)
+	_announce_explicatio()
+
+
+func _announce_explicatio() -> void:
+	if _hud != null:
+		_hud.flash_message("Explicatio: " + get_explicatio_summary())
+		_hud.update_explicatio(get_explicatio_summary())
+	Sfx.play(&"order")
 
 
 ## Cycle the live group-attack distribution mode and flash the new name.
@@ -2659,6 +2694,8 @@ func _key_label(event: InputEventKey) -> String:
 	if s.length() != 1:
 		return s
 	var prefix: String = ""
+	if event.alt_pressed:
+		prefix += "Alt+"
 	if event.ctrl_pressed:
 		prefix += "Ctrl+"
 	if event.shift_pressed:

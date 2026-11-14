@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/explicatio-keys-1969.json",
+  "caption": "The player chooses the explicatio from the keyboard. Alt+B steps the drill to the alternate rank (Polyaenus 2.10.4), Alt+Shift+B steps the side three times, outward to inward, spear side and shield side, and a plain B deals it on a block of 96 spearmen: every second man of each file steps into the interval on the shield side of his file and comes up it behind the first of them, and the block ends 12 files of 8. The overlay names each key; the block settles 9 wu south of where the default half-file explicatio leaves it. Before, no key chose anything: B dealt the half-file drill, outward, whatever the player wanted.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 15,
+  "width": 720
+}
