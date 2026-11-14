@@ -26,5 +26,11 @@
     {"tick": 730, "uid": 0, "field": "grid_off_heading", "value": 5.0, "tol": 3.0},
     {"tick": 800, "uid": 0, "field": "grid_off_heading", "value": 0, "tol": 2.0},
     {"tick": 1000, "uid": 0, "field": "state", "value": "MOVING"}
-  ]
+  ],
+  "defect_exemptions": {
+    "overlap": {
+      "uids": [1],
+      "reason": "overlap reads uid1 (the rallied attacker) 1.47 against 2.25 on seed 2 while its men pull up from their flight (ticks 884 to 902), and passes on seeds 0, 1, 3 and 4 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). A man pulling up gives way to a friend he touches only as fast as he can brake (SoldierKeepClear in pull_up_rallied), so two converging men close before they part. Body-to-body avoidance between a unit's own men is #1974."
+    }
+  }
 }

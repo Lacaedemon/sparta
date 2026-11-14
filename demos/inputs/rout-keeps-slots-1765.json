@@ -34,7 +34,7 @@
   "defect_exemptions": {
     "overlap": {
       "uids": [2],
-      "reason": "overlap reads uid2 (the enemy cavalry, after its chase) 3.07, 1.94 and 2.62 against 5.0 on seeds 1, 3 and 4, seeds 0 and 2 passing (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch): when its chase ends it forms up where its riders stand (re-deal stamped at ticks 672, 508 and 432), and riders walking to their new places cross through each other for 10 to 30 ticks (ticks 684 to 700 on seed 1, 522 to 531 on seed 3, 468 to 476 on seed 4). The formed arrival keeps a unit's own men apart only by their places; body-to-body avoidance between them is #1974."
+      "reason": "overlap reads uid2 (the enemy cavalry, riding the runners down and then forming up where its riders stand) 3.57, 1.42, 2.31, 0.39 and 2.14 against 5.0 on seeds 0 to 4 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch): its riders give way to a friend they touch only as fast as their own acceleration and turn allow (SoldierKeepClear, through the velocity integrator), so riders converging on one runner close inside a quarter of their bodies' width before they part. Body-to-body avoidance between a unit's own men is #1974."
     }
   }
 }

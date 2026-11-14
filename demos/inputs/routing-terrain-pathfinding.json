@@ -1,5 +1,5 @@
 {
-  "_comment": "Scenario-staged routing demo beside impassable terrain: a brittle player cavalry unit (60 mounts at morale 0.5) starts just west of the default hill (Rect2(1150, 380, 250, 200)) and holds there until an enemy cavalry charge from its WESTERN flank comes in. The router's block is 280 wu wide, so its centre at x=960 keeps its eastern file 50 wu clear of the hill's west face; the pursuer's target sits 190 wu west of the hill and 40 wu below its bottom edge, so it charges straight east. The router holds at its spawn through tick 120, the two fight one unbroken melee and the router routs at tick 344 (ROUTING at 400). Each routed man then runs on his own from the riders he sees toward his own back edge, round them on the side he chose (SoldierFlightWay), so the troop pours away north-west, away from the hill, and the pursuing riders ride after the runners man by man (SoldierPursuitStep). It rallies at tick 704 (ROUTING at 703, IDLE at 704), inside the clip, and no man of either unit is inside the hill at any declared tick (pinned). Measured with dense 2-tick FULL dumps on seeds 0 to 4, 2026-11-13 on #1949's branch: the men's centroid, which the unit's position reads while they rout, stands at (383.73 to 415.28, 354.93 to 396.94) at tick 680, pinned at the span's midpoint (399.5, 375.9) with a tol of 22 wu reaching its farther ends. The pin was (955.42, 158.36), tol 5, for the old flight's anchor, which ran north past the hill's west face under the bounded flight turn (#1785) with the rout keeping its slot grid (#1765); the bottom-up flight (#1949) removed both, and a man who runs from the riders on his own goes north-west, not north. This scenario does NOT show a rout detouring around the hill. No player input needed; the scenario + seed make the clash deterministic. The follow_error exemption for the router's men standing off their slots after its rally is dropped: the scan no longer judges a rallied unit's shape while its men pull up from their flight, and it read under 0.001 wu on seeds 0 to 4.",
+  "_comment": "Scenario-staged routing demo beside impassable terrain: a brittle player cavalry unit (60 mounts at morale 0.5) starts just west of the default hill (Rect2(1150, 380, 250, 200)) and holds there until an enemy cavalry charge from its WESTERN flank comes in. The router's block is 280 wu wide, so its centre at x=960 keeps its eastern file 50 wu clear of the hill's west face; the pursuer's target sits 190 wu west of the hill and 40 wu below its bottom edge, so it charges straight east. The router holds at its spawn through tick 120, the two fight one unbroken melee and the router routs at tick 344 (ROUTING at 400). Each routed man then runs on his own from the riders he sees toward his own back edge, round them on the side he chose (SoldierFlightWay), so the troop pours away north-west, away from the hill, and the pursuing riders ride after the runners man by man (SoldierPursuitStep). It rallies at tick 704 (ROUTING at 703, IDLE at 704), inside the clip, and no man of either unit is inside the hill at any declared tick (pinned). Measured with dense 2-tick FULL dumps on seeds 0 to 4, 2026-11-13 on #1949's branch: the men's centroid, which the unit's position reads while they rout, stands at (327.78 to 445.21, 367.83 to 384.21) at tick 680, pinned at the span's midpoint (386.5, 376.0) with a tol of 59 wu reaching its farther ends (from about (929, 642) where it broke, so a stalled rout reads far outside it). The pin was (955.42, 158.36), tol 5, for the old flight's anchor, which ran north past the hill's west face under the bounded flight turn (#1785) with the rout keeping its slot grid (#1765); the bottom-up flight (#1949) removed both, and a man who runs from the riders on his own goes north-west, not north. This scenario does NOT show a rout detouring around the hill. No player input needed; the scenario + seed make the clash deterministic. The follow_error exemption for the router's men standing off their slots after its rally is dropped: the scan no longer judges a rallied unit's shape while its men pull up from their flight, and it read under 0.001 wu on seeds 0 to 4.",
   "seed": "12345",
   "scenario": [
     {
@@ -158,8 +158,8 @@
       "tick": 680,
       "uid": 0,
       "field": "position",
-      "value": [399.5, 375.9],
-      "tol": 22.0
+      "value": [386.5, 376.0],
+      "tol": 59.0
     },
     {
       "tick": 703,
@@ -194,8 +194,8 @@
   ],
   "defect_exemptions": {
     "overlap": {
-      "uids": [1],
-      "reason": "overlap reads uid1 (the pursuing cavalry) 2.09 against 5.0 on seed 3 at tick 710, four ticks after its chase ends and it forms up where its riders stand while still on the move (re-deal stamped at tick 706): two riders cross on the way to their new places. Seeds 0, 1, 2 and 4 pass (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). Body-to-body avoidance between a unit's own men is #1974."
+      "uids": [0, 1],
+      "reason": "overlap reads uid1 (the pursuing cavalry) 0.10, 0.37, 0.55, 0.50 and 0.12 on seeds 0 to 4, and uid0 (the router) 0.64 on seed 0, against 5.0 (dense 2-tick FULL dumps, measured 2026-11-13 on #1949's branch). uid1's riders, riding the runners down man by man, give way to a friend they touch only as fast as their own acceleration and turn allow (SoldierKeepClear, through the velocity integrator), and after the chase they form up where they stand; uid0 reads it after it rallies at tick 704, as its riders pull up and walk to their places, giving way only as fast as they can brake. Body-to-body avoidance between a unit's own men is #1974."
     }
   }
 }

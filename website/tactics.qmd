@@ -203,9 +203,9 @@ On this clip's seed the spearmen first get clear of the infantry about three sec
 ```
 
 A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu (2 m) short of a hill.
-The leading riders cannot stop short of the face,
-so they reach it and run west along it, round the hill's end.
-No rider is held on the face: by the end of the clip every one is past it.
+Each rider sees the rock in his way and runs the open way nearest the one he wants,
+so the block bears off west round the hill's end
+and no rider is held on the face.
 :::
 
 ::: {#fig-morale-recovery .demo}

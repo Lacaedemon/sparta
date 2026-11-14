@@ -224,9 +224,9 @@ and a man whose run meets a wall or a hill veers along it and goes round
 ```
 
 A broken block of 64 Cavalry flees north toward a long wall across its whole line of flight.
-Each rider whose run would carry him onto the wall veers along it toward its nearer end,
-so the western files pour round its west end and the eastern files round its east end,
-and no rider stands still against it.
+Each rider sees the wall in his way and runs the open way nearest the one he wants,
+so the western files bear off round its west end and the eastern files round its east end
+before they reach it.
 :::
 
 On every march, the way a man walks onto his place changes over gradually as the
