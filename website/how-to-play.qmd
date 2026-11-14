@@ -1720,7 +1720,8 @@ and accelerate to full speed on contact.
    Morale matters as much as numbers (see [Tactics](tactics.qmd)).
 4. **Navigate terrain** --- the field has two terrain patches: a **dark-green forest**
    (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
-   right. Units route around the hill automatically under your orders, and a routing
+   right.
+   Units route around the hill automatically under your orders, and a routing
    man veers along its face and goes round it.
    See [Tactics → Terrain](tactics.qmd#terrain).
    A unit will not march a whole block onto ground it cannot stand on, so an order

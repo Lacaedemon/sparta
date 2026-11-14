@@ -846,18 +846,18 @@ func test_same_unit_standoff_cancels_closing_speed_inside_the_contact_band() -> 
 		"a pair already walking apart must take no closing cancel")
 
 
-func test_same_unit_standoff_leaves_closing_speed_outside_a_reform_hold() -> void:
+func test_same_unit_standoff_cancels_closing_speed_outside_a_reform_hold_too() -> void:
 	var probe := _make_unit(42, 2)
 	probe.frontage_override = 1
 	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
 	# The same closing pair inside the contact band, but in a settle window rather than a
-	# hold: a march or a fight keeps the overlap push alone.
+	# hold: the band is the pair's own rule, so the block's state does not switch it off.
 	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO, false)
 	var closing: Vector2 = _standoff_push_on_first_of_pair(
 		d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
 	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
-	assert_almost_eq(closing.x, still.x, 0.001,
-		"outside a REFORM hold a closing pair must take only the overlap push")
+	assert_almost_eq(closing.x - still.x, -5.0, 0.001,
+		"outside a REFORM hold a closing pair takes half its closing speed each as well")
 
 
 func test_same_unit_standoff_leaves_closing_speed_outside_the_contact_band() -> void:

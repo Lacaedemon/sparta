@@ -43,29 +43,3 @@ func test_under_short_foot_break_off_once_the_runners_are_out_of_reach() -> void
 	f.is_cavalry = true
 	assert_eq(UnitTargeting.current_target(f), pair[1], "horse ride the rout down whatever the reading")
 
-
-func test_a_foot_block_following_a_rout_takes_the_contact_band() -> void:
-	var pair: Array = _foot_after_a_rout()
-	var f: Unit = pair[0]
-	f.state = Unit.State.MOVING
-	assert_true(SoldierFootPursuit.follows_rout(f), "a foot block after a routed target follows it")
-	var pitch: float = minf(f.file_pitch_wu(), f.rank_pitch_wu())
-	var min_sep: float = SoldierBodies.STANDOFF_MIN_SEP_FRAC * minf(2.0 * f.soldier_body_radius(), pitch)
-	var far := PackedVector2Array()
-	for i in range(12):
-		far.push_back(AT + Vector2(0, 500 + 40 * i))   # every man off his place
-	var apart := AT + Vector2(2000, 0)   # clear of the rest of the block
-	f._sim_soldier_pos[0] = apart
-	# Just inside the contact band, where the overlap push alone is under the per-man cap.
-	f._sim_soldier_pos[1] = apart + Vector2(0.9 * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * min_sep, 0)
-	f._sim_body_vel[0] = Vector2(8.0, 0)   # walking into each other
-	f._sim_body_vel[1] = Vector2(-8.0, 0)
-	var with_band: PackedVector2Array = SoldierBodies._separate_same_unit(f, 12, far, PackedByteArray(), 1.0 / 60.0)
-	f.target_enemy = null
-	assert_false(SoldierFootPursuit.follows_rout(f), "with no routed target it follows nothing")
-	var without: PackedVector2Array = SoldierBodies._separate_same_unit(f, 12, far, PackedByteArray(), 1.0 / 60.0)
-	assert_gt(with_band[0].dot(Vector2.LEFT), without[0].dot(Vector2.LEFT),
-		"following the rout, the pair's closing is cancelled as well as the overlap pushed")
-	f.target_enemy = pair[1]
-	f.is_cavalry = true
-	assert_false(SoldierFootPursuit.follows_rout(f), "horse ride a rout down man by man instead")

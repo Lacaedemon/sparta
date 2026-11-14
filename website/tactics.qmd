@@ -79,7 +79,8 @@ and the nearest friendly unit as another, as a variant.
 ```
 
 A broken cavalry squadron (blue) with a block of infantry standing between it and its own
-back edge. Each rider sees the infantry ahead of him and runs away from them and round them,
+back edge.
+Each rider sees the infantry ahead of him and runs away from them and round them,
 the riders on each side of the squadron's centre round their own side, rather than into the
 block or standing still in front of it.
 :::

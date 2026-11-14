@@ -17,16 +17,6 @@ static func breaks_off(u: Unit, t: Unit) -> bool:
 			and not u._in_enemy_contact
 
 
-## Whether foot unit `u` is following a rout in its ranks: on the move or fighting after a routed
-## target. Its men come out of the press off their places while the runners pull away, so the
-## same-unit standoff's contact band acts on them as in a hold (SoldierBodies._separate_same_unit).
-static func follows_rout(u: Unit) -> bool:
-	if u.is_cavalry or u.state == Unit.State.ROUTING:
-		return false
-	var t: Unit = u.target_enemy
-	return is_instance_valid(t) and t.state == Unit.State.ROUTING
-
-
 ## The candidates a foot unit that has broken off may take up again (UnitTargeting.nearest_enemy's
 ## predicate): anything but a routed unit.
 static func not_routed(e: Unit) -> bool:

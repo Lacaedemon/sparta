@@ -55,7 +55,8 @@ func test_a_closing_pair_inside_the_contact_band_has_its_closing_cancelled() -> 
 	var push: PackedVector2Array = SoldierBodies.standoff_free(p, 2, 1000.0)
 	assert_lt(push[0].x, -300.0, "his closing is cancelled, not only the overlap pushed")
 	var capped: PackedVector2Array = SoldierBodies.standoff_free(p, 2, 50.0)
-	assert_almost_eq(capped[0].length(), 50.0, 0.001, "no more than the cap a man is given")
+	assert_gt(capped[0].length(), 50.0, "the push and the stopping each take their own cap")
+	assert_lte(capped[0].length(), 100.001, "neither more than the cap a man is given")
 
 
 func test_the_contact_wins_over_a_mans_own_drive_under_the_cap() -> void:
@@ -107,34 +108,41 @@ func test_men_pulling_up_part_from_a_friend_they_touch() -> void:
 	assert_almost_eq(u._sim_body_vel[1].x, 0.0, 0.001, "the contact moves him, his run is his own")
 
 
-func test_men_re_forming_where_they_stood_take_the_contact_band_at_their_pace() -> void:
-	var u: Unit = _unit(2)
+func test_the_contact_band_is_the_pairs_own_rule_in_a_march_too() -> void:
+	var u: Unit = _unit(3)
 	u.move_speed = 400.0
-	u.jog_speed = 2000.0   # the IDLE cap the contact may reach, high enough not to bind here
+	u.state = Unit.State.MOVING   # a march: no hold, no window, no pursuit
 	var r: float = u.soldier_body_radius()
-	var far := PackedVector2Array([AT + Vector2(0, 500), AT + Vector2(0, 600)])   # off their slots
+	# Their places lie each the way he walks, far off: they are walking back to them.
+	var far := PackedVector2Array([AT + Vector2(500, 0), AT + Vector2(-500, 0), AT + Vector2(0, 700)])
 	var place := func(closing: float) -> void:
 		u._sim_soldier_pos[0] = AT
 		u._sim_soldier_pos[1] = AT + Vector2(0.4 * r, 0)   # inside the contact band
+		u._sim_soldier_pos[2] = AT + Vector2(0, 50.0 * r)   # well clear
 		u._sim_body_vel[0] = Vector2(closing, 0)
 		u._sim_body_vel[1] = Vector2(-closing, 0)
-	place.call(200.0)   # still closing fast
-	var before: PackedVector2Array = SoldierBodies._separate_same_unit(u, 2, far, PackedByteArray(), DT)
-	assert_lte(before[0].length(), SoldierBodies.STANDOFF_MAX_SPEED + 0.001,
-		"outside a re-form the walking push is all the contact gives")
-	u._reform_where_men_stand()
 	place.call(0.0)
-	var still: PackedVector2Array = SoldierBodies._separate_same_unit(u, 2, far, PackedByteArray(), DT)
-	assert_gt(still[0].length(), SoldierBodies.STANDOFF_MAX_SPEED, "re-forming, the push is at their pace")
+	var still: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
+	assert_lte(still[0].length(), SoldierBodies.STANDOFF_MAX_SPEED + 0.001, "standing, the walking push")
 	place.call(200.0)
-	var after: PackedVector2Array = SoldierBodies._separate_same_unit(u, 2, far, PackedByteArray(), DT)
-	assert_almost_eq(after[0].length() - still[0].length(), 200.0, 0.01,
-		"and their closing is cancelled, half of it each")
-	var d: Dictionary = u.to_snapshot_dict()
-	assert_gt(int(d["stand_reform_remaining_ticks"]), 0, "the window is carried in a snapshot")
-	u._stand_reform_until_tick = -1
-	u.apply_snapshot_dict(d)
-	assert_gt(u._stand_reform_until_tick, Engine.get_physics_frames(), "and restored from one")
+	var closing: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
+	assert_almost_eq(closing[0].length() - still[0].length(), 200.0, 0.01,
+		"two men walking back to their places still closing have their closing stopped, half each")
+	var behind := PackedVector2Array([AT + Vector2(-500, 0), AT + Vector2(500, 0), AT + Vector2(0, 700)])
+	var shoved: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, behind, PackedByteArray(), DT)
+	assert_almost_eq(shoved[0], still[0], Vector2(0.001, 0.001),
+		"two men driven away from their places into each other take only the push")
+	place.call(-200.0)
+	var opening: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
+	assert_almost_eq(opening[0], still[0], Vector2(0.001, 0.001), "a pair already parting is only pushed")
+	u.move_speed = 100.0   # the stopping is held to the speed his block's men may move at
+	place.call(1000.0)
+	var capped: PackedVector2Array = SoldierBodies._separate_same_unit(u, 3, far, PackedByteArray(), DT)
+	assert_almost_eq(capped[0].length() - still[0].length(), 100.0 * u.superphysical_speed_frac, 0.01,
+		"no faster than his block may move")
+	var on_place := PackedVector2Array([u._sim_soldier_pos[0], u._sim_soldier_pos[1], u._sim_soldier_pos[2]])
+	assert_eq(SoldierBodies._separate_same_unit(u, 3, on_place, PackedByteArray(), DT).size(), 0,
+		"two men on their own places are not a pair to part")
 
 
 func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:
