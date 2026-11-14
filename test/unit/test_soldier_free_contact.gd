@@ -35,7 +35,7 @@ func test_a_pressed_pair_is_pushed_apart_and_a_clear_man_is_not() -> void:
 	p._sim_soldier_pos[1] = AT + Vector2(r, 0)    # pressed half a body into him
 	p._sim_soldier_pos[2] = AT + Vector2(0, 10.0 * r)   # well clear of both
 	var push: PackedVector2Array = SoldierBodies.standoff_free(p, 3, 1000.0)
-	assert_lt(push[0].x, 0.0, "away from his friend")
+	assert_lt(push[0].x, -SoldierBodies.STANDOFF_MAX_SPEED, "away from his friend, harder than a walking push")
 	assert_almost_eq(push[0] + push[1], Vector2.ZERO, Vector2(0.001, 0.001), "and the friend equally away")
 	assert_eq(push[2], Vector2.ZERO, "a man no friend touches is left alone")
 	p._sim_soldier_pos[1] = AT   # two on one spot still part
@@ -105,6 +105,36 @@ func test_men_pulling_up_part_from_a_friend_they_touch() -> void:
 	assert_true(SoldierBodies.pull_up_rallied(u, 2, 60.0, DT), "setup: still running")
 	assert_gt(u._sim_soldier_pos[1].x - u._sim_soldier_pos[0].x, gap, "they part sideways as they slow")
 	assert_almost_eq(u._sim_body_vel[1].x, 0.0, 0.001, "the contact moves him, his run is his own")
+
+
+func test_men_re_forming_where_they_stood_take_the_contact_band_at_their_pace() -> void:
+	var u: Unit = _unit(2)
+	u.move_speed = 400.0
+	u.jog_speed = 2000.0   # the IDLE cap the contact may reach, high enough not to bind here
+	var r: float = u.soldier_body_radius()
+	var far := PackedVector2Array([AT + Vector2(0, 500), AT + Vector2(0, 600)])   # off their slots
+	var place := func(closing: float) -> void:
+		u._sim_soldier_pos[0] = AT
+		u._sim_soldier_pos[1] = AT + Vector2(0.4 * r, 0)   # inside the contact band
+		u._sim_body_vel[0] = Vector2(closing, 0)
+		u._sim_body_vel[1] = Vector2(-closing, 0)
+	place.call(200.0)   # still closing fast
+	var before: PackedVector2Array = SoldierBodies._separate_same_unit(u, 2, far, PackedByteArray(), DT)
+	assert_lte(before[0].length(), SoldierBodies.STANDOFF_MAX_SPEED + 0.001,
+		"outside a re-form the walking push is all the contact gives")
+	u._reform_where_men_stand()
+	place.call(0.0)
+	var still: PackedVector2Array = SoldierBodies._separate_same_unit(u, 2, far, PackedByteArray(), DT)
+	assert_gt(still[0].length(), SoldierBodies.STANDOFF_MAX_SPEED, "re-forming, the push is at their pace")
+	place.call(200.0)
+	var after: PackedVector2Array = SoldierBodies._separate_same_unit(u, 2, far, PackedByteArray(), DT)
+	assert_almost_eq(after[0].length() - still[0].length(), 200.0, 0.01,
+		"and their closing is cancelled, half of it each")
+	var d: Dictionary = u.to_snapshot_dict()
+	assert_gt(int(d["stand_reform_remaining_ticks"]), 0, "the window is carried in a snapshot")
+	u._stand_reform_until_tick = -1
+	u.apply_snapshot_dict(d)
+	assert_gt(u._stand_reform_until_tick, Engine.get_physics_frames(), "and restored from one")
 
 
 func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:

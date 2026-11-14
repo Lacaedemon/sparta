@@ -306,6 +306,10 @@ func test_bounded_wheel_carry_leaves_a_carry_within_the_ceiling_untouched() -> v
 		"a carry that keeps carry plus own speed under the ceiling comes back exactly")
 	assert_eq(Maneuver.bounded_wheel_carry(Vector2.ZERO, to, Vector2(30, 0), 200.0, 0.0), to,
 		"no tick, nothing to bound")
+	var from := Vector2(123.456, 78.901)
+	var near: Vector2 = from + Vector2(0.333, 0.777)
+	assert_eq(Maneuver.bounded_wheel_carry(from, near, Vector2(31.7, -12.3), 200.0, 1.0 / 60.0), near,
+		"bit for bit, so a formed block's wheel is unchanged")
 
 
 func test_bounded_wheel_carry_bounds_a_man_already_galloping() -> void:
