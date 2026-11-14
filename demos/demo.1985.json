@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/duplicatio-face-about-1985.json",
+  "caption": "The face-about reading of the duplicatio that undoes an explicatio (Asclepiodotus 10.20 and Aelian 29.3: the men who went up countermarch back to their original stations; a countermarch turns the men about, Asclepiodotus 10.13 to 10.15). A block of 96 Spearmen, 6 files of 16, unfolds to 12 files of 8 (B); Alt+N chooses the reading and N folds it back. Each of the 48 men of the intervals faces about where he stands, turning through his own facing, marches back down his interval with its rear man leading, steps in behind the man he will follow, and faces front again on his station, while the front rank keeps its line. The walk, facing front, stays the default.",
+  "fixed_fps": 30,
+  "max_frames": 660,
+  "fps": 12,
+  "width": 720
+}

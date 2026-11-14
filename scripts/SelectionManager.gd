@@ -190,6 +190,9 @@ var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH_SPACE
 var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
 var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
+# How the men an explicatio sent up the intervals march back when N undoes it
+# (DuplicatioMarch.Reading): the walk until Alt+N steps it.
+var duplicatio_march: int = DuplicatioMarch.Reading.WALK
 # Live cycle list: the enabled subset of modes the Y-key steps through, in canonical order.
 # Derived from Settings.form_up_dist_cycle; rebuilt whenever that setting changes.
 var _form_up_dist_cycle: Array = FORM_UP_DIST_CYCLE.duplicate()
@@ -427,6 +430,9 @@ func _dispatch_fixed_chord(event: InputEventKey) -> bool:
 func _dispatch_key(event: InputEventKey) -> bool:
 	if _dispatch_explicatio_choice(event):
 		return true
+	if event.alt_pressed and _is_key(event, KEY_N):
+		_step_duplicatio_march()
+		return true
 	if _dispatch_fixed_chord(event):
 		return true
 
@@ -563,6 +569,15 @@ func get_explicatio_summary() -> String:
 func toggle_explicatio_drill() -> void:
 	explicatio_drill = ExplicatioChoice.next(ExplicatioChoice.DRILLS, explicatio_drill)
 	_announce_explicatio()
+
+
+## Alt+N steps how the men an explicatio sent up the intervals march back when N undoes it
+## (DuplicatioMarch.READINGS): the walk, or facing about. It orders nothing.
+func _step_duplicatio_march() -> void:
+	duplicatio_march = ExplicatioChoice.next(DuplicatioMarch.READINGS, duplicatio_march)
+	if _hud != null:
+		_hud.flash_message("Duplicatio: " + str(DuplicatioMarch.NAMES.get(duplicatio_march, "?")))
+	Sfx.play(&"order")
 
 
 func _announce_explicatio() -> void:
@@ -1775,7 +1790,8 @@ func _resize_frontage(delta: int) -> void:
 ## CENTRE (default) is the plain symmetric maneuver. Routed through Battle so it reshapes
 ## each unit from its own current width, is recorded, and replays exactly -- the same path
 ## as the [ / ] single-file resize, one whole factor instead of one file. A widen is the
-## explicatio explicatio_drill, read as explicatio_side and explicatio_ground. Blocked during
+## explicatio explicatio_drill, read as explicatio_side and explicatio_ground; a narrow that undoes
+## an explicatio marches its men back as duplicatio_march. Blocked during
 ## playback, and while a grip drag owns the width (see _resize_frontage).
 func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:
@@ -1784,7 +1800,7 @@ func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTR
 	if uids.is_empty():
 		return
 	_battle.enqueue_file_double(uids, direction, anchor, explicatio_drill, explicatio_side,
-			explicatio_ground)
+			explicatio_ground, duplicatio_march)
 	_refresh_hud()
 	Sfx.play(&"order")
 

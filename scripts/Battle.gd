@@ -1861,6 +1861,7 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	ud["explicatio_drill"] = UnitFormation.ExplicatioDrill.NONE
 	ud["explicatio_reverse"] = false
 	ud["duplicatio_returning"] = PackedByteArray()
+	ud["duplicatio_march"] = DuplicatioMarch.Reading.WALK   # a man still turned turns on to the front
 	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
 	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
 	# retreating main body.
@@ -1967,7 +1968,8 @@ func _physics_process(delta: float) -> void:
 					int(o.get("explicatio", UnitFormation.ExplicatioDrill.NONE)),
 					int(o.get("explicatio_held", UnitFormation.Anchor.CENTRE)),
 					int(o.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD)),
-					int(o.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN)))
+					int(o.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN)),
+					int(o.get("duplicatio_march", DuplicatioMarch.Reading.WALK)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -2645,12 +2647,15 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## (Unit.explicatio_undo_drill), not `drill`, and ignores `side`, `ground` and the flank: it
 ## stands on the flank the explicatio held. Any other narrow ignores all three. A widen on the
 ## same ground is not issued to a unit that has no closer order of spacing to take
-## (Unit.denser_formation_mode): it cannot keep its ground.
+## (Unit.denser_formation_mode): it cannot keep its ground. `march` (DuplicatioMarch.Reading) is
+## how the men who went up march back when a narrow undoes an explicatio, walking unless the
+## caller names the countermarch; every other order ignores it.
 func enqueue_file_double(uids: Array, direction: int,
 		anchor: int = UnitFormation.Anchor.CENTRE,
 		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE,
 		side: int = UnitFormation.ExplicatioSide.OUTWARD,
-		ground: int = UnitFormation.ExplicatioGround.LENGTHEN) -> void:
+		ground: int = UnitFormation.ExplicatioGround.LENGTHEN,
+		march: int = DuplicatioMarch.Reading.WALK) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
 		return
 	for uid in uids:
@@ -2701,6 +2706,8 @@ func enqueue_file_double(uids: Array, direction: int,
 		elif direction < 0 and drill != UnitFormation.ExplicatioDrill.NONE \
 				and u.explicatio_undoable():
 			cmd["explicatio"] = u.explicatio_undo_drill()
+			if march != DuplicatioMarch.Reading.WALK:
+				cmd["duplicatio_march"] = march
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
 
@@ -3018,10 +3025,11 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			var side: int = int(cmd.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD))
 			var ground: int = int(cmd.get("explicatio_ground",
 					UnitFormation.ExplicatioGround.LENGTHEN))
+			var march: int = int(cmd.get("duplicatio_march", DuplicatioMarch.Reading.WALK))
 			for uid in cmd["units"]:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
-					u.set_frontage(files, anchor_offset, drill, held, side, ground)
+					u.set_frontage(files, anchor_offset, drill, held, side, ground, march)
 					# Same idle-only queue write as the formation branch above.
 					if u.current_order == null:
 						u.set_current_order(Order.new_frontage(files, anchor_offset))

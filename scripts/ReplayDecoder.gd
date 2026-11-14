@@ -50,6 +50,9 @@ static func _decode_order(o: Dictionary) -> Dictionary:
 		entry["explicatio_side"] = int(o["explicatio_side"])
 	if o.has("explicatio_ground"):
 		entry["explicatio_ground"] = int(o["explicatio_ground"])
+	# Absent in a replay recorded before the countermarch reading: the walk.
+	if o.has("duplicatio_march"):
+		entry["duplicatio_march"] = int(o["duplicatio_march"])
 	return entry
 
 
