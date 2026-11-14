@@ -223,6 +223,7 @@ var _ctrl_formation_btn: MenuButton
 var _ctrl_stance_btn: MenuButton
 var _ctrl_reform_btn: Button
 var _ctrl_group_attack_btn: Button
+var _ctrl_explicatio_btn: Button
 var _sel_mgr = null
 var _info_panel: PanelContainer
 # The panel's content column sits inside a ScrollContainer so its height can be
@@ -1074,6 +1075,7 @@ func show_unit(u, group_count: int) -> void:
 		_ctrl_bar_update_reform(u)
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
 		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
+		update_explicatio(_sel_mgr.get_explicatio_summary() if _sel_mgr != null else "")
 	_clamp_info_panel()
 
 
@@ -1446,6 +1448,18 @@ func update_group_attack_mode(mode: int) -> void:
 		BattleRef.GroupAttackMode.DISTRIBUTED: "Spread",
 	}
 	_ctrl_group_attack_btn.text = labels.get(mode, "Group mode")
+
+
+## Reflect the chosen explicatio ("half-file, outward, lengthen") on the ctrl bar button, whose
+## press steps the drill like Alt+B. An empty summary shows the defaults' own words.
+func update_explicatio(summary: String) -> void:
+	if _ctrl_explicatio_btn == null:
+		return
+	if summary.is_empty():
+		summary = ExplicatioChoice.summary(UnitFormation.ExplicatioDrill.HALF_FILE,
+				UnitFormation.ExplicatioSide.OUTWARD, UnitFormation.ExplicatioGround.LENGTHEN)
+	_ctrl_explicatio_btn.text = "Explicatio: " + summary
+	_ctrl_explicatio_btn.tooltip_text = "Alt+B drill, Alt+Shift+B side, Alt+Ctrl+B ground"
 
 
 # --- Distance legend (map scale bar, #364) ----------------------------------
@@ -1824,6 +1838,7 @@ func _build_ctrl_bar() -> void:
 	hbox.add_child(_build_ctrl_section("Options", _build_ctrl_option_buttons()))
 
 	update_group_attack_mode(BattleRef.GroupAttackMode.FOCUSED)
+	update_explicatio("")
 
 
 func _build_ctrl_section(label_text: String, content: Control) -> Control:
@@ -2130,6 +2145,14 @@ func _build_ctrl_option_buttons() -> Control:
 		if _sel_mgr != null:
 			_sel_mgr.toggle_group_attack_mode())
 	hbox.add_child(_ctrl_group_attack_btn)
+
+	_ctrl_explicatio_btn = Button.new()
+	_ctrl_explicatio_btn.custom_minimum_size = Vector2(220, 28)
+	_ctrl_explicatio_btn.add_theme_font_size_override("font_size", 13)
+	_ctrl_explicatio_btn.pressed.connect(func():
+		if _sel_mgr != null:
+			_sel_mgr.toggle_explicatio_drill())
+	hbox.add_child(_ctrl_explicatio_btn)
 
 	return hbox
 
