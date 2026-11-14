@@ -174,3 +174,20 @@ func test_hud_button_press_steps_the_drill() -> void:
 	var sm := _sm()
 	sm.toggle_explicatio_drill()
 	assert_eq(sm.explicatio_drill, ALTERNATE_RANK, "the button steps the drill like Alt+B")
+
+
+func test_built_control_bar_shows_the_default_and_follows_the_selection_manager() -> void:
+	var h = HUDScript.new()
+	add_child_autofree(h)
+	var button: Button = h._ctrl_explicatio_btn
+	assert_eq(button.text, "Explicatio: half-file, outward, lengthen", "the bar starts on the defaults")
+	var sm := _sm()
+	sm.explicatio_side = UnitFormation.ExplicatioSide.SHIELD_SIDE
+	h._sel_mgr = sm
+	var u: Unit = UnitScript.new()
+	add_child_autofree(u)
+	h.show_unit(u, 1)
+	assert_eq(button.text, "Explicatio: half-file, shield side, lengthen",
+			"showing a unit reads the selection manager's choice")
+	button.pressed.emit()
+	assert_eq(sm.explicatio_drill, ALTERNATE_RANK, "pressing the button steps the drill")
