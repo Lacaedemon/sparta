@@ -12151,6 +12151,7 @@ func to_snapshot_dict() -> Dictionary:
 				_standoff_settle_until_tick - Engine.get_physics_frames()
 				if _standoff_settle_until_tick > Engine.get_physics_frames() else -1
 		),
+		"stand_reform_until_tick": _stand_reform_until_tick,
 		"stand_reform_remaining_ticks": (
 				_stand_reform_until_tick - Engine.get_physics_frames()
 				if _stand_reform_until_tick > Engine.get_physics_frames() else -1
@@ -12415,8 +12416,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_last_reshape_widened = bool(d["last_reshape_widened"])
 	_last_redeal_tick = int(d.get("last_redeal_tick", -1))
 	_order_square_marching = bool(d.get("order_square_marching", false))
-	var rem_stand: int = int(d.get("stand_reform_remaining_ticks", -1))
-	_stand_reform_until_tick = Engine.get_physics_frames() + rem_stand if rem_stand > 0 else -1
+	if d.has("stand_reform_remaining_ticks"):
+		var rem_stand: int = int(d["stand_reform_remaining_ticks"])
+		_stand_reform_until_tick = Engine.get_physics_frames() + rem_stand if rem_stand > 0 else -1
+	else:
+		_stand_reform_until_tick = int(d.get("stand_reform_until_tick", -1))
 	if d.has("standoff_settle_remaining_ticks"):
 		var rem_standoff: int = int(d["standoff_settle_remaining_ticks"])
 		_standoff_settle_until_tick = (
