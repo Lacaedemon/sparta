@@ -116,6 +116,8 @@ func test_the_deal_back_refuses_what_no_explicatio_dealt() -> void:
 		var back: Dictionary = DuplicatioDrill.reverse_assignment(case[1], ranks, case[0], 1, 0,
 				false)
 		assert_true(back.is_empty(), case[2])
+	assert_true(DuplicatioDrill.reverse_assignment(PackedInt32Array(), PackedInt32Array(),
+			PackedByteArray(), 1, 0, false).is_empty(), "no men")
 	assert_eq(Unit.nearest_led_file({}, 3), -1, "no leader, no file")
 	assert_eq(Unit.nearest_led_file({2: 0, 4: 1}, 3), 2, "the lower of a tie")
 
@@ -258,6 +260,8 @@ func test_the_same_ground_opens_the_order() -> void:
 		drift = maxf(drift, absf(u._sim_soldier_pos[i].dot(right) - across0[i]))
 	assert_lt(drift, 0.25 * u.file_pitch_wu(), "a file leader moved %.2f wu across" % drift)
 	assert_eq(Unit.sparser_formation_mode(Unit.FORMATION_LOOSE), -1, "open order opens no further")
+	assert_eq(Unit.sparser_formation_mode(Unit.FORMATION_NORMAL), Unit.FORMATION_LOOSE,
+		"compact opens into open order")
 
 
 ## A man who falls while the files go back leaves the drill running: the man behind him closes
@@ -314,6 +318,7 @@ func test_a_turned_block_is_not_undone() -> void:
 func test_a_block_with_no_explicatio_keeps_the_lateral_deal() -> void:
 	var u: Unit = await _stage()
 	assert_false(u.explicatio_undoable(), "precondition: nothing to undo")
+	assert_eq(u.explicatio_undo_drill(), UnitFormation.ExplicatioDrill.NONE, "no drill to undo")
 	_battle.enqueue_file_double([u.uid], -1)
 	assert_false(u.explicatio_drill_active(), "no drill")
 	assert_false((_battle._pending_orders.back() as Dictionary).has("explicatio"),
