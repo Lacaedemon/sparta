@@ -26,12 +26,12 @@ func after_each() -> void:
 	await get_tree().physics_frame
 
 
-func _stage() -> Unit:
+func _stage(count: int = SPEARMEN) -> Unit:
 	Replay.forced_seed = 1966
 	_battle = load("res://scenes/Battle.tscn").instantiate()
 	_battle.drill_mode = true
 	_battle.scenario = [{"team": 0, "type": "Spearmen", "x": SPAWN.x, "y": SPAWN.y,
-			"count": SPEARMEN, "facing": [0, 1]}]
+			"count": count, "facing": [0, 1]}]
 	add_child(_battle)
 	for _i in range(40):
 		await get_tree().physics_frame
@@ -371,6 +371,11 @@ func test_the_duplicatio_undoes_the_explicatios_own_ground() -> void:
 		var width0: float = _width(u)
 		_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE, OUTWARD, grounds[0])
 		assert_gte(await _settle(u, 2 * DRILL_TICKS), 0, "%s: precondition: the explicatio ended" % what)
+		var snap: Dictionary = u.to_snapshot_dict()
+		assert_eq(int(snap["explicatio_ground"]), grounds[0], "%s: the snapshot carries the ground" % what)
+		u._explicatio_ground = grounds[1]
+		u.apply_snapshot_dict(snap)
+		assert_eq(u._explicatio_ground, grounds[0], "%s: and a restore brings it back" % what)
 		_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE, OUTWARD, grounds[1])
 		assert_true(u._explicatio_reverse, "%s: the narrowing is the drill" % what)
 		assert_false((_battle._pending_orders.back() as Dictionary).has("explicatio_ground"),
@@ -385,22 +390,29 @@ func test_the_duplicatio_undoes_the_explicatios_own_ground() -> void:
 
 
 ## A plain about-face, the reform after it reading the grid turned about, takes the roles away
-## and leaves every man's file and rank as they were.
+## and leaves every man's file and rank as they were: on a grid with a short rear rank (140 men on
+## 18 files) and on a full one (144 on 18), where the reform has nothing to re-deal.
 func test_an_about_face_takes_the_roles_and_keeps_the_files() -> void:
-	var u: Unit = await _stage()
-	_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
-	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
-	u.conversio()
-	for _t in range(120):
-		await get_tree().physics_frame
-	assert_false(u._sim_soldier_role.is_empty(), "precondition: the turn alone keeps the roles")
-	var files0: PackedInt32Array = u._sim_soldier_file.duplicate()
-	var ranks0: PackedInt32Array = u._sim_soldier_rank.duplicate()
-	u.reform_ranks()
-	assert_true(u._sim_soldier_role.is_empty(), "the about-face's reform took the roles away")
-	assert_eq(u._sim_soldier_file, files0, "every man keeps his file")
-	assert_eq(u._sim_soldier_rank, ranks0, "and his rank")
-	assert_false(u.explicatio_undoable(), "nothing left to undo")
+	for count in [SPEARMEN, 144]:
+		var u: Unit = await _stage(count)
+		_battle.enqueue_file_double([u.uid], 1, CENTRE, HALF_FILE)
+		assert_gte(await _settle(u), 0, "%d men: precondition: the explicatio ended" % count)
+		assert_eq(count % UnitFormation.frontage(u) == 0, count == 144,
+			"%d men: precondition: the grid is full only for 144" % count)
+		u.conversio()
+		for _t in range(120):
+			await get_tree().physics_frame
+		assert_false(u._sim_soldier_role.is_empty(),
+			"%d men: precondition: the turn alone keeps the roles" % count)
+		var files0: PackedInt32Array = u._sim_soldier_file.duplicate()
+		var ranks0: PackedInt32Array = u._sim_soldier_rank.duplicate()
+		u.reform_ranks()
+		assert_true(u._sim_soldier_role.is_empty(),
+			"%d men: the about-face's reform took the roles away" % count)
+		assert_eq(u._sim_soldier_file, files0, "%d men: every man keeps his file" % count)
+		assert_eq(u._sim_soldier_rank, ranks0, "%d men: and his rank" % count)
+		assert_false(u.explicatio_undoable(), "%d men: nothing left to undo" % count)
+		await _free_battle()
 
 
 ## A countermarch since the explicatio turns the block about, so the heads of its intervals stand

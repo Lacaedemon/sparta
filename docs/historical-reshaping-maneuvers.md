@@ -271,13 +271,13 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   An explicatio on the same ground (Asclepiodotus 10.17, Aelian 29.3) is undone by sending the inserted men back out of the gaps.
   The files that stayed keep their places, and the block opens one order of spacing again, locked shields into compact and compact into open order (Asclepiodotus 4.1).
   A block that has since changed to an order with no opener line order to take keeps its pitch and closes its files instead: that is the sim's choice.
-  Undoing an explicatio on the other ground than it kept would leave no man at his original station, so that is not offered.
+  Undoing an explicatio on the other ground than it kept would leave the line at another spacing and length than it had, so that is not offered.
 
 The drill is for a block standing still, square to its facing, and not fighting, as the explicatio is.
 A block no explicatio dealt, or one whose files a re-deal has taken since, narrows with the lateral deal, as before.
 The sources describe no other drill for it.
 An about-face or countermarch since the explicatio turns the block about, so the head of each interval stands at its rear.
-The reform that follows the turn takes the roles away, and the block then narrows with the lateral deal too.
+The reform that follows the turn takes the roles away, on a full grid as on one with a short rear rank, and the block then narrows with the lateral deal too.
 If an explicatio or duplicatio is still under way at that reform, the roles are kept for it, but a block whose grid is still mirrored by the turn is not undone.
 
 ## Game Design and Mechanics Framework

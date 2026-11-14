@@ -9034,6 +9034,11 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 	var drilled_half: bool = not is_half_fold and not is_quarter_fold \
 			and absf(angle) > PI * 0.5 and absf(absf(_drill_turn_fold) - PI) < 0.01
 	var is_about_face_fold: bool = is_half_fold or drilled_half
+	# Turned about, the heads of an explicatio's intervals stand at its rear: the roles that
+	# would undo it (explicatio_undoable) go, once no drill under way still reads them, on a full
+	# grid too, where the reform below has nothing to re-deal.
+	if is_about_face_fold and not explicatio_drill_active():
+		_sim_soldier_role = PackedByteArray()
 	# A single rank has no rear to tuck a gap into under a HALF-turn (its one rank IS the
 	# fullest, and a half-turn of it is just a lateral mirror of the same centred row) --
 	# but that's only true for the ±PI fold; any other fold still needs squaring below.
@@ -9088,10 +9093,6 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 	# again, and any other fold leaves it standing. Setting it outright would instead flip
 	# every off-centre man to the other flank whenever the two disagree.
 	_formation_mirror_x = _formation_mirror_x != is_about_face_fold
-	# Turned about, the heads of an explicatio's intervals stand at its rear: the roles that
-	# would undo it (explicatio_undoable) go, once no drill under way still reads them.
-	if is_about_face_fold and not explicatio_drill_active():
-		_sim_soldier_role = PackedByteArray()
 	if is_quarter_fold or drilled_quarter:
 		_pair_after_quarter_fold(soldiers)
 	# The mirror reflects the grid in depth, which negates every man's slot depth while

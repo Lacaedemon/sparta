@@ -1224,7 +1224,8 @@ As Asclepiodotus has it (Tactics 10.20), "the men who have changed their positio
 The men of each interval fall back down it in column and step in behind the man they will follow once they are behind him.
 The half-file falls in behind its own file, or every second man goes back between the men he stood behind.
 The files then close on the file that stands while the front rank keeps its line.
-That is the middle file for <kbd>N</kbd>, or the corner file of the flank an order holds.
+That is the middle file for <kbd>N</kbd>, which holds no flank.
+An order that holds a flank closes on that flank's corner file instead, though no key issues one yet.
 The duplicatio undoes the ground the explicatio kept, whatever the ground reading is when you press <kbd>N</kbd>.
 After an explicatio that lengthened the line, the line halves its length again.
 After an explicatio on the same ground, the files that stayed keep their places and the block opens one order of spacing again.
