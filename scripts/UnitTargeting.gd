@@ -23,11 +23,18 @@ class_name UnitTargeting
 ## (see Unit._enemy_is_perceived's own doc comment, the authoritative caller list), so
 ## re-filtering it here would re-litigate a decision this function has no new information
 ## to revisit.
+## A foot unit under the SHORT pursuit reading (SoldierFootPursuit) breaks off a routed target once
+## it is out of contact, and does not take up a routed one again.
 static func current_target(u: Unit, predicate: Callable = Callable()) -> Unit:
 	var t: Unit = u.target_enemy
-	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD:
+	if t != null and is_instance_valid(t) and t.state != Unit.State.DEAD \
+			and not SoldierFootPursuit.breaks_off(u, t):
 		return t
 	u.target_enemy = null
+	if u.foot_pursuit == SoldierFootPursuit.Mode.SHORT and not u.is_cavalry:
+		var given: Callable = predicate
+		predicate = func(e: Unit) -> bool:
+			return SoldierFootPursuit.not_routed(e) and (not given.is_valid() or given.call(e))
 	return nearest_enemy(u, predicate)
 
 

@@ -166,6 +166,9 @@ var _cached_combat_profile: Dictionary = {}
 # Whether a rallied unit's men are dealt places from where they stand (RallyDeal.STAND) or
 # walk back to their own places in their files (RallyDeal.OWN); see _rally.
 @export var rally_deal: int = RallyDeal.STAND
+# How far this unit, if foot, follows a rout it has broken (SoldierFootPursuit.Mode: FOLLOW, the
+# sim's choice, or SHORT, breaking off once the runners are out of reach, Thucydides 5.73.4).
+@export var foot_pursuit: int = SoldierFootPursuit.Mode.FOLLOW
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
@@ -12223,6 +12226,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rout_time": rout_time, "rout_refuge": rout_refuge, "rout_follow": rout_follow,
 		"rout_herding": rout_herding, "rout_refuge_weight": rout_refuge_weight,
 		"rally_deal": rally_deal, "rout_reaction_time": rout_reaction_time,
+		"foot_pursuit": foot_pursuit,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
 		"combat_wheel_rate": _combat_wheel_rate, "combat_wheel_offset": _combat_wheel_offset,
@@ -12505,6 +12509,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_herding = float(d.get("rout_herding", rout_herding))
 	rout_refuge_weight = float(d.get("rout_refuge_weight", rout_refuge_weight))
 	rally_deal = int(d.get("rally_deal", rally_deal))
+	foot_pursuit = int(d.get("foot_pursuit", foot_pursuit))
 	rout_reaction_time = float(d.get("rout_reaction_time", rout_reaction_time))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))

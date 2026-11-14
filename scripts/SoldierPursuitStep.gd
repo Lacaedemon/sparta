@@ -4,10 +4,10 @@ extends RefCounted
 ## centre, which can lie where no runner is once the rout scatters. He looks round once a
 ## reaction time (Unit.rout_reaction_ticks), on a tick of his own, and rides at that runner until
 ## he next looks (Unit._sim_flight_dir); he strikes the runners in his reach at his unit's cadence
-## (strike). Pursuing horse were the main killers of a rout (Polybius 3.116, Cannae). Foot keep
-## their ranks and follow a rout as a block: the Spartans pursued briefly and not far
-## (Thucydides 5.73.4). SoldierBodies.step calls step in place of the slot arrival, and
-## SoldierBodies.couple reads the unit's `position` off its men while it pursues.
+## (strike): at Cannae the Numidian horse pursued the fleeing Roman cavalry and cut most of them
+## down (Polybius 3.116); riding at the nearest runner is the sim's choice. Foot follow a rout in
+## their ranks, as far as SoldierFootPursuit says. SoldierBodies.step calls step in place of the
+## slot arrival, and SoldierBodies.couple reads the unit's `position` off its men while it pursues.
 
 
 ## Whether `unit` is riding a routed enemy down: a mounted unit after a routing target with men,
