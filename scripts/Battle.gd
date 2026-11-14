@@ -2643,8 +2643,9 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## A narrow of a unit whose files an explicatio dealt, with a `drill` other than NONE, undoes that
 ## explicatio (Unit.explicatio_undoable): it records the drill the men's roles say was done
 ## (Unit.explicatio_undo_drill), not `drill`, and ignores `side`, `ground` and the flank: it
-## stands on the flank the explicatio held. Any other narrow ignores all three. A widen on the same ground is not issued to a unit that has no
-## closer order of spacing to take (Unit.denser_formation_mode): it cannot keep its ground.
+## stands on the flank the explicatio held. Any other narrow ignores all three. A widen on the
+## same ground is not issued to a unit that has no closer order of spacing to take
+## (Unit.denser_formation_mode): it cannot keep its ground.
 func enqueue_file_double(uids: Array, direction: int,
 		anchor: int = UnitFormation.Anchor.CENTRE,
 		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE,

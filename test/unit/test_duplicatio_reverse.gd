@@ -390,6 +390,10 @@ func test_the_duplicatio_undoes_the_explicatios_own_ground() -> void:
 		u._explicatio_ground = grounds[1]
 		u.apply_snapshot_dict(snap)
 		assert_eq(u._explicatio_ground, grounds[0], "%s: and a restore brings it back" % what)
+		assert_eq(int(snap["explicatio_held"]), CENTRE, "%s: the snapshot carries the flank held" % what)
+		u._explicatio_held = UnitFormation.Anchor.RIGHT
+		u.apply_snapshot_dict(snap)
+		assert_eq(u._explicatio_held, CENTRE, "%s: and a restore brings it back" % what)
 		_battle.enqueue_file_double([u.uid], -1, CENTRE, HALF_FILE, OUTWARD, grounds[1])
 		assert_true(u._explicatio_reverse, "%s: the narrowing is the drill" % what)
 		assert_false((_battle._pending_orders.back() as Dictionary).has("explicatio_ground"),
