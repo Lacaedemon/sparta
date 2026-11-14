@@ -53,7 +53,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		var new_vel: Vector2 = ride(damped, desired, accel, Unit.TURN_RATE, delta).limit_length(cap)
 		unit._sim_body_vel[i] = new_vel
 		var shove: Vector2 = contact[i] if not contact.is_empty() else Vector2.ZERO
-		unit._sim_soldier_pos[i] = pos + (new_vel + shove).limit_length(cap) * delta
+		unit._sim_soldier_pos[i] = pos + SoldierBodies.with_contact(new_vel, shove, cap) * delta
 		if new_vel.length_squared() > SoldierBodies.REST_SPEED * SoldierBodies.REST_SPEED:
 			unit._sim_soldier_facing[i] = new_vel.normalized()
 			unit._render_dirty = true

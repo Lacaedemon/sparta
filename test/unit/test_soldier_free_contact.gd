@@ -58,6 +58,18 @@ func test_a_closing_pair_inside_the_contact_band_has_its_closing_cancelled() -> 
 	assert_almost_eq(capped[0].length(), 50.0, 0.001, "no more than the cap a man is given")
 
 
+func test_the_contact_wins_over_a_mans_own_drive_under_the_cap() -> void:
+	var shove := Vector2(0, 60)
+	assert_eq(SoldierBodies.with_contact(Vector2(50, 0), shove, 200.0), Vector2(50, 60),
+		"under the cap the two simply add")
+	var got: Vector2 = SoldierBodies.with_contact(Vector2(180, 0), shove, 180.0)
+	assert_almost_eq(got.length(), 180.0, 0.001, "over it the sum meets the cap")
+	assert_almost_eq(got.y, 60.0, 0.001, "with the whole shove kept")
+	assert_lt(got.x, 180.0, "and his own drive cut back")
+	assert_eq(SoldierBodies.with_contact(Vector2(10, 0), Vector2(0, 300), 100.0), Vector2(0, 100),
+		"a shove past the cap alone is held to it")
+
+
 func test_riders_galloping_head_on_do_not_ride_through_each_other() -> void:
 	var p: Unit = _rider_after(AT + Vector2(0, -1000), 2)
 	var two: float = 2.0 * p.soldier_body_radius()

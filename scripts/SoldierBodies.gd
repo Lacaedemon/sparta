@@ -731,7 +731,7 @@ static func pull_up_rallied(unit: Unit, n: int, rate: float, delta: float) -> bo
 		var v: Vector2 = unit._sim_body_vel[i].move_toward(Vector2.ZERO, rate * delta)
 		unit._sim_body_vel[i] = v
 		var shove: Vector2 = contact[i] if not contact.is_empty() else Vector2.ZERO
-		unit._sim_soldier_pos[i] += (v + shove).limit_length(maxf(cap, v.length())) * delta
+		unit._sim_soldier_pos[i] += with_contact(v, shove, maxf(cap, v.length())) * delta
 		if v.length_squared() > REST_SPEED * REST_SPEED:
 			unit._sim_soldier_facing[i] = v.normalized()
 	unit._render_dirty = true
@@ -1093,20 +1093,25 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
 	# The contact band applies in a REFORM hold only (see STANDOFF_CONTACT_SEP_FRAC), and to a
 	# block re-forming where its men stood (Unit._stand_reform_until_tick), whose men likewise
-	# each walk to their own new place.
+	# each walk to their own new place. Those men come off a flight or a chase still at speed,
+	# so their contact pushes and cancels closing up to the speed cap, as a free-running man's
+	# does (standoff_free), not only at the walking standoff push.
 	var standing_reform: bool = Engine.get_physics_frames() <= unit._stand_reform_until_tick
 	var contact_sep: float = min_sep * STANDOFF_CONTACT_SEP_FRAC \
 			if holding or standing_reform else 0.0
-	return _standoff_pairs(unit, n, is_engaged, is_settled, min_sep, max_sep_speed, contact_sep,
-			max_sep_speed)
+	var contact_cap: float = speed_cap if standing_reform else max_sep_speed
+	return _standoff_pairs(unit, n, is_engaged, is_settled, min_sep, contact_cap, contact_sep,
+			contact_cap)
 
 
 ## Body contact for men who run free of any slot: a pursuing rider (SoldierPursuitStep) and a
 ## rallied man pulling up (pull_up_rallied). The same pair pass as _separate_same_unit, with
 ## no slot to be settled on, so every living, unbroken pair closer than min_sep is pushed
 ## apart, and with the contact band on, so a pair still closing inside it has its closing
-## cancelled. `man_cap` is the most this contact may change one man's speed by: his own top
-## pace, since two riders closing at a gallop must be stopped at a gallop. Returns the per-man
+## cancelled. `man_cap` is both the push at full overlap and the most this contact may change
+## one man's speed by: his own top pace, since two riders closing at a gallop must be parted
+## at a gallop; the standoff's walking push (STANDOFF_MAX_SPEED) let a rider turning onto the
+## runner his friend rode at close inside a quarter of a body. Returns the per-man
 ## velocities, applied to that tick's displacement only, as step() applies its own.
 static func standoff_free(unit: Unit, n: int, man_cap: float) -> PackedVector2Array:
 	if n < 2:
@@ -1121,7 +1126,26 @@ static func standoff_free(unit: Unit, n: int, man_cap: float) -> PackedVector2Ar
 	var none_settled := PackedByteArray()
 	none_settled.resize(n)
 	return _standoff_pairs(unit, n, PackedByteArray(), none_settled, min_sep,
-			minf(STANDOFF_MAX_SPEED, man_cap), min_sep * STANDOFF_CONTACT_SEP_FRAC, man_cap)
+			man_cap, min_sep * STANDOFF_CONTACT_SEP_FRAC, man_cap)
+
+
+## A free-running man's velocity for this tick's displacement: his own `vel` plus the body
+## contact `shove` (standoff_free), held under `cap`. The contact wins: when the sum would
+## exceed the cap, his own drive is cut back (scaled toward zero) until it fits, rather than
+## the sum being shortened, which would also shorten the shove and let a galloping man ride
+## on into a friend. A shove that alone exceeds the cap is held to it.
+static func with_contact(vel: Vector2, shove: Vector2, cap: float) -> Vector2:
+	if (vel + shove).length_squared() <= cap * cap:
+		return vel + shove
+	if shove.length_squared() >= cap * cap:
+		return shove.limit_length(cap)
+	# The largest s in [0, 1] with |s * vel + shove| = cap: the root of
+	# |vel|^2 s^2 + 2 (vel . shove) s + |shove|^2 - cap^2 = 0 that is positive.
+	var a: float = vel.length_squared()
+	var b: float = vel.dot(shove)
+	var c: float = shove.length_squared() - cap * cap
+	var s: float = (-b + sqrt(b * b - a * c)) / a
+	return vel * clampf(s, 0.0, 1.0) + shove
 
 
 ## The pair pass shared by _separate_same_unit and standoff_free: each living, unbroken,
