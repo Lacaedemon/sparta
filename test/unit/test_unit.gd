@@ -1859,18 +1859,6 @@ func test_pivot_arm_far_tier_reads_the_same_anchored_arm_as_the_live_slots() -> 
 		"and still exceeds the even-split pivot radius")
 
 
-func test_pivot_arm_uses_extents_passed_in() -> void:
-	# A caller that already holds the half-extents (as _move_to does) passes them in;
-	# the arm is then read from them instead of from a fresh slot rebuild.
-	var u := _make_unit()
-	u.frontage_override = 20
-	var wide := Vector2(500.0, 300.0)
-	assert_almost_eq(u._pivot_arm(wide), wide.length(), 0.01,
-		"passed-in extents set the arm when they exceed the pivot radius")
-	assert_almost_eq(u._pivot_arm(Vector2.ZERO), u._pivot_radius(), 0.01,
-		"and the pivot radius still floors it")
-
-
 func test_anchored_block_formed_pivot_turns_slower_by_its_longer_arm() -> void:
 	# The angular-rate cap (UnitManeuver.wheel_gait_rate) keeps the corner man's
 	# tangential pace within his budget, rate x arm. Paced from _pivot_radius(), an
@@ -1946,6 +1934,7 @@ func test_terrain_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> 
 		uneven_files.append(2)
 	deep._sim_soldier_file = uneven_files
 	deep._file_assignment_files = 3
+	deep._sim_soldier_pos = deep.soldier_world_slots(deep.soldiers)   # the men stand on those places
 	var deepest_file_ranks: int = 8   # file 0's real survivor count
 	var ranks_for_estimate: int = UnitFormation.ranks_for(deep.soldiers, 3)
 	assert_lt(ranks_for_estimate, deepest_file_ranks,
@@ -1976,6 +1965,7 @@ func test_corner_clearance_reads_the_deepest_surviving_file_not_ranks_for() -> v
 		uneven_files.append(2)
 	deep._sim_soldier_file = uneven_files
 	deep._file_assignment_files = 3
+	deep._sim_soldier_pos = deep.soldier_world_slots(deep.soldiers)   # the men stand on those places
 	var half_frontage: float = 0.5 * float(maxi(0, deep.formation_files(deep.soldiers) - 1)) * deep.file_pitch_wu()
 	var half_depth_real: float = 0.5 * 7.0 * deep.rank_pitch_wu()   # 8 ranks in file 0 -> 7 gaps
 	var expected: float = Vector2(half_frontage, half_depth_real).length() + deep.soldier_body_radius()
@@ -2002,24 +1992,26 @@ func test_formation_local_half_extents_is_never_stale_after_a_ranks_closed_flip(
 		"the very next query reflects the narrower frontage; nothing was ever cached to go stale")
 
 
-func test_move_to_builds_the_slot_layout_exactly_once_per_call() -> void:
+func test_move_to_measures_the_men_exactly_once_per_call() -> void:
 	# _move_to() computes _formation_local_half_extents() ONCE and threads the result
 	# through terrain_clearance(), funnel_lane_offset() (whose own internal
 	# terrain_clearance()/corner_clearance() calls also take it), and corner_clearance()
-	# -- see _move_to's own doc comment. formation_slots() is the O(soldiers) builder all
+	# -- see _move_to's own doc comment. That function is the O(soldiers) scan all
 	# of those ultimately call when no extents are supplied, so counting ITS calls
-	# across one _move_to() is the direct measurement; _formation_slots_call_count is
+	# across one _move_to() is the direct measurement; _half_extents_call_count is
 	# test-only instrumentation kept for exactly this (see its own doc comment).
 	var u := _make_unit(60)
 	u.frontage_override = 3
 	u.position = Vector2(500, 500)
 	var old_pf: PathField = PathField.active
 	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
-	var before: int = u._formation_slots_call_count
+	var before: int = u._half_extents_call_count
+	var slots_before: int = u._formation_slots_call_count
 	u._move_to(Vector2(1500, 500), 0.016)
-	var calls: int = u._formation_slots_call_count - before
+	var calls: int = u._half_extents_call_count - before
 	PathField.active = old_pf
-	assert_eq(calls, 1, "_move_to rebuilds the slot layout exactly once per call, not three times")
+	assert_eq(calls, 1, "_move_to measures the men exactly once per call, not three times")
+	assert_eq(u._formation_slots_call_count - slots_before, 0, "and measures them without the slot grid")
 
 
 func test_move_to_builds_no_slot_layout_for_a_far_tier_block() -> void:
@@ -2031,11 +2023,22 @@ func test_move_to_builds_no_slot_layout_for_a_far_tier_block() -> void:
 	TierTransition.demote(u)
 	var old_pf: PathField = PathField.active
 	PathField.active = PathField.new(Rect2(0, 0, 4000, 4000))   # no obstacles registered
-	var before: int = u._formation_slots_call_count
+	var before: int = u._half_extents_call_count
+	var slots_before: int = u._formation_slots_call_count
 	u._move_to(Vector2(1500, 500), 0.016)
-	var calls: int = u._formation_slots_call_count - before
+	var calls: int = u._half_extents_call_count - before
 	PathField.active = old_pf
-	assert_eq(calls, 0, "a far-tier _move_to builds no slot layout at all")
+	assert_eq(calls, 0, "a far-tier _move_to scans no men")
+	assert_eq(u._formation_slots_call_count - slots_before, 0, "and builds no slot layout at all")
+
+
+## The bounds of the slot grid a unit would lay its men on: the reference a layout reading is
+## pinned against (no production measure reads it).
+func _slot_bounds(u: Unit) -> Vector2:
+	var bounds := Vector2.ZERO
+	for s in u.formation_slots(u.soldiers, false):
+		bounds = Vector2(maxf(bounds.x, absf(s.x)), maxf(bounds.y, absf(s.y)))
+	return bounds
 
 
 func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> void:
@@ -2081,7 +2084,7 @@ func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> v
 		assert_eq(u._effective_file_major_reform(), not c["row"],
 			"sanity check: the intended reflow branch is the one under test")
 		var far: Vector2 = u._far_tier_half_extents()
-		var live: Vector2 = u._formation_local_half_extents()
+		var live: Vector2 = _slot_bounds(u)
 		var label: String = "n=%d files=%d anchor=%.0f square=%s row=%s" % [c["n"], c["files"], c["anchor"], c["square"], c["row"]]
 		assert_true(far.x >= live.x - 0.001 and far.y >= live.y - 0.001,
 			"%s: far %s never under-reads live %s" % [label, far, live])
@@ -2090,39 +2093,19 @@ func test_far_tier_half_extents_match_the_live_slots_for_every_far_layout() -> v
 			assert_almost_eq(far.y, live.y, 0.001, "%s: half-depth matches" % label)
 
 
-func test_far_tier_half_extents_defer_to_the_live_slots_during_a_relief_swap() -> void:
-	# A relief corridor widens the ranks and is not tier-gated, so a far block in a
-	# relief swap must read the live, widened slots -- the headcount form would
-	# under-clear. Same full-overlap setup as the relief-corridor extents test above.
+func test_far_tier_half_extents_ignore_a_relief_swap_and_build_no_slot_grid() -> void:
+	# A far block has no men, so a relief corridor's widening (which acts on men) has
+	# nothing to widen: its footprint is its layout, the same with or without the partner.
 	var fresh := _make_unit(20)
 	fresh.frontage_override = 4
 	var tired := _make_unit(20)
 	_begin_relief(fresh, tired)
 	TierTransition.demote(fresh)
-	assert_gt(fresh._relief_corridor_spread_strength(tired), 0.0,
-		"sanity check: the corridor is genuinely open for the far block")
-	var live: Vector2 = fresh._formation_local_half_extents()
-	assert_eq(fresh._far_tier_half_extents(), live,
-		"a far block in a relief swap reads the live, corridor-widened extents")
+	var slots_before: int = fresh._formation_slots_call_count
+	var in_swap: Vector2 = fresh._formation_local_half_extents()
 	fresh.set_current_order(null)
-	assert_lt(fresh._far_tier_half_extents().length(), live.length(),
-		"sanity check: without the partner the headcount form is narrower, so the deferral matters")
-
-
-func test_far_tier_half_extents_defer_for_the_relieved_side_too() -> void:
-	# The corridor also widens the TIRED unit's ranks, found only by the reverse lookup
-	# (the fresh unit's order names it; its own retreat order names nobody).
-	var fresh := _make_unit(20)
-	var tired := _make_unit(20)
-	tired.frontage_override = 4
-	_begin_relief(fresh, tired)
-	TierTransition.demote(tired)
-	assert_true(tired.current_order == null or tired.current_order.friendly_target == null,
-		"sanity check: the tired side holds no forward link of its own")
-	assert_gt(tired._relief_corridor_spread_strength(fresh), 0.0,
-		"sanity check: the corridor is open for the tired far block")
-	assert_eq(tired._far_tier_half_extents(), tired._formation_local_half_extents(),
-		"a far tired block reads the live, corridor-widened extents via the reverse link")
+	assert_eq(fresh._formation_local_half_extents(), in_swap, "the layout, swap or no swap")
+	assert_eq(fresh._formation_slots_call_count, slots_before, "read without the slot grid")
 
 
 func test_incoming_friendly_links_track_friendly_target_on_any_order_type() -> void:
@@ -2156,9 +2139,8 @@ func test_far_tier_half_extents_skip_the_reverse_scan_when_no_link_is_live() -> 
 	other.set_current_order(link)
 	link.friendly_target = u
 	u._far_tier_half_extents()
-	# (More than once: finding the partner falls back to the live slots, whose corridor
-	# step looks the partner up again.)
-	assert_gt(u._relief_reverse_scan_count, before, "a live link elsewhere: the scan runs")
+	assert_eq(u._relief_reverse_scan_count, before,
+			"a live link elsewhere: still no scan, a far block has no men to open a corridor in")
 	other.set_current_order(null)
 
 
@@ -2185,13 +2167,10 @@ func test_formation_local_half_extents_includes_an_active_relief_corridors_widen
 	# corridor-perpendicular axis while a live relief swap is under way (its own doc
 	# comment: "Widen slot spacing in the ranks a live relief partner is passing
 	# through"), so a relieving unit's real footprint is wider than its base grid for
-	# as long as the swap lasts. formation_slots(soldiers, false) -- what
-	# _formation_local_half_extents() used before this fix -- deliberately EXCLUDES that
-	# widening (soldier_block_half_extents()'s own doc comment: "so extent queries that
-	# feed the corridor's own spread gate cannot recurse"), so a formula reading only the
-	# base grid under-clears a relieving unit exactly while it is at its widest. This
-	# cannot pass against a version that always reads formation_slots(soldiers, false):
-	# the with-relief and without-relief extents would be identical.
+	# as long as the swap lasts. The footprint is read off the men, so it shows the
+	# widening once the men stand in it: the men seeded here stand on the widened
+	# places, and a version measuring a base grid would read the same extents with or
+	# without the swap.
 	var fresh := _make_unit(20)
 	fresh.frontage_override = 4   # a real formation, not a degenerate 1-soldier block
 	var tired := _make_unit(20)
@@ -2202,6 +2181,7 @@ func test_formation_local_half_extents_includes_an_active_relief_corridors_widen
 	assert_eq(fresh.current_order.friendly_target, tired, "sanity check: the relief swap armed")
 	assert_gt(fresh._relief_corridor_spread_strength(tired), 0.0,
 		"sanity check: full overlap gives a genuinely positive spread strength")
+	fresh.seed_sim_soldiers()
 	# Check the OVERALL footprint, not one named axis: with a degenerate (coincident)
 	# approach direction the corridor falls back to a fixed axis (_apply_relief_corridor_
 	# to_slots' own "blocks sitting on top of each other: pick an axis" comment), and
@@ -2388,6 +2368,7 @@ func test_congested_same_team_router_uses_the_scanned_units_cheap_estimate_not_i
 		uneven_files.append(2)
 	b._sim_soldier_file = uneven_files
 	b._file_assignment_files = 3
+	b._sim_soldier_pos = b.soldier_world_slots(b.soldiers)   # the men stand on those places
 	var exact_radius: float = a.corner_clearance() + b.corner_clearance()
 	var cheap_radius: float = a.corner_clearance() + b._pivot_radius() + b.soldier_body_radius()
 	assert_gt(exact_radius, cheap_radius + 10.0,
@@ -4388,8 +4369,8 @@ func test_body_tier_in_square_narrows_within_the_threatened_set_not_the_whole_bl
 	# stay green while the single-test run failed).
 	SoldierEnemyProximity.reset()
 	var u := _make_unit(60)
-	u.seed_sim_soldiers()
 	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()   # the men stand in the square: the block's extent is theirs
 	assert_true(u.in_square(), "sanity: the unit is in a square")
 	var enemy := _make_unit(60)
 	enemy.team = 1
@@ -7102,14 +7083,11 @@ func test_block_extent_measures_about_the_shifted_centre() -> void:
 	# size as the centred block's, not inflated to cover the offset from the
 	# regiment point -- while the default (containment) measurement still grows.
 	var u := _make_unit()
-	var centred: float = SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers))
+	var centred: float = SoldierFlock.compute_extent(u, true)
 	u.frontage_anchor_offset = 40.0
-	var slots: PackedVector2Array = u.formation_slots(u.soldiers)
-	assert_almost_eq(
-			SoldierFlock.compute_extent(u, slots, Vector2(u.frontage_anchor_offset, 0.0)),
-			centred, 0.001,
+	assert_almost_eq(SoldierFlock.compute_extent(u, true), centred, 0.001,
 			"measured about its own centre, the shifted block is the same size")
-	assert_gt(SoldierFlock.compute_extent(u, slots), centred,
+	assert_gt(SoldierFlock.compute_extent(u), centred,
 			"the default from-the-regiment-point measurement still covers the shifted reach")
 
 
@@ -7146,9 +7124,7 @@ func test_block_centre_offset_is_zero_while_squared() -> void:
 	u.set_formation(Unit.FORMATION_SQUARE)
 	assert_eq(u.block_centre_offset(), Vector2.ZERO,
 			"a squared block reads as centred despite the stale offset")
-	assert_almost_eq(
-			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers), u._slot_anchor_centre()),
-			SoldierFlock.compute_extent(u, u.formation_slots(u.soldiers)), 0.001,
+	assert_almost_eq(SoldierFlock.compute_extent(u, true), SoldierFlock.compute_extent(u), 0.001,
 			"the chrome extent measures the square about position, uninflated")
 	u.set_formation(Unit.FORMATION_SCHILTRON)
 	assert_eq(u.block_centre_offset(), Vector2.ZERO,

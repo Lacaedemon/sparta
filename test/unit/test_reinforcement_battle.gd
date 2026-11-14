@@ -487,9 +487,10 @@ func test_rendezvous_geometry_reads_the_blocks_off_their_bodies_along_the_hosts_
 			"an unturned block's depth along its facing matches the slot frame's")
 	# Turn the heading without turning the bodies: the block's lateral half-width is now
 	# its depth along the new facing, which a local-frame .y read would miss.
+	var half_width: float = host.soldier_block_half_extents().x
 	host.facing = Vector2(1.0, 0.0)
 	var turned: Vector2 = ReinforceApproach.extent_along(host, host.facing)
-	assert_almost_eq(turned.y, host.soldier_block_half_extents().x, pitch,
+	assert_almost_eq(turned.y, half_width, pitch,
 			"the extent follows the facing, not the slot frame")
 	var rendezvous: Vector2 = ReinforceApproach.rendezvous_point(host, reserve)
 	assert_almost_eq((rendezvous - host.position).normalized().x, -1.0, 0.001,
@@ -570,7 +571,7 @@ func test_rendezvous_and_arrival_respect_frontage_anchor_offset() -> void:
 
 	# Anchored frontage:
 	# the check keys on the actual block centers, not the root positions.
-	host.frontage_anchor_offset = 4.0 * pitch
+	_anchor(host, 4.0 * pitch)
 	var anchored_target: Vector2 = \
 			ReinforceApproach.rendezvous_point(host, reserve)
 	var centre_delta: Vector2 = \
@@ -583,7 +584,7 @@ func test_rendezvous_and_arrival_respect_frontage_anchor_offset() -> void:
 	_teleport(reserve, anchored_target)   # matches host block centre
 	assert_true(ReinforceApproach.at_rendezvous(reserve, host),
 			"block-aligned at anchored rendezvous arrives")
-	reserve.frontage_anchor_offset = 4.0 * pitch
+	_anchor(reserve, 4.0 * pitch)
 	var both_anchored_target: Vector2 = \
 			ReinforceApproach.rendezvous_point(host, reserve)
 	assert_almost_eq(both_anchored_target.x, unanchored_target.x, 0.001, "equal offsets cancel")
@@ -600,12 +601,14 @@ func test_rendezvous_depth_is_invariant_to_longitudinal_centre_offset() -> void:
 	reserve.facing = host.facing
 	var unanchored_target: Vector2 = \
 			ReinforceApproach.rendezvous_point(host, reserve)
+	var unanchored_front: float = ReinforceApproach.extent_along(
+			reserve, ReinforceApproach.depth_axis(host)).y
 
 	# Nonzero depth offset on reserve via folded formation angle with anchor:
 	# reserve block centre swings onto depth axis, while host shifts sideways.
-	host.frontage_anchor_offset = 4.0 * pitch
-	reserve.frontage_anchor_offset = 3.0 * pitch
+	_anchor(host, 4.0 * pitch)
 	reserve._formation_angle = PI * 0.5
+	_anchor(reserve, 3.0 * pitch)
 	var target: Vector2 = \
 			ReinforceApproach.rendezvous_point(host, reserve)
 	var centre_delta: Vector2 = \
@@ -616,8 +619,11 @@ func test_rendezvous_depth_is_invariant_to_longitudinal_centre_offset() -> void:
 			"the centre delta has a nonzero depth component")
 	assert_gt(absf(centre_delta.dot(dir.orthogonal())), 0.001,
 			"the centre delta has a nonzero lateral component")
-	assert_almost_eq(target.dot(dir), unanchored_target.dot(dir), 0.001,
-			"rendezvous depth is unchanged by the longitudinal centre offset")
+	# The reserve's front edge, not its position, is what stands the rendezvous gap behind the
+	# host: the men now stand off the position along the depth axis, so it moves back by as much.
+	assert_almost_eq(target.dot(dir) + ReinforceApproach.extent_along(reserve, dir).y,
+			unanchored_target.dot(dir) + unanchored_front, 0.001,
+			"the reserve's front edge stands at the same depth despite the longitudinal offset")
 	assert_almost_eq((target - unanchored_target).dot(dir.orthogonal()),
 			centre_delta.dot(dir.orthogonal()), 0.001,
 			"lateral offset still shifts the point sideways")
@@ -625,6 +631,16 @@ func test_rendezvous_depth_is_invariant_to_longitudinal_centre_offset() -> void:
 	assert_true(ReinforceApproach.at_rendezvous(reserve, host),
 			"block-aligned reserve at rendezvous arrives despite depth offset")
 
+
+
+## Anchor `u`'s frontage `offset` off its centre, and stand its men there: the block's centre
+## is where its men stand, so the offset only shows once they have walked to it.
+func _anchor(u: Unit, offset: float) -> void:
+	var shift: Vector2 = Vector2(offset - u.frontage_anchor_offset, 0.0).rotated(
+			u.soldier_block_world_angle())
+	u.frontage_anchor_offset = offset
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += shift
 
 
 ## Move `u` and its bodies together, as a settled block that stands somewhere else.
@@ -751,6 +767,9 @@ func test_understrength_host_wide_frontage_override_bounds_files_and_preserves_i
 	var reserve: Unit = _unit_at(RESERVE_POS)
 	host.max_soldiers = 40
 	host.frontage_override = 40
+	# The host stands in its widened line already: its centre is where its men stand, and the
+	# reserve aims at it, so a host still spreading would be a moving mark for the whole budget.
+	host.seed_sim_soldiers()
 	_order_reinforce(reserve, host)
 	var committed: bool = false
 	for _tick in range(COMMIT_BUDGET_TICKS):

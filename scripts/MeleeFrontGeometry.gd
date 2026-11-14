@@ -69,14 +69,25 @@ static func outline(p: MeleeFrontProfile, front: Vector2, axis: Vector2) -> Vect
 
 
 ## The offset of `u`'s men's centre from its position (a flank-anchored frontage shifts them),
-## laid out at the angle the men face (`front`, usually grid_front(u)), not the heading's.
-static func men_offset(u: Unit, front: Vector2) -> Vector2:
+## as of the physics frame's first read: MeleeFrontProfile keeps it, since every contact scan
+## reads it for every pair.
+static func men_offset(u: Unit) -> Vector2:
+	return MeleeFrontProfile.of(u).men_centre
+
+
+## `u`'s men's centre measured now: where they stand on average across the front they face
+## (MenExtent.lateral_centre). A block with no men yet reads its layout's anchor shift (spawn
+## data), laid out at the angle its men face (grid_front(u)), not the heading's.
+static func measure_men_offset(u: Unit) -> Vector2:
+	if MenExtent.has_men(u):
+		return MenExtent.lateral_centre(u, grid_front(u))
 	if u.frontage_anchor_offset == 0.0:
 		return Vector2.ZERO
-	var local: Vector2 = u._slot_anchor_centre()
+	var angle: float = grid_front(u).angle() + PI * 0.5
+	var local: Vector2 = u._layout_anchor_centre()
 	if u._formation_mirror_x:
 		local.x = -local.x
-	return local.rotated(front.angle() + PI * 0.5)
+	return local.rotated(angle)
 
 
 ## The most `u` can add to any pair's range, measured from its position: its reach along any

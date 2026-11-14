@@ -100,7 +100,7 @@ func test_a_combat_march_still_snaps_its_grid_with_the_heading() -> void:
 	# moves the farthest slot by the chord 2 R sin(theta / 2).
 	var u := _unit(Vector2.UP)
 	u.disciplined = false
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var anchor_before: Vector2 = u.position
 	u._move_to(START + _bearing(TURN_DEG) * MARCH_RANGE, _tick())
@@ -140,7 +140,7 @@ func test_a_reface_in_contact_still_turns_the_grid_with_the_heading() -> void:
 	# 2 R sin(theta / 2).
 	var u := _unit(Vector2.UP)
 	u._in_enemy_contact = true
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	_reface_to(u, TURN_DEG)
 	assert_eq(u._grid_lag, 0.0, "no lag is left in contact")
@@ -152,7 +152,7 @@ func test_a_reface_in_contact_still_turns_the_grid_with_the_heading() -> void:
 func test_the_grid_follows_the_heading_at_a_bounded_rate_until_square() -> void:
 	var u := _unit(Vector2.UP)
 	_reface_to(u, WIDE_TURN_DEG)
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	assert_gt(radius, 0.0, "setup: the block has an extent")
 	# The bounded profile (bounded_turn_step): the rate builds at a = body accel / radius up to
 	# w = jog_speed / radius, and sheds again to stop on the heading. A turn of theta takes

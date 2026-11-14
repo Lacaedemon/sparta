@@ -82,6 +82,13 @@ func _men_deeper_than_a_rank(u: Unit, enemy: Unit) -> int:
 	return n
 
 
+## The distance between two blocks' men: their centres as the front line measures them
+## (MeleeFrontGeometry.men_offset), which stand off their positions where the men do.
+func _men_gap(a: Unit, b: Unit) -> float:
+	return (a.position + MeleeFrontGeometry.men_offset(a)).distance_to(
+			b.position + MeleeFrontGeometry.men_offset(b))
+
+
 ## Run the attack: the centre gap at first contact, and over the watch the smallest centre gap
 ## and the most attacker men more than a rank inside the defender.
 func _attack(defender_facing: Vector2) -> Dictionary:
@@ -101,7 +108,7 @@ func _attack(defender_facing: Vector2) -> Dictionary:
 		tick += 1
 		if not (is_instance_valid(a) and is_instance_valid(d)):
 			break
-		var gap: float = a.position.distance_to(d.position)
+		var gap: float = _men_gap(a, d)
 		if out["contact_tick"] < 0:
 			if a._in_enemy_contact:
 				out["contact_tick"] = tick

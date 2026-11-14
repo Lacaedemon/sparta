@@ -2,10 +2,12 @@ class_name MeleeFrontProfile
 extends RefCounted
 ## A block's front-line measurements (MeleeFrontGeometry): whether it can take part in an
 ## extension, its front-rank depth, its front half-width, its extension bound and how far that
-## reaches past a centre-based contact range (MeleeFrontGeometry.query_extension). Every contact
-## scan reads them for every pair, so each unit keeps one profile, recomputed when an input it
-## was computed from changes. Every call compares, without allocating, every input an order or
-## the sim changes (headcount, file assignment generation and file count, formation, frontage,
+## reaches past a centre-based contact range (MeleeFrontGeometry.query_extension), and where its
+## men stand off its position across its front (men_centre), measured from the men once per
+## physics frame (MenExtent.lateral_centre) and from the layout's anchor shift while it has
+## none. Every contact scan reads them for every pair, so each unit keeps one profile,
+## recomputed when an input it was computed from changes. Every call compares, without
+## allocating, every input an order or the sim changes (headcount, file assignment generation and file count, formation, frontage,
 ## anchor, closed ranks, tier, reform mode, scale, type flags). The spacing and pitches change
 ## only with the formation, and the strength cap, discipline and sub-unit fields only at spawn,
 ## a merge or a restore, each alongside one of those; they are compared once per physics frame.
@@ -15,6 +17,8 @@ var depth: float = 0.0
 var half: float = 0.0
 var ext: float = 0.0
 var beyond: float = 0.0
+var men_centre: Vector2 = Vector2.ZERO
+var _reach: float = 0.0
 
 var _soldiers: int = -1
 var _gen: int = -1
@@ -50,6 +54,7 @@ static func of(u: Unit) -> MeleeFrontProfile:
 	var frame: int = Engine.get_physics_frames()
 	if frame != p._frame:
 		p._frame = frame
+		p._refresh_men(u)
 		stale = stale or p._spacing != u.spacing_scale or p._file_pitch != u.file_pitch \
 				or p._rank_pitch != u.rank_pitch or p._cap != u.max_soldiers \
 				or p._spawn_flags != int(u.disciplined) + 2 * u.subunit_structure + 64 * u.subunit_size
@@ -82,12 +87,23 @@ func _compute(u: Unit) -> void:
 	var pitch: float = u.file_pitch_wu() if u.in_square() else u.rank_pitch_wu()   # a square: both
 	depth = float(maxi(0, ranks - 1)) * 0.5 * pitch
 	half = float(mini(files, maxi(1, u.soldiers)) - 1) * 0.5 * u.file_pitch_wu()
-	ext = 0.0
-	beyond = 0.0
+	_reach = 0.0
 	if eligible:
 		# The farthest it reaches along any axis. A line met in flank or rear reaches its
 		# outline (MeleeFrontGeometry.outline), at most its slot rectangle's half-diagonal; a
 		# square keeps its looser bound.
 		var reach: float = depth + half if u.in_square() else sqrt(depth * depth + half * half)
-		ext = reach + absf(u.frontage_anchor_offset)
-		beyond = maxf(0.0, reach - Unit.RADIUS) + absf(u.frontage_anchor_offset)
+		_reach = reach
+	_refresh_men(u)
+
+
+## Re-measure where the men stand (MeleeFrontGeometry.measure_men_offset) and the extension
+## bounds that cover its whole shift off the position, which no contact range counts. A block
+## with no men yet reads its layout's anchor shift.
+func _refresh_men(u: Unit) -> void:
+	men_centre = MeleeFrontGeometry.measure_men_offset(u)
+	ext = 0.0
+	beyond = 0.0
+	if eligible:
+		ext = _reach + men_centre.length()
+		beyond = maxf(0.0, _reach - Unit.RADIUS) + men_centre.length()

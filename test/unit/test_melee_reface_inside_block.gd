@@ -152,7 +152,7 @@ func test_a_reissued_order_squares_the_fold_a_bounded_turn_at_a_time() -> void:
 		"no slot moves on the order")
 	u._in_enemy_contact = false
 	u._contact_clear_time = Unit.RESQUARE_CONTACT_CLEAR_TIME
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var per_tick: float = u.bounded_turn_rate(radius) * DT * u.soldier_block_extent()
 	var worst := 0.0
 	for _i in range(600):

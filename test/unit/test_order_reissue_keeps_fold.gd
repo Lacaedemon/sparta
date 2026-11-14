@@ -284,7 +284,7 @@ func test_the_resquare_turn_through_pivots_is_accel_bounded() -> void:
 	var u := _unit()
 	_fold(u, SKEW_DEG)
 	_reissue(u)
-	var radius: float = u._formation_local_half_extents().length()
+	var radius: float = u._block_radius()
 	var bound: float = u.bounded_turn_accel(radius) * _tick() + ANGLE_EPS
 	var prev: float = u._grid_lag_rate
 	for t in range(TURN_TICKS):

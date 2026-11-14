@@ -19,7 +19,7 @@ func _make_unit(max_soldiers: int, pos: Vector2, facing: Vector2, team: int = 0,
 
 # The offset of `u`'s men's centre from its position, at the angle its men face.
 func _men(u: Unit) -> Vector2:
-	return MeleeFrontGeometry.men_offset(u, MeleeFrontGeometry.grid_front(u))
+	return MeleeFrontGeometry.men_offset(u)
 
 
 func after_each() -> void:

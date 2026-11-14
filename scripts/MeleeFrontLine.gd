@@ -49,7 +49,7 @@ static func _pair(a: Unit, b: Unit, pa: MeleeFrontProfile, pb: MeleeFrontProfile
 	var frontal: bool = opposed > 0.0 and axis.length_squared() >= 0.000001
 	if not frontal and side <= 0.0:
 		return Vector3.ZERO
-	var shift: Vector2 = MeleeFrontGeometry.men_offset(b, fb) - MeleeFrontGeometry.men_offset(a, fa)
+	var shift: Vector2 = MeleeFrontGeometry.men_offset(b) - MeleeFrontGeometry.men_offset(a)
 	var to_b: Vector2 = last_gap + shift
 	var scale: float = clampf(minf(a.melee_front_line_scale, b.melee_front_line_scale), 0.0, 1.0)
 	var w: float = 0.0
@@ -169,8 +169,5 @@ static func floor_from(p: Vector3, a: Unit, b: Unit) -> float:
 
 ## From `a` toward `b` as the extension measures it: the positions' gap plus the weighted shift.
 static func toward(a: Unit, b: Unit) -> Vector2:
-	if a.frontage_anchor_offset != 0.0 or b.frontage_anchor_offset != 0.0:
-		pair(a, b)
-	else:
-		last_gap = b.position - a.position
+	pair(a, b)
 	return last_gap

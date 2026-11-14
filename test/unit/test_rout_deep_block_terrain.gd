@@ -343,7 +343,10 @@ func test_a_close_start_router_keeps_its_front_rank() -> void:
 func _place_front(router: Unit, front_x: float, short: float) -> void:
 	var offset: Vector2 = router._flight_front_line()[0] - router.position
 	var face_y: float = CLOSE_HILL.position.y - router.soldier_body_radius()
-	router.position = Vector2(front_x, face_y - short) - offset
+	var to: Vector2 = Vector2(front_x, face_y - short) - offset
+	for i in range(router._sim_soldier_pos.size()):
+		router._sim_soldier_pos[i] += to - router.position   # the men go with it: the block's extent is theirs
+	router.position = to
 	router._flee_pace = router.flee_speed()
 
 
