@@ -84,6 +84,18 @@ func test_a_man_boxed_by_rock_alone_is_not_cornered() -> void:
 	assert_false(SoldierCornered.is_cornered(u, 0, Vector2.UP, seen, grown), "no foe, no corner")
 	var way: Vector2 = SoldierLookRound.way_round_rock(u, 0, Vector2.UP, grown)
 	assert_almost_eq(way, Vector2.DOWN, Vector2(0.0001, 0.0001), "he backs out the way he came")
+	# Rock within his reach ahead and to either side, as tight as a slot in the rock.
+	var reach: float = u.soldier_reach()
+	var p: Vector2 = u._sim_soldier_pos[0]
+	var slot: Array[Rect2] = [Rect2(p + Vector2(-2.0 * reach, -1.5 * reach), Vector2(4.0 * reach, reach)),
+			Rect2(p + Vector2(-1.5 * reach, -2.0 * reach), Vector2(reach, 2.5 * reach)),
+			Rect2(p + Vector2(0.5 * reach, -2.0 * reach), Vector2(reach, 2.5 * reach))]
+	assert_false(SoldierCornered.is_cornered(u, 0, Vector2.UP, seen, slot),
+			"rock within his reach on three sides, but no foe: still no corner")
+	SoldierFlight.perceive_threats = false   # he perceives no foe at all
+	u._sim_flight_dir = PackedVector2Array([Vector2.UP])
+	SoldierLookRound.look(u, 0, Engine.get_physics_frames(), slot)
+	assert_ne(u._sim_flight_dir[0], Vector2.ZERO, "he looks round with no foe and runs, not stands")
 
 
 func test_a_unit_routed_in_a_dead_end_with_no_foe_in_sight_gets_away() -> void:

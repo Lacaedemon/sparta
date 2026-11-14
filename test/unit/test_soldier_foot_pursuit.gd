@@ -16,7 +16,7 @@ func _unit(team: int, count: int, at: Vector2) -> Unit:
 
 
 func _foot_after_a_rout() -> Array:
-	var r := _unit(1, 4, AT + Vector2(0, -400))
+	var r := _unit(1, 4, AT + Vector2(0, -100))   # within the block's detection range
 	r._rout()
 	var f := _unit(0, 12, AT)
 	f.target_enemy = r
