@@ -27,7 +27,8 @@ static var perceive_threats: bool = true
 static var _perception: RefCounted = ManPerceptionRef.new()
 static var _frame: int = -1
 ## The routing work done so far, for the cost instrument: how many times a man looked round
-## (perceived), and the microseconds spent stepping routed and pursuing men and in their blows.
+## (perceived), and the microseconds spent binding perception (prepare), stepping routed,
+## pursuing and pulling-up men, and in their blows and the blows struck at them.
 static var looks: int = 0
 static var work_usec: int = 0
 
@@ -37,7 +38,9 @@ static var work_usec: int = 0
 static func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> void:
 	_frame = frame
 	if perceive_threats:
+		var t0: int = Time.get_ticks_usec()
 		_perception.prepare(frame, units, terrain, path_field)
+		work_usec += Time.get_ticks_usec() - t0
 
 
 ## What man `i` of `unit` perceives (ManPerception.perceive's answer), out to his unit's whole

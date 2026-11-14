@@ -288,7 +288,11 @@ static func step(unit: Unit, delta: float) -> void:
 	# they come to rest (Unit._reform_where_men_stand); a rallying unit taken out of IDLE by
 	# anything else re-forms at once.
 	if unit._rally_pending:
-		if pulling_up and pull_up_rallied(unit, n, maxf(body_brake_accel_for(unit), unit.decel), delta):
+		var pull_t0: int = Time.get_ticks_usec()
+		var pulled: bool = pulling_up \
+				and pull_up_rallied(unit, n, maxf(body_brake_accel_for(unit), unit.decel), delta)
+		SoldierFlight.work_usec += Time.get_ticks_usec() - pull_t0
+		if pulled:
 			_keep_out_of_terrain(unit, n, _terrain_entry_guard(unit, n), delta)
 			return
 		unit._reform_where_men_stand()

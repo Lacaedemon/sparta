@@ -8,16 +8,17 @@ extends GutTest
 ##
 ## The clip is run twice from the same seed, once with routers querying perception
 ## (SoldierFlight.perceive_threats on) and once without, and each prints the mean, median, p95
-## and max wall-clock milliseconds per battle tick over TICKS ticks (the clip's own 300 by
-## default; SPARTA_MEASURE_TICKS overrides it), with the routed men per tick.
+## and max wall-clock milliseconds per battle tick over TICKS ticks (1800 by default, long enough
+## for the clip's first routs; SPARTA_MEASURE_TICKS overrides it), with the routed men per tick,
+## which must be above 0 for the measure to count.
 ## The routing cost itself is the direct measure: the milliseconds per tick spent in exactly the
-## routing work (SoldierFlight.work_usec: stepping routed and pursuing men, their looks round,
-## cornered checks and blows) and the looks round per tick (SoldierFlight.looks). The whole-battle
+## routing work (SoldierFlight.work_usec: binding perception, stepping routed, pursuing and
+## pulling-up men, their looks round, cornered checks, their blows and the blows struck at them) and the looks round per tick (SoldierFlight.looks). The whole-battle
 ## on/off difference is context only: turning perception off changes what the routers do, so
 ## the two runs are different battles. Wall-clock times swing with machine load; the look counts
 ## are deterministic for a given run.
 
-const DEFAULT_TICKS := 300
+const DEFAULT_TICKS := 1800
 var _battle: Node = null
 
 
@@ -99,3 +100,5 @@ func test_cost_of_router_perception_on_cannae_scale() -> void:
 	var on: Array = await _measure(true, "perception on")
 	print("[router-perception-cost] added mean ms/tick (on - off) = %.2f" % (on[0] - off[0]))
 	assert_gt(_ticks(), 0, "precondition: the clip ran")
+	assert_gt(int(off[1]), 0, "precondition: men routed with perception off, so it measured routing")
+	assert_gt(int(on[1]), 0, "and with perception on")
