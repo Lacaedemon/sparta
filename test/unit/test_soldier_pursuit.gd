@@ -88,7 +88,7 @@ func test_a_rider_turns_onto_a_new_runner_at_his_pace_rather_than_pulling_up() -
 	assert_almost_eq(shoved, Vector2(-259.5, 0), Vector2(0.0001, 0.0001), "a shove is shed, not turned onto his line")
 
 
-func test_a_unit_whose_chase_has_ended_forms_up_where_its_riders_stand() -> void:
+func test_a_unit_whose_chase_has_ended_rides_back_to_its_places() -> void:
 	var pair: Array = _split_rout()
 	var p: Unit = pair[1]
 	SoldierPursuitStep.step(p, 1, {}, TICK)
@@ -96,4 +96,4 @@ func test_a_unit_whose_chase_has_ended_forms_up_where_its_riders_stand() -> void
 	pair[0].state = Unit.State.IDLE   # the router rallied: the chase is over
 	p.step_sim_soldiers(TICK)
 	assert_true(p._sim_flight_dir.is_empty(), "nothing is left to remember")
-	assert_eq(p._last_redeal_tick, Engine.get_physics_frames(), "and the unit re-forms where he stands")
+	assert_eq(p._last_redeal_tick, Engine.get_physics_frames(), "his ride back is stamped as a transit")
