@@ -230,6 +230,56 @@ The turn-and-unfold combo's widen doubles the turned block's files against the w
 so it is the drill only for a block as deep as it was wide ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
 A man held off his place by terrain, rather than by another regiment, keeps the drill running ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
 
+## The duplicatio in reverse
+
+A block whose files an explicatio dealt halves its front (N) by undoing that explicatio.
+Asclepiodotus 10.20 and Aelian 29.3, quoted above under the doubling "in number", undo the doubling by sending the men who changed their position back to their original stations.
+Both undo the insertion on the same ground (10.17) and the compact formation it made.
+Undoing by the same drill a widen that also opened the files out, the sim's default, is the sim's inference.
+Neither source says how the files that stayed close up, or how a man walks back.
+In the same section Asclepiodotus notes that some condemn such doublings, "especially when the enemy is near".
+
+What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
+
+- **Who goes back where** is read off the men, not chosen.
+  The explicatio left each man his file, rank and role, and the man with a role heads his interval.
+  A man with the epistates role says every second man went up, so each file and its interval interleave again, the file's men at the even ranks and the interval's at the odd ones.
+  Otherwise the half-file went up, and the interval falls in behind the men of its file.
+  A file a casualty has shortened still closes into one unbroken file.
+
+- **How they go back.**
+  Each man follows the man who will stand ahead of him in his old file, a rank behind, and covers his file leader.
+  He takes his line across his front from where his file leader stands, so a file closes only as its leader does and none of its men cuts ahead of him into the next file's way.
+  He steps across to his file's line only while nobody of the other part of the block (the men who went up, or the men who stayed) stands level with him between him and that line.
+  Until then he keeps his own line and drops back along it.
+  So the men of each interval fall back down it in column and step in behind the man they follow once they are behind him.
+  The files that stayed close up only once the intervals beside them are empty.
+  That walk is the sim's inference.
+  The sources say "countermarch", and a countermarch proper turns the men about (Asclepiodotus 10.13 to 10.16), which this drill does not do ([#1985](https://github.com/Lacaedemon/sparta/issues/1985)).
+
+- **The front rank holds its line.**
+  The file that stands is the middle file (N), or the held flank's corner file for an order that holds one, as for the explicatio.
+  Its leader is the guide, and every file leader dresses his depth on him.
+  If that whole file falls, the leader of the nearest file left becomes the guide.
+  His ground is his file's place in the closed line, a whole number of file pitches across from the ground the fallen file held, wherever he stands at that moment.
+
+- **The ground the explicatio kept.**
+  The men go back to their original stations (10.20), so the duplicatio undoes whichever ground the explicatio kept, and the order does not choose it.
+  The block records that ground when the explicatio is dealt.
+  An explicatio that lengthened the line is undone by closing the files on the file that stands, so the line halves its length again.
+  No source describes that reverse, so it is the sim's inference.
+  An explicatio on the same ground (Asclepiodotus 10.17, Aelian 29.3) is undone by sending the inserted men back out of the gaps.
+  The files that stayed keep their places, and the block opens one order of spacing again, locked shields into compact and compact into open order (Asclepiodotus 4.1).
+  A block that has since changed to an order with no opener line order to take keeps its pitch and closes its files instead: that is the sim's choice.
+  Undoing an explicatio on the other ground than it kept would leave the line at another spacing and length than it had, so that is not offered.
+
+The drill is for a block standing still, square to its facing, and not fighting, as the explicatio is.
+A block no explicatio dealt, or one whose files a re-deal has taken since, narrows with the lateral deal, as before.
+The sources describe no other drill for it.
+An about-face or countermarch since the explicatio turns the block about, so the head of each interval stands at its rear.
+The reform that follows the turn takes the roles away, on a full grid as on one with a short rear rank, and the block then narrows with the lateral deal too.
+If an explicatio or duplicatio is still under way at that reform, the roles are kept for it, but a block whose grid is still mirrored by the turn is not undone.
+
 ## Game Design and Mechanics Framework
 
 To balance historical realism with player UX affordance, Sparta adopts a **tiered maneuver framework**:

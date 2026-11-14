@@ -6310,6 +6310,12 @@ func _reset_shield_hold_angles() -> void:
 ## it, _apply_file_double_step). A widen on the same ground opens every interval on one side
 ## (UnitFormation.explicatio_ground_side: the spear side for OUTWARD or INWARD about the middle,
 ## the side away from a held flank), so every file it had keeps its ground.
+## A narrowing to half the files with an `explicatio_drill` other than NONE, of a block whose
+## files an explicatio dealt (explicatio_undoable), is that explicatio in reverse
+## (_begin_duplicatio): the men who went up the intervals go back, the file that stands chosen
+## by `held_flank`. It keeps the ground the explicatio kept (_explicatio_ground), not
+## `explicatio_ground`: an explicatio on the same ground is undone by opening the block one order
+## (sparser_formation_mode), where there is a looser line order to take; else the files close up.
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
 		held_flank: int = UnitFormation.Anchor.CENTRE,
@@ -6326,6 +6332,17 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 					+ "formation %d, and there is none; the width stays %d" % [formation_mode,
 					old_files])
 			return
+	# A drilled narrowing of a block whose files an explicatio dealt is that explicatio in reverse.
+	var back: Dictionary = {}
+	var sparser: int = -1
+	if explicatio_drill != UnitFormation.ExplicatioDrill.NONE and target_files * 2 == old_files \
+			and explicatio_undoable():
+		back = DuplicatioDrill.reverse_assignment(_sim_soldier_file, _sim_soldier_rank,
+				_sim_soldier_role, target_files, _explicatio_lane_split, _explicatio_inward)
+		# The men go back to the stations they left: the ground the explicatio kept, not the
+		# order's reading now.
+		if _explicatio_ground == UnitFormation.ExplicatioGround.SAME_GROUND:
+			sparser = sparser_formation_mode(formation_mode)
 	_bake_formation_mirror()
 	_end_explicatio_drill()   # a new width supersedes a drill still under way
 	var dealt: Dictionary = {}
@@ -6356,8 +6373,13 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 		_arm_standoff_settle_window(_reshape_timeout(old_files))
 	if denser >= 0:
 		set_formation(denser)   # the inserted files halve the pitch on the same ground
+	if sparser >= 0:
+		set_formation(sparser)   # the files go back out of the gaps, and the line keeps its ground
 	if not dealt.is_empty():
 		_begin_explicatio(dealt, old_files, held_flank, explicatio_drill, split, inward)
+		_explicatio_ground = explicatio_ground
+	if not back.is_empty():
+		_begin_duplicatio(back, target_files, held_flank)
 	note_front_depth()   # a narrower frontage deepens the block
 
 
@@ -6372,6 +6394,94 @@ static func denser_formation_mode(mode: int) -> int:
 	if mode == FORMATION_NORMAL:
 		return FORMATION_TIGHT
 	return -1
+
+
+## Of the files with a leader (`led`, keyed by file id), the one nearest `wanted`, the lower of a
+## tie; -1 when no file has one. The file that stands in a duplicatio (_begin_duplicatio).
+static func nearest_led_file(led: Dictionary, wanted: int) -> int:
+	var best: int = -1
+	for f in led:
+		var d: int = absi(f - wanted)
+		if best < 0 or d < absi(best - wanted) or (d == absi(best - wanted) and f < best):
+			best = f
+	return best
+
+
+## The next opener order than formation `mode`, the one a duplicatio on the same ground takes as
+## the men an explicatio inserted go back out of the gaps (denser_formation_mode's reverse):
+## locked shields into compact, compact into open order. -1 for open order and every other
+## formation, which keep their pitch: their files close up instead.
+static func sparser_formation_mode(mode: int) -> int:
+	if mode == FORMATION_TIGHT:
+		return FORMATION_NORMAL
+	if mode == FORMATION_NORMAL:
+		return FORMATION_LOOSE
+	return -1
+
+
+## Whether a duplicatio of this block can be dealt as the explicatio that dealt its files done in
+## reverse (DuplicatioDrill): every man still holds the file, rank and role an explicatio dealt
+## him (a re-deal of the files takes the roles away), and the block is a file-major line
+## standing square to its facing, not fighting, as for the explicatio (_can_deal_explicatio).
+## A countermarch or about-face since the explicatio turns the block about and takes the roles
+## away (reform_ranks), and while the mirror it arms stands over the files (_formation_mirror_x)
+## the block is refused as well. Battle.enqueue_file_double asks it to mark a narrowing as the
+## drill.
+func explicatio_undoable() -> bool:
+	if soldiers <= 0 or in_square() or not _effective_file_major_reform() \
+			or _sim_soldier_pos.size() < soldiers or state != State.IDLE or has_move_target \
+			or is_engaged() or cos(grid_fold()) < 1.0 - 1e-6 or _formation_mirror_x \
+			or _sim_soldier_role.size() != soldiers:
+		return false
+	var files: int = UnitFormation.frontage(self)
+	if files % 2 != 0 or _file_assignment_files != files:
+		return false
+	var back: Dictionary = DuplicatioDrill.reverse_assignment(_sim_soldier_file,
+			_sim_soldier_rank, _sim_soldier_role, files / 2, _explicatio_lane_split,
+			_explicatio_inward)
+	return not back.is_empty()
+
+
+## The drill a duplicatio of this block undoes (UnitFormation.ExplicatioDrill), read off the
+## roles the explicatio left (DuplicatioDrill.reverse_assignment); NONE when it cannot be undone
+## (explicatio_undoable). Battle.enqueue_file_double records it on the narrowing.
+func explicatio_undo_drill() -> int:
+	if not explicatio_undoable():
+		return UnitFormation.ExplicatioDrill.NONE
+	return DuplicatioDrill.reverse_assignment(_sim_soldier_file, _sim_soldier_rank,
+			_sim_soldier_role, UnitFormation.frontage(self) / 2, _explicatio_lane_split,
+			_explicatio_inward)["drill"]
+
+
+## Begin the explicatio in reverse that `back` (DuplicatioDrill.reverse_assignment) sets out onto
+## `new_files` files held on `held_flank` (-1 left, +1 right, 0 about the middle): install each
+## man's old file and rank, with no roles, and choose the file that stands
+## (UnitFormation.explicatio_stand_old_file), or the nearest file with a leader. Its leader holds
+## his ground and every other man follows a man he can see (_refresh_duplicatio_follow) until
+## every man has taken his place, as in the explicatio (_advance_explicatio_drill).
+func _begin_duplicatio(back: Dictionary, new_files: int, held_flank: int) -> void:
+	var files_out: PackedInt32Array = back["files"]
+	var ranks_out: PackedInt32Array = back["ranks"]
+	var led: Dictionary = {}
+	for i in range(soldiers):
+		if ranks_out[i] == 0:
+			led[files_out[i]] = i
+	var stand_file: int = Unit.nearest_led_file(led,
+			UnitFormation.explicatio_stand_old_file(new_files, held_flank))
+	_sim_soldier_file = files_out
+	_sim_soldier_rank = ranks_out
+	_sim_soldier_role = PackedByteArray()   # the roles belonged to the files the explicatio dealt
+	_file_assignment_files = new_files
+	note_file_assignment_changed()
+	_explicatio_reverse = true
+	_duplicatio_returning = back["returning"]
+	_explicatio_stand_file = stand_file
+	_explicatio_stand_point = _sim_soldier_pos[led[stand_file]]
+	_explicatio_following = PackedByteArray()
+	_explicatio_following.resize(soldiers)
+	_explicatio_following.fill(1)
+	_explicatio_drill = back["drill"]
+	_explicatio_follow_frame = -1
 
 
 ## Whether a change from `old_files` to `new_files` can be done as an explicatio drill, from what
@@ -6472,6 +6582,9 @@ func _refresh_explicatio_follow(count: int) -> bool:
 	_explicatio_shut = PackedByteArray()
 	_explicatio_follow_frame = frame
 	_explicatio_follow_count = count
+	_duplicatio_steer = PackedVector2Array()
+	if _explicatio_reverse and explicatio_drill_active():
+		return _refresh_duplicatio_follow(count)
 	if not explicatio_drill_active() or _sim_soldier_pos.size() < count \
 			or _sim_soldier_file.size() != count or _sim_soldier_rank.size() != count \
 			or _sim_soldier_role.size() != count or _sim_soldier_facing.size() < count \
@@ -6520,6 +6633,84 @@ func _refresh_explicatio_follow(count: int) -> bool:
 			if lined_up and _explicatio_following[j] == 1:
 				moving = true
 		_explicatio_shut[i] = 0 if moving else 1
+	return true
+
+
+## _refresh_explicatio_follow for the explicatio in reverse (_begin_duplicatio): every man follows
+## the man who will stand ahead of him in his file (DuplicatioDrill.follow_plan) and covers his
+## file leader, taking his line across his front from where the leader stands, so a file closes
+## as its leader does and no man of it cuts ahead of him into the next file's way. A man steps
+## across to that line only while nobody of the other part of the block (the men who went up the
+## intervals, or the men who stayed in the files) stands level with him, within
+## explicatio_lane_clear() along his front, between him and it: until then he heads for the
+## point of his own line level with his place (_duplicatio_steer), so the men of an interval fall
+## back down it, and step in behind the man they follow once they are behind him; and the files
+## close up only once the intervals beside them are empty. A man held so at that point, whose
+## way is held by men who have all stopped following, has it shut (_explicatio_shut). When the
+## whole file that stands has fallen, the leader of the nearest file left becomes the guide, his
+## ground his file's place in the closed line beside the ground the fallen file held.
+func _refresh_duplicatio_follow(count: int) -> bool:
+	if _sim_soldier_pos.size() < count or _sim_soldier_file.size() != count \
+			or _sim_soldier_rank.size() != count or _sim_soldier_facing.size() < count \
+			or _duplicatio_returning.size() != count:
+		return false
+	var led: Dictionary = {}
+	for i in range(count):
+		if _sim_soldier_rank[i] == 0:
+			led[_sim_soldier_file[i]] = i
+	if not led.has(_explicatio_stand_file):
+		var f: int = Unit.nearest_led_file(led, _explicatio_stand_file)
+		if f < 0:
+			return false
+		# His ground is his file's place in the closed line beside the ground the fallen file
+		# stood on, that many file pitches across the block's front, wherever he stands now.
+		_explicatio_stand_point += SoldierFollow.right_of(facing.normalized()) \
+				* float(f - _explicatio_stand_file) * file_pitch_wu()
+		_explicatio_stand_file = f
+	var plan: Dictionary = DuplicatioDrill.follow_plan(_sim_soldier_file, _sim_soldier_rank,
+			_explicatio_stand_file, file_pitch_wu(), rank_pitch_wu())
+	var points := PackedVector2Array()
+	points.resize(count)
+	points.fill(_explicatio_stand_point)
+	var bodies: PackedVector2Array = _sim_soldier_pos.slice(0, count)
+	var places: PackedVector2Array = SoldierFollow.places(bodies,
+			_sim_soldier_facing.slice(0, count), plan["leaders"], plan["offsets"], points,
+			plan["guides"])
+	for i in range(count):
+		var head: int = int(led.get(_sim_soldier_file[i], -1))
+		if head >= 0 and head != i:
+			var right: Vector2 = SoldierFollow.right_of(_sim_soldier_facing[i].normalized())
+			places[i] += right * (bodies[head] - places[i]).dot(right)
+	_explicatio_leaders = plan["leaders"]
+	_explicatio_places = places
+	_duplicatio_steer = places.duplicate()
+	_explicatio_rooms.resize(count)
+	_explicatio_rooms.fill(1.0)
+	_explicatio_shut.resize(count)
+	_explicatio_shut.fill(0)
+	var clear: float = explicatio_lane_clear()
+	var cells: Dictionary = _explicatio_cells(bodies, maxf(rank_pitch_wu(), clear))
+	var lined_up: bool = _explicatio_following.size() == count
+	for i in range(count):
+		var front: Vector2 = _sim_soldier_facing[i].normalized()
+		var right: Vector2 = SoldierFollow.right_of(front)
+		var across: float = (places[i] - bodies[i]).dot(right)
+		var blocked: bool = false
+		var moving: bool = not lined_up
+		for j in _explicatio_cell_men(cells, bodies[i], places[i], maxf(rank_pitch_wu(), clear),
+				clear, clear):
+			if _duplicatio_returning[j] == _duplicatio_returning[i] \
+					or absf((bodies[j] - bodies[i]).dot(front)) >= clear:
+				continue
+			var a: float = (bodies[j] - bodies[i]).dot(right) * signf(across)
+			if a > 0.0 and a < absf(across) + clear:
+				blocked = true
+				moving = moving or _explicatio_following[j] == 1
+		if not blocked:
+			continue
+		_duplicatio_steer[i] = bodies[i] + front * (places[i] - bodies[i]).dot(front)
+		if not moving and _duplicatio_steer[i].distance_to(bodies[i]) <= REFORM_SETTLE_EPS:
+			_explicatio_shut[i] = 1
 	return true
 
 
@@ -6675,6 +6866,9 @@ func _end_explicatio_drill() -> void:
 	if not explicatio_drill_active():
 		return
 	_explicatio_drill = UnitFormation.ExplicatioDrill.NONE
+	_explicatio_reverse = false
+	_duplicatio_returning = PackedByteArray()
+	_duplicatio_steer = PackedVector2Array()
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_places = PackedVector2Array()
 	_explicatio_rooms = PackedFloat32Array()
@@ -6713,6 +6907,8 @@ func explicatio_grid_position() -> Vector2:
 func _apply_explicatio_places(slots: PackedVector2Array, count: int) -> PackedVector2Array:
 	if slots.size() != count or not _refresh_explicatio_follow(count):
 		return slots
+	if _duplicatio_steer.size() == count:
+		return to_slot_frame(_duplicatio_steer)   # the reverse: the point he heads for this tick
 	return to_slot_frame(_explicatio_places)
 
 
@@ -7224,9 +7420,18 @@ var _sim_soldier_role: PackedByteArray = PackedByteArray()
 # _explicatio_following 1 for each man, index-aligned with the bodies, who has not yet taken his
 # place (_advance_explicatio_drill).
 var _explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE
+# Whether the drill under way is an explicatio done in reverse, a duplicatio (_begin_duplicatio),
+# _duplicatio_returning 1 for each man, index-aligned with the bodies, who went up an interval,
+# and _duplicatio_steer this tick's point each man heads for (_refresh_duplicatio_follow).
+var _explicatio_reverse: bool = false
+var _duplicatio_returning: PackedByteArray = PackedByteArray()
+var _duplicatio_steer: PackedVector2Array = PackedVector2Array()
 var _explicatio_lane_split: int = 0
 # Whether its wings' intervals open toward the middle (UnitFormation.explicatio_inward).
 var _explicatio_inward: bool = false
+# Whether it kept its pitch or its ground (UnitFormation.ExplicatioGround), which a duplicatio
+# that undoes it keeps too (set_frontage).
+var _explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
 var _explicatio_stand_file: int = -1
 var _explicatio_stand_point: Vector2 = Vector2.ZERO
 var _explicatio_following: PackedByteArray = PackedByteArray()
@@ -8829,6 +9034,11 @@ func reform_ranks(hold_ground: bool = false, bodies_on_old_slots: bool = false) 
 	var drilled_half: bool = not is_half_fold and not is_quarter_fold \
 			and absf(angle) > PI * 0.5 and absf(absf(_drill_turn_fold) - PI) < 0.01
 	var is_about_face_fold: bool = is_half_fold or drilled_half
+	# Turned about, the heads of an explicatio's intervals stand at its rear: the roles that
+	# would undo it (explicatio_undoable) go, once no drill under way still reads them, on a full
+	# grid too, where the reform below has nothing to re-deal.
+	if is_about_face_fold and not explicatio_drill_active():
+		_sim_soldier_role = PackedByteArray()
 	# A single rank has no rear to tuck a gap into under a HALF-turn (its one rank IS the
 	# fullest, and a half-turn of it is just a lateral mirror of the same centred row) --
 	# but that's only true for the ±PI fold; any other fold still needs squaring below.
@@ -13087,6 +13297,9 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_drill": _explicatio_drill,
 		"explicatio_lane_split": _explicatio_lane_split,
 		"explicatio_inward": _explicatio_inward,
+		"explicatio_ground": _explicatio_ground,
+		"explicatio_reverse": _explicatio_reverse,
+		"duplicatio_returning": _duplicatio_returning.duplicate(),
 		"explicatio_following": _explicatio_following.duplicate(),
 		"explicatio_stand_file": _explicatio_stand_file,
 		"explicatio_stand_point": _explicatio_stand_point,
@@ -13488,6 +13701,10 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_explicatio_drill = int(d.get("explicatio_drill", UnitFormation.ExplicatioDrill.NONE))
 	_explicatio_lane_split = int(d.get("explicatio_lane_split", 0))
 	_explicatio_inward = bool(d.get("explicatio_inward", false))
+	_explicatio_ground = int(d.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN))
+	_explicatio_reverse = bool(d.get("explicatio_reverse", false))
+	_duplicatio_returning = (d.get("duplicatio_returning", PackedByteArray()) as PackedByteArray) \
+			.duplicate()
 	_explicatio_following = (d.get("explicatio_following", PackedByteArray()) as PackedByteArray) \
 			.duplicate()
 	_explicatio_stand_file = int(d.get("explicatio_stand_file", -1))

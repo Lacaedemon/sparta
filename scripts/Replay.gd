@@ -70,7 +70,8 @@ var forced_seed: int = -1
 #                   an asymmetric (anchored) -4 resize; omitted when 0.0 = the plain centred
 #                   resize every other frontage change already uses),
 #               "explicatio"?: int (a -4 resize that is an explicatio drill, the B key: the
-#                   UnitFormation.ExplicatioDrill Unit.set_frontage deals; omitted when NONE),
+#                   UnitFormation.ExplicatioDrill Unit.set_frontage deals; on a narrowing, the N
+#                   key undoing an explicatio, Unit.explicatio_undoable; omitted when NONE),
 #               "explicatio_held"?: int (the flank that drill holds, UnitFormation.Anchor:
 #                   -1 left, +1 right; omitted when 0 = CENTRE),
 #               "explicatio_side"?: int (the side of each file that drill's intervals open on,

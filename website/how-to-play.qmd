@@ -1218,6 +1218,36 @@ slots, and in an explicatio each follows the man he can see, so either reshape t
 moment to settle. Explicatio can't widen past a single rank, and duplicatio
 bottoms out at one file.
 
+**Undoing an explicatio.**
+Press <kbd>N</kbd> on a block whose files an explicatio dealt, and the duplicatio undoes it.
+As Asclepiodotus has it (Tactics 10.20), "the men who have changed their position" go back "to their original stations".
+The men of each interval fall back down it in column and step in behind the man they will follow once they are behind him.
+The half-file falls in behind its own file, or every second man goes back between the men he stood behind.
+The files then close on the file that stands while the front rank keeps its line.
+That is the middle file for <kbd>N</kbd>, which holds no flank.
+An order that holds a flank closes on that flank's corner file instead, though no key issues one yet.
+The duplicatio undoes the ground the explicatio kept, whatever the ground reading is when you press <kbd>N</kbd>.
+After an explicatio that lengthened the line, the line halves its length again.
+After an explicatio on the same ground, the files that stayed keep their places and the block opens one order of spacing again.
+A block no explicatio dealt, or one that has re-dealt its files since, narrows as it always has.
+So does a block that has about-faced or countermarched since, once the reform after the turn has taken the roles away.
+
+::: {#fig-duplicatio-reverse .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/duplicatio_reverse.jpg">
+  <source src="media/duplicatio_reverse.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+The duplicatio in reverse: a block of 96 Spearmen unfolds from 6 files to 12 (B), then folds back (N).
+Each rear half-file falls back down its interval and steps in behind its own file.
+The front rank keeps its line throughout.
+:::
+
 ::: {#fig-file-doubling .demo}
 
 ```{=html}

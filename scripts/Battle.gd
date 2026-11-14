@@ -1859,6 +1859,8 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	ud["engaged_target_pairing_age_ticks"] = -1
 	# An explicatio under way is the whole block's: the men left behind form up afresh.
 	ud["explicatio_drill"] = UnitFormation.ExplicatioDrill.NONE
+	ud["explicatio_reverse"] = false
+	ud["duplicatio_returning"] = PackedByteArray()
 	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
 	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
 	# retreating main body.
@@ -2638,7 +2640,10 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 ## drill unless the caller names another, read as `side` (UnitFormation.ExplicatioSide, the side
 ## of each file its interval opens on) and `ground` (UnitFormation.ExplicatioGround, whether the
 ## line keeps its pitch or its ground), outward and lengthening unless the caller names others.
-## A narrow ignores all three. A widen on the same ground is not issued to a unit that has no
+## A narrow of a unit whose files an explicatio dealt, with a `drill` other than NONE, undoes that
+## explicatio (Unit.explicatio_undoable): it records the drill the men's roles say was done
+## (Unit.explicatio_undo_drill), not `drill`, with `anchor`, and ignores `side` and `ground`. Any
+## other narrow ignores all three. A widen on the same ground is not issued to a unit that has no
 ## closer order of spacing to take (Unit.denser_formation_mode): it cannot keep its ground.
 func enqueue_file_double(uids: Array, direction: int,
 		anchor: int = UnitFormation.Anchor.CENTRE,
@@ -2689,6 +2694,14 @@ func enqueue_file_double(uids: Array, direction: int,
 				cmd["explicatio_side"] = side
 			if ground != UnitFormation.ExplicatioGround.LENGTHEN:
 				cmd["explicatio_ground"] = ground
+		# A narrowing of a block an explicatio dealt is that explicatio in reverse (Unit.
+		# explicatio_undoable), holding its flank and keeping the ground its explicatio kept; any other
+		# narrowing records as it always has.
+		elif direction < 0 and drill != UnitFormation.ExplicatioDrill.NONE \
+				and u.explicatio_undoable():
+			cmd["explicatio"] = u.explicatio_undo_drill()
+			if anchor != UnitFormation.Anchor.CENTRE:
+				cmd["explicatio_held"] = anchor
 		_pending_orders.append(cmd)
 		_apply_order_live(cmd)
 
