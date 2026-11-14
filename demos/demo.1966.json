@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/duplicatio-reverse-1966.json",
+  "caption": "The duplicatio as the explicatio in reverse (Asclepiodotus 10.20: the men who changed their position go back to their original stations). A block of 96 Spearmen, 6 files of 16, unfolds to 12 files of 8 (B, the half-file drill) and then folds back (N): each rear half-file falls back down its interval in column and steps in behind its own file once it is behind the file's rear man, and the files close on the middle while the front rank keeps the line it stood on. Nobody walks to a slot; each man follows the man who will stand ahead of him.",
+  "fixed_fps": 30,
+  "max_frames": 660,
+  "fps": 12,
+  "width": 720
+}

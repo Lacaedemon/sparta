@@ -1,0 +1,29 @@
+{
+  "_comment": "A lone block of 96 Spearmen (6 files of 16) facing west, doubled to 12 files of 8 by a plain explicatio (B, the half-file drill) and then folded back by N, which on a block whose files an explicatio dealt is that explicatio in reverse (Asclepiodotus 10.20: the men who changed their position go back to their original stations). Drill mode, no enemy. Each rear half-file falls back down its interval in column and steps in behind its own file once it is behind the file's rear man; the files then close on the middle while the front rank keeps its line at x 652.5. By tick 600 the explicatio has ended with the block at (684.03, 420.0); N at tick 660 deals the files back, and by tick 1260 the block stands at (720.68, 420.0), within a wu of where it stood before the B, its front at x 653.18 at tick 1320 (0.68 wu back). No two men come within a body radius (the nearest pair 6.85 wu). Measured 2026-11-13 on FULL dumps of the state ticks, the unit and soldier positions hash identically on seed runs 0 to 4 (no enemy, no roll). On main, N deals the files laterally and the block re-centres: the front walks back to x 612.21 and the block ends at (679.71, 420.08), so the front_rank_line and position expects fail there on every seed run. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "1966",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 720, "y": 420, "count": 96, "facing": [-1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 700.0, "y": 420.0, "zoom": 2.2}
+  ],
+  "steps": [
+    {"tick": 12, "click": [720, 420]},
+    {"tick": 45, "key": "B"},
+    {"tick": 660, "key": "N"}
+  ],
+  "state": [8, 50, 600, 662, 720, 780, 840, 900, 960, 1020, 1080, 1140, 1200, 1260, 1320],
+  "expect": [
+    {"tick": 600, "uid": 0, "field": "frontage", "value": 12},
+    {"tick": 662, "uid": 0, "field": "frontage", "value": 6},
+    {"tick": 720, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 840, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 960, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 1080, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 840, "uid": 0, "field": "front_rank_line", "value": [-652.5, -652.5], "tol": 2.25},
+    {"tick": 1080, "uid": 0, "field": "front_rank_line", "value": [-652.5, -652.5], "tol": 2.25},
+    {"tick": 1320, "uid": 0, "field": "front_rank_line", "value": [-652.5, -652.5], "tol": 2.25},
+    {"tick": 1320, "uid": 0, "field": "position", "value": [720.68, 420.0], "tol": 2.25}
+  ]
+}

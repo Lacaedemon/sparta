@@ -199,6 +199,29 @@ func test_the_duplicatio_undoes_the_explicatio() -> void:
 		await _free_battle()
 
 
+## Every man covers his file leader: his place's line across his front is the leader's place's,
+## even where the man he follows still stands in an interval (every second man, where each man of
+## the file follows a man of the interval).
+func test_each_man_covers_his_file_leader() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, CENTRE, ALTERNATE_RANK)
+	assert_gte(await _settle(u), 0, "precondition: the explicatio ended")
+	_battle.enqueue_file_double([u.uid], -1, CENTRE, ALTERNATE_RANK)
+	await get_tree().physics_frame
+	assert_true(u._refresh_explicatio_follow(u.soldiers), "precondition: the reverse runs")
+	var places: PackedVector2Array = u._explicatio_places
+	var head: Dictionary = {}
+	for i in range(u.soldiers):
+		if u._sim_soldier_rank[i] == 0:
+			head[u._sim_soldier_file[i]] = i
+	var worst: float = 0.0
+	for i in range(u.soldiers):
+		var right: Vector2 = SoldierFollow.right_of(u._sim_soldier_facing[i].normalized())
+		var h: int = head[u._sim_soldier_file[i]]
+		worst = maxf(worst, absf((places[i] - places[h]).dot(right)))
+	assert_lt(worst, 0.01, "a man's place stood %.2f wu off his file leader's line" % worst)
+
+
 ## On the same ground the men of the intervals go back out of the gaps and the block opens one
 ## order, the files that stayed keeping their places (Asclepiodotus 10.20 on 10.17).
 func test_the_same_ground_opens_the_order() -> void:
