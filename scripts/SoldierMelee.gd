@@ -435,6 +435,8 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_soldier_role.remove_at(i)
 			if i < unit._explicatio_following.size():
 				unit._explicatio_following.remove_at(i)   # and whether he had taken his place
+			if i < unit._duplicatio_returning.size():
+				unit._duplicatio_returning.remove_at(i)   # and whether he went up an interval
 			if i < unit._sim_soldier_file.size():
 				var fallen_file: int = unit._sim_soldier_file[i]
 				var fallen_rank: int = unit._sim_soldier_rank[i] \

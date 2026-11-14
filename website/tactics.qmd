@@ -834,11 +834,12 @@ fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>B</
 (**explicatio**) doubles the frontage and halves the depth --- a column unfolds into a wide
 line to overlap a flank or plug a gap. <kbd>N</kbd> (**duplicatio**) does the reverse: it
 halves the frontage and doubles the depth, folding a broad line into a deep column so you can
-squeeze down a lane or mass depth to punch through one point. The men walk to their new slots
-rather than snapping, so there's a beat of disorder while the block reshapes --- don't start
-the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is
-duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on
-the far side.
+squeeze down a lane or mass depth to punch through one point.
+Neither reshape snaps.
+In an explicatio, and in a duplicatio that undoes one, each man follows a man he can see.
+In any other duplicatio the men walk to their new slots.
+Either way there's a beat of disorder while the block reshapes --- don't start the maneuver in contact, and give it room before the enemy arrives.
+A natural rhythm is duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on the far side.
 
 **Deploy from column with one press: turn and unfold.** <kbd>Shift+Q</kbd> /
 <kbd>Shift+E</kbd> chain a quarter-turn and an explicatio into a single drill order. A
@@ -889,6 +890,8 @@ one flank is braced against a hill, a river, or a neighbouring unit that can't s
 <kbd>Shift+B</kbd> widens while holding the right flank fixed; <kbd>Ctrl+B</kbd> holds the left.
 The whole widen lands on the free flank instead, so the pinned side never moves and the line
 still gets the extra frontage where there's room for it.
+Folding it back with <kbd>N</kbd> undoes that explicatio.
+The men who went up the intervals go back to their stations and the files close on the pinned flank's corner file, so the pinned side stays put on the way back too and the front rank keeps its line.
 
 **How a line reforms after losses.** By default (**File-major**, the unit settings panel's
 File-major reform button), every soldier holds a persistent file (column) assignment: when a
