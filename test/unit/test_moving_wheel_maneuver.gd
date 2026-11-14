@@ -300,6 +300,49 @@ func test_moving_wheel_hinge_translates_forward_along_the_pre_wheel_facing() -> 
 		"the hinge advances by _current_speed * delta along the captured facing each tick")
 
 
+func test_bounded_wheel_carry_leaves_a_carry_within_the_ceiling_untouched() -> void:
+	var to := Vector2(1.0, 0.5)
+	assert_eq(Maneuver.bounded_wheel_carry(Vector2.ZERO, to, Vector2(30, 0), 200.0, 1.0 / 60.0), to,
+		"a carry that keeps carry plus own speed under the ceiling comes back exactly")
+	assert_eq(Maneuver.bounded_wheel_carry(Vector2.ZERO, to, Vector2(30, 0), 200.0, 0.0), to,
+		"no tick, nothing to bound")
+	var from := Vector2(123.456, 78.901)
+	var near: Vector2 = from + Vector2(0.333, 0.777)
+	assert_eq(Maneuver.bounded_wheel_carry(from, near, Vector2(31.7, -12.3), 200.0, 1.0 / 60.0), near,
+		"bit for bit, so a formed block's wheel is unchanged")
+
+
+func test_bounded_wheel_carry_bounds_a_man_already_galloping() -> void:
+	var dt := 1.0 / 60.0
+	var own := Vector2(160, 0)   # coasting at a gallop when the wheel arms
+	var to: Vector2 = Vector2(140, 0) * dt   # the hinge's advance, the same way
+	var got: Vector2 = Maneuver.bounded_wheel_carry(Vector2.ZERO, to, own, 180.0, dt)
+	assert_almost_eq((own + got / dt).length(), 180.0, 0.001,
+		"his own speed plus the carry meet the ceiling, not 300 wu/s")
+	got = Maneuver.bounded_wheel_carry(Vector2.ZERO, to, Vector2(250, 0), 180.0, dt)
+	assert_almost_eq(got.length(), 0.0, 0.001,
+		"a man already faster than the ceiling keeps his speed and is carried no faster")
+
+
+func test_a_moving_wheel_does_not_carry_a_galloping_man_past_the_body_ceiling() -> void:
+	var u := _make_seeded_unit()
+	u._current_speed = u.move_speed
+	var o := Order.new_move(Vector2(300, 0))
+	u.set_current_order(o)
+	u.has_move_target = false
+	u.begin_moving_wheel(o, 1, deg_to_rad(90.0))
+	for i in range(u._sim_body_vel.size()):
+		u._sim_body_vel[i] = u.facing * u.move_speed   # every rider still at a gallop
+	var own: PackedVector2Array = u._sim_body_vel.duplicate()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u._think(1.0 / 60.0)
+	var ceiling: float = u.move_speed * u.superphysical_speed_frac
+	for i in range(before.size()):
+		var carry: Vector2 = (u._sim_soldier_pos[i] - before[i]) * 60.0
+		assert_lt((own[i] + carry).length(), ceiling + 0.01,
+				"his own speed plus the carry stays under the ceiling (%d)" % i)
+
+
 # --- Battle-level integration ------------------------------------------------
 
 func _unit(uid: int, pos: Vector2, cavalry: bool) -> Unit:

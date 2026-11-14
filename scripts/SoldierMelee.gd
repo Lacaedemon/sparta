@@ -28,7 +28,13 @@ class_name SoldierMelee
 ## living soldiers. A size-1 array degenerates to exactly the old single-enemy
 ## resolution.
 static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
-	var attackers: PackedInt32Array = attacker.engaged_soldier_indices(attacker._sim_soldier_pos.size())
+	resolve_men(attacker, attacker.engaged_soldier_indices(attacker._sim_soldier_pos.size()),
+			defenders)
+
+
+## resolve() for the striking men `attackers` (body indices of `attacker`) named by the caller:
+## a fighting unit's engaged front, or a routed unit's cornered men (SoldierCornered.fight).
+static func resolve_men(attacker: Unit, attackers: PackedInt32Array, defenders: Array[Unit]) -> void:
 	if attackers.is_empty() or defenders.is_empty():
 		return
 
@@ -401,11 +407,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var dead_positions := PackedVector2Array()
 	var dead_indices := PackedInt32Array()
 	var count_before: int = unit._sim_soldier_pos.size()
-	# A router's per-man feed-forward record (Unit._body_flight_ff_prev) is trimmed with the
-	# bodies while it matches them, so each survivor's next step compares his own last
-	# feed-forward rather than that of the man one index lower in the array, whose entry
-	# he would otherwise read once the removal shifts him down.
-	var trim_flight: bool = unit._body_flight_ff_prev.size() == count_before
+	var trim_flight: bool = unit._sim_flight_dir.size() == count_before
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
 			dead_indices.push_back(i)
@@ -413,7 +415,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 			unit._sim_soldier_pos.remove_at(i)
 			unit._sim_body_vel.remove_at(i)
 			if trim_flight:
-				unit._body_flight_ff_prev.remove_at(i)
+				unit._sim_flight_dir.remove_at(i)   # each survivor keeps his own chosen way
 			unit._sim_soldier_hp.remove_at(i)
 			if i < unit._sim_steer.size():
 				unit._sim_steer.remove_at(i)   # keep the steering array index-aligned

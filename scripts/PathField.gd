@@ -408,71 +408,6 @@ func is_leg_blocked(from: Vector2, to: Vector2, clearance: float = 0.0) -> bool:
 	return _segment_blocked(from, to, clearance)
 
 
-## Whether a route from `from` to `to` actually exists: either the straight line
-## is clear, or (when it isn't) A* found a real path around the obstacles.
-## Unlike next_step()'s return value, this makes the "no route exists" case
-## distinguishable from "the straight line is clear" -- both of which make
-## next_step() fall back to returning `to` verbatim.
-func has_path(from: Vector2, to: Vector2, clearance: float = 0.0) -> bool:
-	if not _segment_blocked(from, to, clearance):
-		return true
-	return not find_path(from, to).is_empty()
-
-
-## Whether a genuine escape route exists heading `direction` from `from`: the
-## straight line is clear, or A* finds a route around obstacles. The candidate
-## target is clipped to just inside this field's own grid bounds first --
-## querying has_path() against a point beyond the grid is meaningless, since
-## A* can never reach a goal outside `_in_bounds()` regardless of terrain, so
-## an unclipped far-off target would always read as "no path" on open ground.
-func has_escape_route(from: Vector2, direction: Vector2, clearance: float = 0.0) -> bool:
-	return has_path(from, _clip_to_bounds(from, direction.normalized()), clearance)
-
-
-## next_step(), but for a fleeing unit with no fixed destination -- just a
-## direction to run in. Clips the far-off candidate target to this field's own
-## grid bounds first, for the same reason has_escape_route() does: an
-## unclipped point outside the grid can never be reached by find_path()'s A*,
-## so next_step() would always fall back to the raw straight-line direction --
-## silently defeating routing around terrain for every fleeing unit.
-##
-## Near (or past) this field's own edge, that clip degenerates toward `from`
-## itself (_clip_to_bounds pulls the exit point in by one cell, which can put
-## it behind `from` once there's less than a cell of grid left to cross) --
-## freezing a fleeing unit in place instead of letting it continue on toward
-## a caller's own, larger escape boundary. There's no terrain to route around
-## out there anyway (this field only ever registers obstacles inside its own
-## bounds), so fall back to the raw, unclipped target in that case, the same
-## way next_step() itself falls back with no PathField active at all.
-func next_step_fleeing(from: Vector2, direction: Vector2, clearance: float = 0.0) -> Vector2:
-	var dir: Vector2 = direction.normalized()
-	var clipped: Vector2 = _clip_to_bounds(from, dir)
-	# OPTIMIZATION: Use distance_squared_to instead of distance_to to avoid expensive sqrt
-	if from.distance_squared_to(clipped) < _cell * _cell:
-		return from + dir * 1000.0
-	return next_step(from, clipped, clearance)
-
-
-## The point where a ray from `from` toward `direction` exits this field's grid,
-## pulled in by one cell so the result lands solidly in-bounds rather than
-## exactly on the edge.
-func _clip_to_bounds(from: Vector2, direction: Vector2) -> Vector2:
-	var min_pos: Vector2 = _origin
-	var max_pos: Vector2 = _origin + Vector2(_cols, _rows) * _cell
-	var t: float = INF
-	if direction.x > 0.0:
-		t = minf(t, (max_pos.x - from.x) / direction.x)
-	elif direction.x < 0.0:
-		t = minf(t, (min_pos.x - from.x) / direction.x)
-	if direction.y > 0.0:
-		t = minf(t, (max_pos.y - from.y) / direction.y)
-	elif direction.y < 0.0:
-		t = minf(t, (min_pos.y - from.y) / direction.y)
-	if not is_finite(t):
-		return from
-	return from + direction * maxf(t - _cell, 0.0)
-
-
 ## Full A* route from `from` to `to` as world-space cell centres (empty when the
 ## endpoints share a cell, the goal is blocked, or no route exists). A blocked
 ## START cell is passable to leave: cells block conservatively on any rect
@@ -626,7 +561,7 @@ const ROUTE_SIDE_COLLINEAR_EPS := 0.001   # tuned in wu, solver epsilon
 ## margin at the room its endpoints leave in its own way (see _segment_blocked), so
 ## the caller names its kind rather than having it inferred from a flag.
 ## - ORDER: a real leg, from the walker's own position to a destination an order
-##   must reach (next_step's straight check, is_leg_blocked, has_path).
+##   must reach (next_step's straight check, is_leg_blocked).
 ## - CORRIDOR_CELL: next_step's corridor fallback, from the walker to a synthetic
 ##   A* cell centre that no order has to reach.
 ## - CANDIDATE: a string-pull or funnel-corner candidate sightline, which must clear
@@ -1032,37 +967,6 @@ func _funnel_corner(from: Vector2, to: Vector2, path: PackedVector2Array, cleara
 			best_cost = cost
 			best = c
 	return best
-
-
-## Whether the segment a..b, carried along `travel`, passes through the interior of `rect`:
-## the parallelogram it sweeps (corners a, b, b + travel, a + travel) overlaps the rect by
-## more than its boundary. Exact for any orientation, by the separating-axis test over the
-## rect's two axes and the parallelogram's two edge normals (a zero edge is skipped, which
-## leaves the exact test for the segment or point that remains). A sweep that only touches
-## the rect's boundary, such as a line sliding along a face, does not count. Deterministic
-## float math.
-static func swept_segment_meets_rect(a: Vector2, b: Vector2, travel: Vector2, rect: Rect2) -> bool:
-	var poly: Array[Vector2] = [a, b, b + travel, a + travel]
-	var box: Array[Vector2] = [rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
-			Vector2(rect.position.x, rect.end.y)]
-	var axes: Array[Vector2] = [Vector2.RIGHT, Vector2.DOWN]
-	for edge in [b - a, travel]:
-		if edge.length_squared() > 0.0:
-			axes.append(edge.orthogonal())
-	for axis in axes:
-		var p_lo: float = INF
-		var p_hi: float = -INF
-		for p in poly:
-			p_lo = minf(p_lo, p.dot(axis))
-			p_hi = maxf(p_hi, p.dot(axis))
-		var r_lo: float = INF
-		var r_hi: float = -INF
-		for p in box:
-			r_lo = minf(r_lo, p.dot(axis))
-			r_hi = maxf(r_hi, p.dot(axis))
-		if p_hi <= r_lo or p_lo >= r_hi:
-			return false
-	return true
 
 
 ## Whether the segment from..to touches `rect` (endpoints inside count).

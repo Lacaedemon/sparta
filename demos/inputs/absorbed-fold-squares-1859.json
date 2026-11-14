@@ -14,12 +14,6 @@
   ],
   "state": [8, 360, 440, 600, 680, 720, 760, 800, 840, 880, 900],
   "frames": [440, 600, 720, 800, 900],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [1],
-      "reason": "Uid 1 (the troop), overlap: the scan fires on some seeds, so the exemption is live. Measured 2026-11-10 on aef5b476, seeds 0 to 4. On dense 2-tick FULL dumps over ticks 2 to 1000, every exemption removed: seeds 0, 2 and 4 pass (worst 14.5, 8.56 and 19.4) and seeds 1 and 3 FAIL (worst 3.21 and 4.28 against the 5.0 threshold). On the clip's own declared ticks it passes on every seed (worst 40), so there the exemption reads STALE. Traced earlier on seed 2 on 3c442b07: the dip is at tick 918, the tick the troop rallies (IDLE), out of contact, with the pair 15.1 and 27.5 wu off their slots as its riders walk back to them, a man walking back from farther off passing through one nearer his slot (#1894). It falls after the clip ends (tick 900) but within the dense scan's window."
-    }
-  },
   "expect": [
     {"tick": 8, "uid": 0, "field": "position", "value": [620, 520]},
     {"tick": 360, "uid": 0, "field": "order_mode", "value": "Hold"},

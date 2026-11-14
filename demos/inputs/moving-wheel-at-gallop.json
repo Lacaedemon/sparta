@@ -1,0 +1,29 @@
+{
+  "_comment": "A moving wheel armed at full pace. A formed block of 40 Cavalry starts at (400, 1900) facing north on a tall flat field and is sent north at a gallop (a quadruple right-click to (400, 200)). At tick 300, galloping at about 158 wu/s, it is re-ordered to (1400, 900), about 60 degrees to its right, which arms a moving wheel (Unit.begin_moving_wheel) with every rider already moving at the march's pace. The wheel carries each body rigidly about its hinge while the hinge itself advances at the unit's pace, and the body step also moves each rider by his own velocity. Uncapped, the two add, and a rider moved at about twice his pace: on main 23348f43 superphysical_speed reads 310.17 against 195.92 on every seed 0 to 4. #1949's branch bounds the carry so that a body's own speed plus the carry stays under the body ceiling (UnitManeuver.bounded_wheel_carry); there superphysical_speed reads at most 195.12 on seeds 0 to 4 and the block's dressing holds (follow_error at most 5.32 against 30, no pair within a body radius). Dense 2-tick FULL dumps, measured 2026-11-14. Both on main and on the branch, the wheel at a full gallop has almost no pace to spare for its swing (_advance_moving_wheel paces its arc by move_speed less the unit's current speed), so the block barely turns before tick 600 and its riders run on north ahead of its centre (centroid 137 wu ahead on the branch, 287 wu on main, by tick 600); that pacing is main's and is not changed here.",
+  "seed": "1949",
+  "drill": true,
+  "map": {"field": [1600, 2400], "terrain": []},
+  "scenario": [
+    {"team": 0, "type": "Cavalry", "x": 400, "y": 1900, "count": 40, "facing": [0, -1], "reform_before_move": false}
+  ],
+  "camera": [
+    {"tick": 0, "x": 700.0, "y": 1300.0, "zoom": 0.4}
+  ],
+  "steps": [
+    {"tick": 8, "click": [400, 1900]},
+    {"tick": 14, "rmb_click": [400, 200]},
+    {"tick": 17, "rmb_click": [400, 200]},
+    {"tick": 20, "rmb_click": [400, 200]},
+    {"tick": 23, "rmb_click": [400, 200]},
+    {"tick": 300, "rmb_click": [1400, 900]},
+    {"tick": 303, "rmb_click": [1400, 900]},
+    {"tick": 306, "rmb_click": [1400, 900]},
+    {"tick": 309, "rmb_click": [1400, 900]}
+  ],
+  "state": [10, 200, 300, 400, 600],
+  "expect": [
+    {"tick": [300, 600], "uid": 0, "field": "state", "value": "MOVING"},
+    {"tick": 400, "uid": 0, "field": "pairs_within_body_radius", "value": 0},
+    {"tick": 600, "uid": 0, "field": "pairs_within_body_radius", "value": 0}
+  ]
+}

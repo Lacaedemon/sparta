@@ -414,7 +414,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 			if not series.has(uid):
 				series[uid] = {
 					"ticks": [], "engaged": [], "in_enemy_contact": [],
-					"moving": [], "routing": [], "rally_halting": [], "counts": [],
+					"moving": [], "routing": [], "rally_halting": [], "pursuing": [], "counts": [],
 					"formation": [], "frontage": [],
 					"last_reshape_tick": [], "last_redeal_tick": [], "anchor_held": [],
 					"nnd_min": [], "nnd_med": [], "facing_angle": [], "pos": [],
@@ -434,6 +434,8 @@ static func analyze(snapshots: Array) -> Dictionary:
 			s["routing"].append(String(u.get("state", "")) == "ROUTING")
 			# Absent from transcripts dumped before the field existed: false there.
 			s["rally_halting"].append(bool(u.get("rally_halting", false)))
+			# Absent from transcripts dumped before the field existed: false there.
+			s["pursuing"].append(bool(u.get("pursuing", false)))
 			s["counts"].append(bodies.size())
 			s["formation"].append(String(u.get("formation", "")))
 			s["frontage"].append(int(u.get("frontage", 0)))
@@ -535,6 +537,22 @@ static func judged_mask(s: Dictionary) -> Array:
 		if ok and i + 1 < n and contact[i + 1]:
 			ok = false
 		mask.append(ok)
+	return mask
+
+
+## Which samples are judged for a formation's shape (blob, follow error, misslot, crossing
+## routes): judged_mask(), less the samples where the unit rides a router down
+## (SoldierPursuitStep): each of its men then chases the runner nearest him, off any place, as a
+## routed man runs off his. So are the samples where a rallied unit's men still pull up from their
+## flight (`rally_halting`, Unit.shedding_flight): each slows along his own run, and the unit has
+## no grid until they have stopped. A transcript dumped before a field existed reads none.
+static func shape_mask(s: Dictionary) -> Array:
+	var mask: Array = judged_mask(s)
+	for key in ["pursuing", "rally_halting"]:
+		var off: Array = s.get(key, [])
+		for i in range(mini(mask.size(), off.size())):
+			if bool(off[i]):
+				mask[i] = false
 	return mask
 
 
@@ -669,16 +687,18 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 			"soldier_body_radius", spacing * 0.5))
 	var sprint: float = float(s["motion_ref"]["move_speed"])
 	var n: int = s["ticks"].size()
-	var mask: Array = judged_mask(s)
+	# Overlap: any single judged sample with two soldiers effectively co-located. Judged on a
+	# pursuing unit too: its riders chase runners off their places, but never ride through
+	# each other (SoldierBodies.standoff_free).
+	out.append(_sustained_verdict(uid, "overlap", s, "nnd_min",
+			two_bodies * OVERLAP_BODY_FRAC, judged_mask(s), 1))
+	var mask: Array = shape_mask(s)
 	var judged_relations: bool = int(s["edges"].max()) > 0
 
 	# Blob: median-neighbour compression, sustained -- bodies stacked well inside
 	# each other on median, floored at a pitch fraction for roomy-grid collapse.
 	out.append(_sustained_verdict(uid, "blob", s, "nnd_med",
 			maxf(two_bodies * BLOB_BODY_FRAC, spacing * BLOB_PITCH_FRAC), mask, MIN_SUSTAIN))
-	# Overlap: any single judged sample with two soldiers effectively co-located.
-	out.append(_sustained_verdict(uid, "overlap", s, "nnd_min",
-			two_bodies * OVERLAP_BODY_FRAC, mask, 1))
 	# The men against the men they follow (DemoRelational), judged only for a dump that
 	# carries relations. Follow error is the scramble/smear check: RMS error from the place
 	# behind each man's leader and from his interval to his dressing man, sustained. Pitch-based
@@ -693,12 +713,14 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
 				MISSLOT_MAX_FRAC, follow_error_mask(s, mask, true), MIN_SUSTAIN, true))
 
-	# Facing whipsaw while marching.
+	# Facing whipsaw while marching. A unit riding a router down has no formed facing to judge:
+	# its facing is its aim at a quarry whose men scatter (SoldierPursuitStep).
 	var moving_angles: Array = []
 	var flutter_angles: Array = []
 	var flutter_ticks: Array = []
+	var pursuing: Array = s.get("pursuing", [])
 	for i in range(n):
-		if s["moving"][i]:
+		if s["moving"][i] and not (i < pursuing.size() and bool(pursuing[i])):
 			moving_angles.append(s["facing_angle"][i])
 			if not (bool(s["engaged"][i]) or bool(s["in_enemy_contact"][i])):
 				flutter_angles.append(s["facing_angle"][i])
@@ -713,26 +735,17 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 
 	# Sustained super-physical soldier speed (index-aligned samples only). A routing
 	# unit's top pace is its flee pace (Unit.flee_speed(): move_speed *
-	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierBodies.step
+	# GaitLimits.FLEE_SPEED_MULTIPLIER), above its sprint by design, and SoldierFlightStep
 	# measures a router's body-speed ceiling from it. An interval is held to that flee-pace
 	# cap when its START sample is routing: the men carry their flight speed into the
 	# interval, and a router that rallies inside it was running at flee pace up to then. A unit
 	# that only starts routing at the interval's end spent that interval under its ordinary
-	# gaits, and its flight then builds up at its own accel from no more than the speed it
-	# was already carrying away from the enemy (Unit._rout's seed, zero for a FIGHTING
-	# unit), so over that interval its sprint ceiling still applies. A rallied unit whose
-	# anchor is still coasting to a stop on its flight (rally_halting at the interval's start)
-	# keeps the router's flee-pace ceiling: men the rally re-paired onto other slots catch up
-	# at the pace the block was fleeing at while the anchor already brakes below its sprint
-	# (morale_recovery: a man at 110.7 wu/s with the anchor at 77). That 110.7 is the flight's
-	# own pace, not one gained in the halt: on the last routing samples (ticks 346-354) the
-	# anchor itself covers 3.69 wu per 2 ticks, 110.7 wu/s, the 104 wu/s Infantry flee pace
-	# (1.3 x 80) plus the body coupling's pull -- the few percent test_close_tier_rout_speed.gd
-	# allows (SPEED_TOLERANCE_FRAC 0.1; here 6.4%). It sits well under the flee-pace cap
-	# (80 x 1.15 x 1.3 = 119.6 wu/s, plus 0.42 wu/s of 2-tick quantization margin).
-	# rally_halting is only true while the anchor still carries speed, so the allowance ends
-	# when it stops and cannot excuse a spike in the re-form that follows
-	# (Unit.is_rally_halting).
+	# gaits, and each man's flight then builds up at his own accel from the speed he was
+	# carrying, so over that interval its sprint ceiling still applies. A rallied unit whose men
+	# still carry their flight's speed (rally_halting, Unit.shedding_flight, at the interval's
+	# start) keeps the router's flee-pace ceiling: each man sheds that speed at his braking rate
+	# rather than all at once, and the allowance ends once none of them is faster than his own
+	# steering could make him.
 	var halting: Array = s.get("rally_halting", [])
 	var cap: float = sprint * SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = cap * GaitLimitsRef.FLEE_SPEED_MULTIPLIER

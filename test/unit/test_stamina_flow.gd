@@ -359,7 +359,7 @@ func test_far_tier_routing_updates_stamina_at_flee_pace() -> void:
 	u._rout_timer = 5.0
 	u.state = Unit.State.ROUTING
 	u.move_speed = 100.0
-	u._flee_pace = u.flee_speed()   # already at full flight
+	u._far_flee_pace = u.flee_speed()   # already at full flight
 	u._physics_process(1.0)
 	assert_almost_eq(u.far_stamina, 50.0 - SoldierCombat.KAPPA_SPRINT, 1e-2,
 			"routing at full flight drains at the sprint rate on the far tier")
@@ -373,7 +373,7 @@ func test_routing_unit_bills_flee_pace_on_the_tick_it_rallies() -> void:
 	u.state = Unit.State.ROUTING
 	u.move_speed = 100.0
 	u._rout_timer = 5.0
-	u._flee_pace = u.flee_speed()   # already at full flight
+	u._far_flee_pace = u.flee_speed()   # already at full flight
 	u._physics_process(1.0)
 	assert_eq(u.state, Unit.State.IDLE, "unit rallied on this tick")
 	assert_almost_eq(u.far_stamina, 50.0 - SoldierCombat.KAPPA_SPRINT, 1e-2,
@@ -386,12 +386,12 @@ func test_a_router_building_up_its_flight_is_billed_at_the_pace_it_runs() -> voi
 	var u := _make_unit(7)
 	u.move_speed = 100.0
 	u.state = Unit.State.ROUTING
-	u._flee_pace = u.jog_speed   # partway into the build-up
-	var expected: int = StaminaFlow.band_for_speed(u._flee_pace, u.walk_speed, u.jog_speed,
+	u._far_flee_pace = u.jog_speed   # partway into the build-up
+	var expected: int = StaminaFlow.band_for_speed(u._far_flee_pace, u.walk_speed, u.jog_speed,
 			u.move_speed, Unit.ARRIVE_SPEED_EPSILON)
 	assert_ne(expected, Unit.GAIT_SPRINT, "setup: this pace is below the sprint band")
 	assert_eq(u.stamina_band(), expected, "a router is billed at its live flight pace")
-	u._flee_pace = u.flee_speed()
+	u._far_flee_pace = u.flee_speed()
 	assert_eq(u.stamina_band(), Unit.GAIT_SPRINT, "and at full flight it sprints")
 
 

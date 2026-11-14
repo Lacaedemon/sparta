@@ -369,10 +369,14 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"last_redeal_tick": u._last_redeal_tick,
 		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
 		"anchor_held": u.position_anchor_held(),
-		# True while a rallied unit's anchor is still coasting to a stop on its flight
-		# (Unit.is_rally_halting): DemoDefects' speed ceiling then allows its men the flee pace
-		# they are still running at, as for a router.
-		"rally_halting": u.is_rally_halting(),
+		# True while a rallied unit's men still shed their flight's speed (Unit.shedding_flight):
+		# DemoDefects' speed ceiling then allows them the flee pace they are still running at,
+		# as for a router.
+		"rally_halting": u.shedding_flight(),
+		# True while the unit rides a router down (SoldierPursuitStep.is_pursuing): each of its
+		# men chases the runner nearest him, off any place, so DemoDefects judges no formation
+		# shape on it then, as for a router, though it still judges two of its men on one spot.
+		"pursuing": SoldierPursuitStep.is_pursuing(u),
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),

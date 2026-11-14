@@ -255,6 +255,52 @@ func test_routing_samples_are_exempt_from_grid_checks() -> void:
 			"a routing mob has no grid to deviate from")
 
 
+func test_a_pursuing_unit_is_judged_for_men_on_one_spot_but_not_for_its_shape() -> void:
+	# Riders after a rout chase the runners off their places (SoldierPursuitStep): the bunch a
+	# formed block would fail as a blob is no defect then, but two riders on one spot still are.
+	var slots: Array = _grid(6, 4, SPACING)
+	var bunch: Array = _grid(6, 4, SPACING * 0.35)
+	var snaps: Array = []
+	for t in [0, 60, 120]:
+		var snap: Dictionary = _snapshot(t, bunch, slots)
+		snap["units"][0]["pursuing"] = true
+		snaps.append(snap)
+	var result: Dictionary = DemoDefects.analyze(snaps)
+	assert_true(bool(_verdict(result, "blob")["pass"]), "a pursuing bunch is not a blob")
+	assert_true(bool(_verdict(result, "follow_error")["pass"]), "nor off its places")
+	var formed: Array = []
+	for snap in snaps:
+		var copy: Dictionary = snap.duplicate(true)
+		copy["units"][0]["pursuing"] = false
+		formed.append(copy)
+	assert_false(bool(_verdict(DemoDefects.analyze(formed), "blob")["pass"]),
+			"the same bunch in a formed block is")
+	var press: Array = _grid(6, 4, SPACING * 0.2)   # under the single-sample overlap floor
+	for snap in snaps:
+		snap["units"][0]["soldiers_full"]["pos"] = press
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "overlap")["pass"]),
+			"riders on one spot fail while they pursue")
+	for snap in formed:
+		snap["units"][0]["rally_halting"] = true   # rallied men still pulling up on their own
+	assert_true(bool(_verdict(DemoDefects.analyze(formed), "blob")["pass"]),
+			"nor is a rallied bunch whose men still pull up from their flight")
+
+
+func test_a_pursuing_unit_s_facing_is_not_judged_for_flutter() -> void:
+	# Its facing is its aim at a quarry whose men scatter, not a formed block's facing.
+	var slots: Array = _grid(6, 4, SPACING)
+	var snaps: Array = []
+	for k in range(12):
+		var a: float = 0.05 if k % 2 == 0 else -0.05
+		snaps.append(_snapshot(k * 2, slots.duplicate(), slots, false, "MOVING", [sin(a), cos(a)]))
+	assert_false(bool(_verdict(DemoDefects.analyze(snaps), "facing_flutter")["pass"]),
+			"setup: the same flips on a formed block flutter")
+	for snap in snaps:
+		snap["units"][0]["pursuing"] = true
+	assert_true(bool(_verdict(DemoDefects.analyze(snaps), "facing_flutter")["pass"]),
+			"a pursuing unit's aim is not judged")
+
+
 func test_samples_adjacent_to_an_engagement_flip_are_exempt() -> void:
 	# The transition window: a block charging into contact legitimately compresses
 	# in the sampled moment just before `engaged` flips. The same compression far
@@ -622,11 +668,10 @@ func test_superphysical_speed_holds_a_router_to_its_flee_pace_cap() -> void:
 
 
 func test_superphysical_speed_holds_a_rallied_unit_pulling_up_to_its_flee_pace_cap() -> void:
-	# A rallied unit is IDLE while its anchor coasts to a stop on its flight, and its men are
-	# still running at up to the flee pace, so its halting intervals keep the router's ceiling.
-	# The dump's rally_halting is only true while the anchor still carries speed: once it has
-	# stopped, a spike past the sprint cap in the re-form is flagged, including the first
-	# interval after the last halting sample.
+	# A rallied unit is IDLE while its men still shed their flight's speed, so its intervals
+	# that start with rally_halting set (Unit.shedding_flight) keep the router's ceiling. Once
+	# no man carries more than his steering could give him, a spike past the sprint cap in the
+	# re-form is flagged, including the first interval after the last such sample.
 	var sprint := 126.0
 	var sprint_cap: float = sprint * GaitLimits.SUPERPHYSICAL_SPEED_FRAC
 	var flee_cap: float = sprint_cap * GaitLimits.FLEE_SPEED_MULTIPLIER
@@ -635,11 +680,11 @@ func test_superphysical_speed_holds_a_rallied_unit_pulling_up_to_its_flee_pace_c
 	for snap in halting:
 		snap["units"][0]["rally_halting"] = true
 	assert_true(bool(_verdict(DemoDefects.analyze(halting), "superphysical_speed")["pass"]),
-			"men running on the anchor's flee-pace coast are not super-physical")
+			"men still shedding their flight's speed are not super-physical")
 	var stopped: Array = _moving_pair(v, 10, ["IDLE", "IDLE", "IDLE", "IDLE", "IDLE"])
 	stopped[0]["units"][0]["rally_halting"] = true
 	assert_false(bool(_verdict(DemoDefects.analyze(stopped), "superphysical_speed")["pass"]),
-			"a spike past the sprint cap after the anchor has stopped is flagged")
+			"a spike past the sprint cap once the men have shed it is flagged")
 
 
 func test_superphysical_speed_picks_the_cap_from_the_interval_start() -> void:

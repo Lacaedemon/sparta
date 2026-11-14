@@ -37,25 +37,60 @@ pin the front so the flanking unit has nowhere better to turn.
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
 flank/rear hits, it **routs** --- it flees (its flag fading) toward its own back edge
 and stops fighting for now. A routing unit can flee past the field's visible edge into a
-margin beyond it before it's gone for good, staying on the field --- and still
-fightable --- for as long as it's plausibly still in view.
-A unit breaks with its ranks as they stand:
-each man runs from his own place in the block,
-whichever way the block had turned before it broke.
-A unit that breaks while still in contact with the enemy,
-facing within about 75 degrees of its way out,
-swings round onto its flight no faster than its outermost men can follow,
-as it does on any such turn in its flight,
-so its men keep their places and run at once, not waiting for the turn.
-A turn of more than about 75 degrees is made at once,
-each man turning where he stands.
+margin beyond it, and it is gone for good only once every one of its men has left that
+margin, staying on the field --- and still fightable --- for as long as any of them is
+plausibly still in view.
 
-A routing unit runs faster than it marches. Unless it was already falling back, it
-starts its flight from a standstill (whatever broke it: a melee, missile fire, a
-neighbour's rout), picks up speed over its first few seconds, and then flees at about
-1.3 times its own top speed. Once clear of its pursuers it pulls away from troops of
-its own type; a pursuer that stays in contact with it holds it to that pursuer's own
-pace.
+A broken unit is no longer a formation: each of its men flees on his own.
+He runs away from the enemy soldiers he can see around him
+and toward his refuge, his own side's back edge of the field, where its camp lies,
+so where the enemy he sees stands between him and that edge,
+he runs away from them and round them on one side toward it,
+never into them and never standing still in front of them
+(@fig-router-runs-from-foes).
+He goes round on the side of his refuge where fewer of them stand,
+or the side not shut by rock,
+and keeps to that side until he next looks round.
+He looks round about every fifth of a second, a man's reaction time,
+and runs the way he then chose in between.
+A man who finds his way ahead and to either side shut within his weapon's reach,
+by rock or by enemy soldiers,
+turns to the enemy soldier nearest him and fights,
+and runs again once a way opens.
+He also takes part of his line from the man of his file running ahead of him,
+so the rout streams away as a crowd rather than scattering at random.
+The unit's flag and marker stand at the centre of its fleeing men,
+and its facing is the way they run.
+Fleeing men made for a place of safety, and not all for the same one:
+after Delium, Thucydides says, some made for Delium and the sea,
+some for Oropus, and others for Mount Parnes (4.96.7).
+The game builds the back edge of the field as one refuge,
+and the nearest friendly unit as another, as a variant.
+
+::: {#fig-router-runs-from-foes .demo}
+
+```{=html}
+<video class="demo-video" controls muted loop playsinline preload="metadata"
+       poster="media/router_runs_from_foes.jpg">
+  <source src="media/router_runs_from_foes.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+```
+
+A broken cavalry squadron (blue) with a block of infantry standing between it and its own
+back edge.
+Each rider sees the infantry ahead of him and runs away from them and round them,
+the riders on each side of the squadron's centre round their own side, rather than into the
+block or standing still in front of it.
+:::
+
+A routing man runs faster than he marches.
+He starts his flight from whatever speed he was carrying
+(a man caught advancing on the enemy first has to stop and turn),
+picks up speed at his own rate over his first few seconds,
+and then flees at about 1.3 times his top speed, slower through a forest.
+Once clear of its pursuers a rout pulls away from troops of its own type.
 
 ::: {#fig-router-outruns-pursuer .demo}
 
@@ -74,17 +109,6 @@ The router picks up speed over its first few seconds, then pulls away at full fl
 its riders running together as a block.
 :::
 
-When a router slips in and out of a pursuer's reach,
-the point its formation is laid out from moves once, from its front ranks to its whole block,
-rather than jumping between the two each time.
-It goes back to its front ranks only when the pursuer comes within nine tenths of that reach
-(or anywhere inside it, for a pursuer fighting the router),
-measured both from where the block stands
-and from where its front ranks would put it.
-So a router whose riders have fallen out of their places,
-which puts those two points far apart,
-does not swing back and forth between them either.
-
 ::: {#fig-router-reentry-settle .demo}
 
 ```{=html}
@@ -99,20 +123,10 @@ does not swing back and forth between them either.
 A brittle cavalry squadron (blue) facing west
 is caught on its left flank by a spear block marching up from the south,
 breaks while still in contact and flees north,
-with the spearmen following at the edge of their reach.
-As it crosses that edge, the point its formation is laid out from moves once,
-from its front ranks to its whole block, and stays there.
+with the spearmen following in their ranks at the edge of their reach.
+Each rider runs on his own from the spearmen he sees,
+and the squadron gets clear of them about two seconds after it breaks.
 :::
-
-A unit that made its turn onto its flight at once still stands in its block as it faced,
-so its front ranks, the ones that faced the enemy, no longer lead it.
-Once its block stands more than a quarter-turn off its heading,
-those ranks trail behind it, still pressed against the pursuers,
-and its formation is laid out from the men ahead of it along its flight instead,
-not from those trailing ranks,
-so the men the pursuers hold no longer set where the router's formation stands.
-A block turned a quarter-turn or less is still laid out from its front ranks,
-even when a turn of nearly a quarter-turn has left them along one of its flanks.
 
 ::: {#fig-router-anchor-flight-side .demo}
 
@@ -126,13 +140,11 @@ even when a turn of nearly a quarter-turn has left them along one of its flanks.
 ```
 
 A brittle spear block (blue) facing west is ordered to attack an infantry block,
-breaks while still in contact and turns at once to flee north,
-its block still facing the infantry.
-It is laid out from its leading men,
-not from the ranks still pressed against the infantry behind it.
-On this clip's seed (measured 2026-11-07 on 580995c5)
-it drifts 0.5 m east while the infantry still touch it
-and gets clear of them 3.5 seconds after it breaks.
+breaks while still in contact and flees north.
+Each man runs on his own from the infantry he sees,
+the leading men first and the men still pressed against the infantry as they get free,
+and the infantry follows in its ranks.
+On this clip's seed the spearmen first get clear of the infantry about three seconds after they break.
 :::
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
@@ -144,85 +156,37 @@ and gets clear of them 3.5 seconds after it breaks.
   unit can still be struck and run down, chased as relentlessly as your pursuer can
   manage. So chase a broken enemy down to finish it, rather than assuming it's out of
   the fight.
-- **A rout that runs through your ranks doesn't spin them round.**
-  When a broken enemy flees straight through one of your blocks,
-  your men keep fighting it as it passes,
-  but the block keeps its facing and the block's ranks keep their places
-  instead of swinging round after the fugitives,
-  so once they have gone each man steps back to his own place.
-  A block riding a rout down from behind still turns to keep its front on it.
 - **A "broken" unit can rally** if nothing catches it. As it flees, its nerve steadies
   --- morale climbs back toward a baseline, fast at first and levelling off. If it
   **breaks contact** (no enemy close enough to keep hitting it) and still fields enough
   men, its recovering morale carries it over the rally threshold and it **returns to
   your control**, ready to fight again.
-  The block fled with its ranks as they stood when it broke,
-  so they are often turned against its new heading,
-  and a half-turn leaves the short rank leading.
-  It re-squares its ranks once it has pulled up (below),
-  which for horse rallying at full gallop takes several seconds
-  (about 5.5 seconds in the demo for this change).
-  First the men turn where they stand, at the pace of an ordered about-face,
-  by at most a quarter-turn,
-  until the ranks lie square across the way they face, facing either way.
-  So a rallied unit can end up facing across its line of flight:
-  turning the ranks themselves onto that line would march a block that is not square
-  into a different shape,
-  and a unit only rallies clear of the enemy,
-  so keeping its men in place matters more than which way it faces.
-  An enemy can still close in while the unit pulls up.
-  If one comes within reach before the ranks have re-squared,
-  the re-square is called off and the unit turns to face the enemy
-  with its ranks as they stand.
-  Your next order squares them first, turning the men where they stand,
-  and if you give none, the re-square resumes once every enemy has stayed
-  a quarter beyond that reach for half a second.
-  When the ranks do re-square, they do so from the places the men held.
-  If its ranks face the wrong way, each man keeps his file,
-  and only the under-strength files step up one rank to close the front,
-  whichever the layout:
-  **File-major** reform (the default), **Row-major**, or **square** (orbis or schiltron).
-  As with an ordered about-face,
-  the men don't counter-march through the block to do it,
-  so once it has pulled up a rallied unit is back in fighting shape quickly
-  rather than spending seconds shuffling through itself.
-  A unit that rallies at a run **pulls up** before it turns and re-forms,
-  where it has the room and no enemy is near it or its path
-  (and it stops short if one comes near while it slows):
-  it brakes at its own rate with its men keeping step,
-  over about 3 to 5 metres for foot running flat out and about 30 for horse,
-  so the block halts as one instead of stopping dead and leaving its men to run on
-  past their places and walk back.
+  It re-forms where its men stand when it rallies:
+  its formation is laid out at their centre, square to the way they were running,
+  and each man is given the place in it nearest where he stands,
+  so the block forms up out of the crowd
+  rather than each man hunting through it for his old place.
+  A man still running when his unit rallies cannot stop dead:
+  he pulls up at his own braking rate first, then walks to his place.
+  The sources describe both ways of re-forming.
+  Xenophon says the Spartans, even when thrown into disorder,
+  fought on with whoever stood beside each man
+  (*Constitution of the Lacedaemonians* 11.7),
+  while Vegetius has each century's standard marked
+  so that no man strays from his own in the confusion of battle
+  (*Epitoma rei militaris* 2.13).
+  The game uses the first,
+  and builds the second, each man going back to his own place in his own file,
+  as a variant.
 - **Keep pressing it and it "shatters" instead** --- still in contact when its time
   runs out, or gutted past reforming. A shattered unit does NOT vanish: it stays on the
   field, still routing, but can never again recover morale or rally. From there it
   either **escapes** (flees clear of the map, gone but got away) or is run down and
   **annihilated** (soldiers reduced to zero) before it can.
-- **A routing unit paths around impassable terrain too** --- fleeing is no longer a
-  straight line toward the back edge; a router detours around a hill in its way the
-  same as an ordered move does.
-  It swings wide enough for its whole block to pass,
-  turns onto the detour gradually,
-  and its men veer off the rock rather than running into it,
-  so even a deep block keeps together round the hill
-  and regains its full flight pace once past it.
-  A block that breaks with its front just short of a hill
-  side-steps along the hill's face until its front rank is clear,
-  so that rank stays with it.
-  A leading man the face still holds back for a moment
-  is not left a rank or two behind as the flight swings on round the hill:
-  once he is more than 3 m off his place
-  he may change his speed and direction faster than usual,
-  by part of what he follows is changing, rising to all of it from 6 m off ---
-  his place's own movement, plus any sidestep off a friendly block he presses against ---
-  while that is not slowing
-  (at most twice his usual rate on top).
-  On the demo clip of such a block
-  no rider ends more than about 5 m from his place, against 9.6 m before
-  (@fig-deep-router-close-start-hill).
-  If every escape direction is blocked,
-  it gives up fleeing and stands to fight
-  instead of uselessly running in place against the obstacle.
+- **A routing man goes round impassable terrain** --- a man running at a hill
+  veers along its face, toward the shorter way round to the far side, while he can
+  still turn, instead of running onto the rock and standing there, so a broken block
+  pours round a hill in its way rather than piling up against it.
 - **The battle isn't over while a side is only routing.** A team is beaten only once
   its last unit is truly gone (escaped, annihilated, or otherwise removed), not while
   its final unit is merely routing. Even a lone survivor that breaks can flee, rally,
@@ -239,7 +203,10 @@ and gets clear of them 3.5 seconds after it breaks.
 </video>
 ```
 
-A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu short of a hill. The block side-steps along the hill's face until its front rank is clear, and a leading rider the face holds back catches up as the flight swings on: near the end of the clip the farthest rider is 4.8 m off his place, against 9.6 m with the side-step alone.
+A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu (2 m) short of a hill.
+Each rider sees the rock in his way and runs the open way nearest the one he wants,
+so the block bears off west round the hill's end
+and no rider is held on the face.
 :::
 
 ::: {#fig-morale-recovery .demo}
@@ -272,13 +239,11 @@ returns to your control. (The regression guard for this behavior is
 ```
 
 The same recovery for a **Row-major** regiment.
-The flight leaves the grid flipped, with the 5-man short rank leading.
-A row-major block carries no per-soldier file to step up,
-so the rally deals the slots again file by file:
-each man keeps his file and his place in its order.
-The men of the five full-depth files stand still,
-and the men of the six short files each step one rank forward to close the front,
-so the short rank ends at the rear.
+Its men pull up from their run on their own,
+and it re-forms where they come to rest:
+its grid is laid out at their centre, square to the way they were running,
+and each man is dealt the place nearest where he stands,
+row by row with the short rear rank dealt on its own.
 :::
 
 ::: {#fig-square-rally-reform .demo}
@@ -294,12 +259,8 @@ so the short rank ends at the rear.
 
 The same recovery once more, for a regiment holding **square**.
 A square keeps its own assignment of men to cells,
-which neither the file-major step-up nor the row-major pairing reaches,
-so undoing the flip has to name that third assignment directly.
-The rally deals the square's own cells file by file, as for row-major:
-the men of the four full-depth files stand still,
-and the men of the four short files each step one rank forward,
-so the block re-squares where it stands instead of marching itself inside out.
+so the rally deals the square's own cells from where the men come to rest,
+and the block forms up where it stands instead of each man hunting through it for his old cell.
 :::
 
 ::: {#fig-rout-rally .demo}
@@ -359,10 +320,6 @@ its ranks slanting across its flight as it swings slowly round onto it,
 while its nerve steadies,
 rallying near the end of the clip well past the hill's northern end.
 The clip does not show a detour around the hill.
-A router with no terrain escape route left at all still stands and fights
-instead of fleeing in place (see [Terrain](#terrain)) &mdash; the open field
-this clip runs in never actually boxes a unit in, so that specific case isn't
-shown here.
 :::
 
 ## Rank cycling (trained units)
@@ -3103,10 +3060,9 @@ holds it --- no back-and-forth snapping between headings while the regiment
 settles onto its new course.
 :::
 
-A [routing](#morale-routing) unit paths around a hill the same way while fleeing ---
-it's no longer a straight sprint toward the back edge. If a router is boxed in with
-every escape direction blocked, it gives up fleeing and stands to fight rather than
-running in place against the obstacle.
+A [routing](#morale-routing) unit has no route of its own: each of its men veers
+along the face of a hill he is running at, toward the shorter way round to the far side,
+and goes round it.
 
 ::: {.callout-tip}
 ## Forests slow cavalry charges

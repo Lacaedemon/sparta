@@ -101,12 +101,12 @@ func test_a_pending_row_deal_resquare_keeps_the_anchor_in_place() -> void:
 		"the anchor held through the re-square (worst %.3f wu)" % worst)
 
 
-## A rally re-square over the same pending deal (a casualty in the rally frame): the block is
-## still braking, every man 20 wu ahead of his slot, so where the men stand says nothing about
-## who walks. No man is flagged, and the coupling follows the bodies (11.7 wu
+## A hold-ground re-square over the same pending deal (a casualty in the re-square frame): the
+## block is still braking, every man 20 wu ahead of his slot, so where the men stand says nothing
+## about who walks. No man is flagged, and the coupling follows the bodies (11.7 wu
 ## here). Judging the walkers by the bodies flagged all 45 and held the anchor
 ## at 0.48 wu while the men walked about 17 wu back to it.
-func test_a_pending_deal_on_a_rally_resquare_keeps_following_the_bodies() -> void:
+func test_a_pending_deal_on_a_braking_resquare_keeps_following_the_bodies() -> void:
 	var u := _make(46, 10, true)
 	_settle_about_face(u)
 	assert_true(u.reform_ranks(true), "precondition: the first re-square")
@@ -119,7 +119,7 @@ func test_a_pending_deal_on_a_rally_resquare_keeps_following_the_bodies() -> voi
 		"precondition: the row deal is pending")
 	var start: Vector2 = u.position
 	assert_true(u.reform_ranks(true), "precondition: the about-face fold re-squares")
-	assert_true(u._couple_transit.is_empty(), "a rally re-square flags nobody by the bodies")
+	assert_true(u._couple_transit.is_empty(), "a braking re-square flags nobody by the bodies")
 	for _i in range(300):
 		SoldierBodies.step(u, DT)
 		SoldierBodies.couple(u, DT)

@@ -822,6 +822,45 @@ func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
 	return sep_vel[0] if sep_vel.size() == 2 else Vector2.ZERO
 
 
+## The standoff push on the first of a pair `d` apart, each man a few wu off a place of his own
+## (nearer than the out-of-good-order distance), in a REFORM hold or not.
+func _standoff_push_near_places(d: float, v0: Vector2, v1: Vector2, holding: bool) -> Vector2:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	u.state = Unit.State.MOVING
+	if holding:
+		u.current_order = Order.new_move(u.position)
+		u.current_order.reform_timer = 1.0
+	else:
+		u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d, 0.0)
+	u._sim_body_vel[0] = v0
+	u._sim_body_vel[1] = v1
+	var places := PackedVector2Array([Vector2(0.0, 3.0), Vector2(d, 3.0)])
+	var sep_vel: PackedVector2Array = SoldierBodies._separate_same_unit(
+		u, 2, places, PackedByteArray([0, 0]), 1.0 / 60.0)
+	return sep_vel[0] if sep_vel.size() == 2 else Vector2.ZERO
+
+
+func test_a_hold_stops_a_closing_pair_near_its_places_within_the_walking_push() -> void:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
+	var still: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2.ZERO, true)
+	var closing: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-10.0, 0.0), true)
+	assert_almost_eq(closing.x - still.x, -5.0, 0.001,
+		"in a hold a closing pair near its places takes the band")
+	var fast: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-1000.0, 0.0), true)
+	assert_almost_eq(fast.length(), SoldierBodies.STANDOFF_MAX_SPEED, 0.001,
+		"its push and stopping held together to the walking push")
+	var out: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
+	var out_still: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2.ZERO, false)
+	assert_almost_eq(out.x, out_still.x, 0.001, "outside a hold a pair near its places takes only the push")
+
+
 ## A unit's standoff distance, as _separate_same_unit derives it.
 func _standoff_min_sep(u: Unit) -> float:
 	var min_pitch: float = minf(u.file_pitch_wu(), u.rank_pitch_wu())
@@ -846,18 +885,18 @@ func test_same_unit_standoff_cancels_closing_speed_inside_the_contact_band() -> 
 		"a pair already walking apart must take no closing cancel")
 
 
-func test_same_unit_standoff_leaves_closing_speed_outside_a_reform_hold() -> void:
+func test_same_unit_standoff_cancels_closing_speed_outside_a_reform_hold_too() -> void:
 	var probe := _make_unit(42, 2)
 	probe.frontage_override = 1
 	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
 	# The same closing pair inside the contact band, but in a settle window rather than a
-	# hold: a march or a fight keeps the overlap push alone.
+	# hold: the band is the pair's own rule, so the block's state does not switch it off.
 	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO, false)
 	var closing: Vector2 = _standoff_push_on_first_of_pair(
 		d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
 	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
-	assert_almost_eq(closing.x, still.x, 0.001,
-		"outside a REFORM hold a closing pair must take only the overlap push")
+	assert_almost_eq(closing.x - still.x, -5.0, 0.001,
+		"outside a REFORM hold a closing pair takes half its closing speed each as well")
 
 
 func test_same_unit_standoff_leaves_closing_speed_outside_the_contact_band() -> void:

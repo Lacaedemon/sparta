@@ -1,0 +1,78 @@
+{
+  "_comment": "Bottom-up routing (#1949): a routed unit flees as individual men, each running from the foes he perceives toward his refuge. A brittle squadron of 24 Cavalry (blue, team 0, facing north) is staged already ROUTING (starting_state 3) with a block of 120 Infantry standing 150 wu north of it, between it and its refuge, its own rear edge to the north. Team 1's AI is off (all_teams_control), so the infantry stand still and only the rout moves. Each rider looks round once a reaction time, sees the infantry between him and his refuge, and runs away from them and round them on one side (SoldierFlightWay.choose), rather than into them or standing still where his refuge's pull and their push would balance; the riders east of the squadron's centre go round the east side and those west of it the west, so its centroid (its position) stays south of the infantry. On main the whole squadron fled along one fixed heading per team (north for team 0) into and through the infantry. The expects pin that the squadron is not in contact with the infantry at tick 180 (60 Hz dump basis), and that at tick 240 it is still routing with its centroid within 40 wu of (800, 900), its starting point. Measured 2026-11-13 on Windows: not in contact at 180 and centroid (800.4, 908.1) at 240, identical on seeds 0 to 4 (nothing in the clip draws a random number); on main 16282049 it is in contact at 180 and at (793.3, 643.8) at 240, so both fail there. Camera ticks are in the 30 fps recording basis.",
+  "seed": "194900",
+  "all_teams_control": true,
+  "scenario": [
+    {
+      "team": 0,
+      "type": "Cavalry",
+      "x": 800,
+      "y": 900,
+      "count": 24,
+      "morale": 1.0,
+      "starting_state": 3,
+      "facing": [
+        0,
+        -1
+      ]
+    },
+    {
+      "team": 1,
+      "type": "Infantry",
+      "x": 800,
+      "y": 750,
+      "count": 120,
+      "facing": [
+        0,
+        1
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "tick": 0,
+      "x": 800.0,
+      "y": 880.0,
+      "zoom": 0.9
+    },
+    {
+      "tick": 150,
+      "x": 800.0,
+      "y": 1000.0,
+      "zoom": 0.8
+    }
+  ],
+  "steps": [],
+  "state": [
+    0,
+    30,
+    60,
+    120,
+    180,
+    240
+  ],
+  "expect": [
+    {
+      "tick": 180,
+      "uid": 0,
+      "field": "in_enemy_contact",
+      "value": false
+    },
+    {
+      "tick": 240,
+      "uid": 0,
+      "field": "state",
+      "value": "ROUTING"
+    },
+    {
+      "tick": 240,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        800.0,
+        900.0
+      ],
+      "tol": 40.0
+    }
+  ]
+}
