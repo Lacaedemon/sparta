@@ -1859,6 +1859,7 @@ func _spawn_rearguard_detachment(parent: Unit, soldier_count: int, delay_sec: fl
 	ud["engaged_target_pairing_age_ticks"] = -1
 	# An explicatio under way is the whole block's: the men left behind form up afresh.
 	ud["explicatio_drill"] = UnitFormation.ExplicatioDrill.NONE
+	ud["explicatio_reverse"] = false
 	# Truncate every per-soldier body array to the first `soldier_count` entries -- the
 	# front-most, already-engaged soldiers are the ones staying; the rest belong to the
 	# retreating main body.
@@ -2687,6 +2688,16 @@ func enqueue_file_double(uids: Array, direction: int,
 				cmd["explicatio_held"] = anchor
 			if side != UnitFormation.ExplicatioSide.OUTWARD:
 				cmd["explicatio_side"] = side
+			if ground != UnitFormation.ExplicatioGround.LENGTHEN:
+				cmd["explicatio_ground"] = ground
+		# A narrowing of a block an explicatio dealt is that explicatio in reverse (Unit.
+		# explicatio_undoable), holding its flank and keeping its pitch or its ground; any other
+		# narrowing records as it always has.
+		elif direction < 0 and drill != UnitFormation.ExplicatioDrill.NONE \
+				and u.explicatio_undoable():
+			cmd["explicatio"] = drill
+			if anchor != UnitFormation.Anchor.CENTRE:
+				cmd["explicatio_held"] = anchor
 			if ground != UnitFormation.ExplicatioGround.LENGTHEN:
 				cmd["explicatio_ground"] = ground
 		_pending_orders.append(cmd)
