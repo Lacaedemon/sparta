@@ -11329,7 +11329,9 @@ func _rally() -> void:
 	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
 	_far_flee_pace = 0.0
-	_rally_pending = true
+	# A close-tier unit's men pull up from their run on their own before it re-forms; a far-tier
+	# unit has no men to pull up, and its aggregate flight stops where it rallies.
+	_rally_pending = tier != FormationTier.FAR
 	# The orders queue (route legs included) was already dropped by _rout()'s
 	# clear_orders(), so a rallied unit reforms with no orders.
 	remove_from_group("routers")

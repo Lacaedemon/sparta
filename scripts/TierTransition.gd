@@ -74,6 +74,10 @@ static func can_demote(u: Unit, is_reinforce_target: bool = false) -> bool:
 	# the aggregate record has no grid to put them on until they have stopped.
 	if u._rally_pending:
 		return false
+	# A horse unit riding a rout down: its riders are scattered after their runners
+	# (SoldierPursuitStep), off any place, and the aggregate record has none to put them on.
+	if SoldierPursuitStep.is_pursuing(u):
+		return false
 	# An active anchor hold (e.g. post-commit newcomer arrival after a reinforcement)
 	# keeps the host close-tier so interleaved bodies can reach their assigned slots.
 	if u.position_anchor_held():
@@ -151,6 +155,8 @@ static func demote(u: Unit) -> void:
 	u._sim_soldier_reflect_walker = PackedByteArray()
 	# And each man's role: the men promote() builds are new, so none leads a column.
 	u._sim_soldier_role = PackedByteArray()
+	# And each routed man's or rider's chosen way: the aggregate record has no men to run.
+	u._sim_flight_dir = PackedVector2Array()
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 

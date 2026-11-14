@@ -106,6 +106,29 @@ func test_a_rallying_unit_stays_in_the_close_tier_until_its_men_have_pulled_up()
 	assert_true(TierTransition.can_demote(u), "once re-formed it may demote like any idle unit")
 
 
+func test_a_far_tier_rally_leaves_no_pull_up_pending_and_a_demotion_no_chosen_ways() -> void:
+	var u := _unit(2)
+	u._rout()
+	u._sim_flight_dir = PackedVector2Array([Vector2.UP, Vector2.UP])
+	TierTransition.demote(u)
+	assert_true(u._sim_flight_dir.is_empty(), "the aggregate record has no men to run")
+	u._rally()
+	assert_false(u._rally_pending, "a far-tier unit has no men to pull up")
+
+
+func test_a_horse_unit_riding_a_rout_down_does_not_demote() -> void:
+	var r := _unit(2)
+	r.team = 1
+	r._rout()
+	var p := _unit(2)
+	p.is_cavalry = true
+	p.target_enemy = r
+	p.state = Unit.State.MOVING
+	assert_false(TierTransition.can_demote(p), "its riders are scattered after their runners")
+	p.is_cavalry = false
+	assert_true(TierTransition.can_demote(p), "foot following in their ranks may")
+
+
 func test_an_order_re_forms_a_rallying_unit_at_once() -> void:
 	var u := _unit(2)
 	u._rout()
