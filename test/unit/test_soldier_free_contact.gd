@@ -156,10 +156,11 @@ func test_the_contact_band_is_the_pairs_own_rule_in_a_march_too() -> void:
 		"two men on their own places are not a pair to part")
 
 
-func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:
+func test_when_a_chase_ends_the_riders_rally_on_their_standard() -> void:
 	var p: Unit = _rider_after(AT + Vector2(0, -1000), 2)
 	SoldierPursuitStep.step(p, 2, {}, DT)
+	p._sim_soldier_pos[1] = p._sim_soldier_pos[0] + Vector2(400, 0)   # the chase scattered them
 	p.state = Unit.State.IDLE   # its quarry is gone and it has nowhere to go
 	p.step_sim_soldiers(DT)
-	assert_true(p._rally_pending, "its riders pull up from the gallop before it forms up")
+	assert_true(SoldierRally.is_rallying(p), "its riders rally on their standard before it forms up")
 	assert_true(p._sim_flight_dir.is_empty(), "with no chase left to remember")

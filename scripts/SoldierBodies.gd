@@ -304,22 +304,27 @@ static func step(unit: Unit, delta: float) -> void:
 	# A unit riding a router down: each man chases the runner nearest him (SoldierPursuitStep).
 	if pursuing:
 		var chase_t0: int = Time.get_ticks_usec()
+		unit._sim_rally_on = PackedInt32Array()   # a rally a new chase cuts short is over
 		var chase_guard: Dictionary = _terrain_entry_guard(unit, n)
 		SoldierPursuitStep.step(unit, n, chase_guard, delta)
 		_keep_out_of_terrain(unit, n, chase_guard, delta)
 		SoldierFlight.work_usec += Time.get_ticks_usec() - chase_t0
 		return
 	# A chase that has just ended (its quarry fell, rallied or got clear) leaves each rider where
-	# he rode, with nothing left to remember; the unit forms up where its men stand, as a rally
-	# does, rather than each man riding back through the others to his old place. A unit left
-	# standing (IDLE) first lets its riders pull up from the gallop, as a rally does
-	# (pull_up_rallied); one given somewhere to go forms up at once.
+	# he rode, with nothing left to remember: the riders rally on their standard (SoldierRally),
+	# each to his place beside the man he rallies on, and the troop forms up where they have
+	# gathered once its ilarch sees it formed on him, rather than at once wherever they stand.
 	if not unit._sim_flight_dir.is_empty():
-		if unit.state == Unit.State.IDLE:
-			unit._sim_flight_dir = PackedVector2Array()
-			unit._rally_pending = true
-		else:
-			unit._reform_where_men_stand()
+		unit._sim_flight_dir = PackedVector2Array()
+		SoldierRally.begin(unit, n)
+	if SoldierRally.is_rallying(unit):
+		var rally_t0: int = Time.get_ticks_usec()
+		var rallying: bool = SoldierRally.step(unit, n, delta)
+		SoldierFlight.work_usec += Time.get_ticks_usec() - rally_t0
+		if rallying:
+			_keep_out_of_terrain(unit, n, _terrain_entry_guard(unit, n), delta)
+			return
+		unit._reform_where_men_stand()
 	# The BODY-DYNAMICS tier, not the melee-resolution one: identical geometry and gate, but
 	# capped so it never covers the whole block. Everything below this line -- the dropped
 	# march feed-forward, the canonical-slot re-pairing -- is written relative to an unengaged
@@ -1354,12 +1359,12 @@ static func couple(unit: Unit, delta: float) -> void:
 		unit.position = unit.explicatio_grid_position()
 		return
 	# A routed unit has no grid, nor a rallied one whose men are still pulling up, nor one riding a
-	# router down (SoldierPursuitStep): its `position`
-	# is where its men are (their centroid) and its heading the way they face, which is the way
-	# each runs (SoldierFlightStep, pull_up_rallied), both read off the men each tick and never
-	# fed back to them.
+	# router down (SoldierPursuitStep), nor one whose riders are rallying on their standard after
+	# the chase (SoldierRally): its `position` is where its men are (their centroid) and its
+	# heading the way they face, which is the way each runs (SoldierFlightStep, pull_up_rallied),
+	# both read off the men each tick and never fed back to them.
 	if unit.state == Unit.State.ROUTING or (unit._rally_pending and unit.state == Unit.State.IDLE) \
-			or SoldierPursuitStep.is_pursuing(unit):
+			or SoldierPursuitStep.is_pursuing(unit) or SoldierRally.is_rallying(unit):
 		_read_router_off_men(unit, n, delta)
 		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
