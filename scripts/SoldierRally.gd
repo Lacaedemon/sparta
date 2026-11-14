@@ -31,14 +31,13 @@ static func begin(unit: Unit, n: int) -> void:
 	var on := PackedInt32Array()
 	on.resize(n)
 	for i in range(n):
-		on[i] = -1 if i == ilarch else _ahead_in_file(off, i, half, ilarch, unit.chase_rally)
+		on[i] = -1 if i == ilarch else _ahead(off, i, half, ilarch, unit.chase_rally)
 	unit._sim_rally_offset = off
 	unit._sim_rally_on = on
 
 
 ## The man `i` rallies on: under FILE the nearest man ahead of him in his file, else `ilarch`.
-static func _ahead_in_file(off: PackedVector2Array, i: int, half: float, ilarch: int,
-		mode: int) -> int:
+static func _ahead(off: PackedVector2Array, i: int, half: float, ilarch: int, mode: int) -> int:
 	if mode == Mode.ILARCH:
 		return ilarch
 	var best: int = ilarch
@@ -76,8 +75,7 @@ static func step(unit: Unit, n: int, delta: float) -> bool:
 		unit._sim_rally_offset = PackedVector2Array()
 		return false
 	var accel: float = maxf(unit.accel, SoldierBodies.BODY_ACCEL_FLOOR)
-	var top: float = unit.move_speed
-	var cap: float = top * unit.superphysical_speed_frac
+	var cap: float = unit.move_speed * unit.superphysical_speed_frac
 	var contact: PackedVector2Array = SoldierBodies.standoff_free(unit, n, cap)
 	for i in range(n):
 		var pos: Vector2 = unit._sim_soldier_pos[i]
@@ -89,7 +87,7 @@ static func step(unit: Unit, n: int, delta: float) -> bool:
 		var ahead: float = 1.0 if speed <= SoldierBodies.REST_SPEED or dist <= 0.01 \
 				else maxf(0.0, vel.dot(to) / (speed * dist))
 		var desired: Vector2 = Vector2.ZERO if dist <= 0.01 \
-				else to / dist * minf(top, sqrt(2.0 * accel * dist)) * ahead
+				else to / dist * minf(unit.move_speed, sqrt(2.0 * accel * dist)) * ahead
 		var new_vel: Vector2 = SoldierPursuitStep.ride(vel, desired, accel, Unit.TURN_RATE, delta) \
 				.limit_length(maxf(cap, speed))
 		unit._sim_body_vel[i] = new_vel

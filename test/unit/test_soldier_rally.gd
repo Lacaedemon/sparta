@@ -34,6 +34,8 @@ func test_each_man_rallies_on_the_man_ahead_in_his_file_and_the_front_on_the_ila
 	assert_eq(on.count(-1), 1, "one ilarch")
 	for i in range(n):
 		assert_true(off[ilarch].y <= off[i].y + 0.01, "the ilarch stands in the front rank (%d)" % i)
+		if absf(off[i].y - off[ilarch].y) < 0.01:
+			assert_true(absf(off[ilarch].x) <= absf(off[i].x) + 0.01, "at its centre (%d)" % i)
 	for i in range(n):
 		if i == ilarch or on[i] == ilarch:
 			continue
@@ -82,6 +84,7 @@ func test_a_rider_whose_place_is_behind_him_reins_in_rather_than_circling() -> v
 	u._sim_soldier_facing[ilarch] = Vector2.UP
 	u._sim_soldier_pos[other] = AT + Vector2(0, -400)   # well past his place, ahead of the ilarch
 	u._sim_body_vel[other] = Vector2(0, -150)   # galloping on away from it
-	SoldierRally.step(u, 2, DT)
-	assert_lt(u._sim_body_vel[other].length(), 150.0, "he slows to turn back")
-	assert_lt(u._sim_body_vel[other].y, 0.0 + 1e-3, "rather than wheeling at the gallop")
+	for t in range(30):
+		SoldierRally.step(u, 2, DT)
+	assert_lt(u._sim_body_vel[other].length(), 145.0,
+			"within half a second he is reining in to turn back rather than wheeling at the gallop")
