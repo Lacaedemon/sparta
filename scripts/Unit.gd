@@ -172,6 +172,9 @@ var _cached_combat_profile: Dictionary = {}
 # Whom each rider rallies on when a chase ends, both the sim's inference (no source describes a
 # rally after a pursuit): the man ahead in his file (FILE) or the ilarch (ILARCH); see SoldierRally.
 @export var chase_rally: int = SoldierRally.Mode.FILE
+# What a routed man cornered by enemy bodies does: force his way out where the foes stand
+# thinnest (CUT) or stand and fight (STAND), both the sim's inference; see SoldierBreakOut.
+@export var cornered: int = SoldierBreakOut.Mode.CUT
 # How many body steps a march may stand still before its bodies' arrival target ramp starts
 # again from nothing (SoldierBodies.advance_march_target_frac), so a march that dips to a
 # standstill for a step or two keeps its ramp. Steps stood in enemy contact or engaged are
@@ -2010,10 +2013,10 @@ func _physics_process(delta: float) -> void:
 		# was at the break, it would keep the router's bodies colliding as if still pressed
 		# against the enemy it has fled.
 		_refresh_enemy_contact()
-		# A cornered man strikes at his unit's own cadence (SoldierCornered.fight).
+		# A cornered man strikes at his unit's own cadence (SoldierBreakOut.fight).
 		_attack_cd = maxf(0.0, _attack_cd - delta)
 		var fight_t0: int = Time.get_ticks_usec()
-		if _attack_cd <= 0.0 and SoldierCornered.fight(self):
+		if _attack_cd <= 0.0 and SoldierBreakOut.fight(self):
 			_start_attack_cd(melee_attack_interval())
 		SoldierFlight.work_usec += Time.get_ticks_usec() - fight_t0
 		# A far-tier router is billed at the pace it carried into this tick, as a close-tier
@@ -12250,6 +12253,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rally_deal": rally_deal, "rout_reaction_time": rout_reaction_time,
 		"foot_pursuit": foot_pursuit,
 		"chase_rally": chase_rally,
+		"cornered": cornered,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
 		"combat_wheel_rate": _combat_wheel_rate, "combat_wheel_offset": _combat_wheel_offset,
@@ -12536,6 +12540,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rally_deal = int(d.get("rally_deal", rally_deal))
 	foot_pursuit = int(d.get("foot_pursuit", foot_pursuit))
 	chase_rally = int(d.get("chase_rally", chase_rally))
+	cornered = int(d.get("cornered", cornered))
 	rout_reaction_time = float(d.get("rout_reaction_time", rout_reaction_time))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",
 			melee_reface_fold_footprint_scale))

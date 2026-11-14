@@ -33,7 +33,7 @@ static func resolve(attacker: Unit, defenders: Array[Unit]) -> void:
 
 
 ## resolve() for the striking men `attackers` (body indices of `attacker`) named by the caller:
-## a fighting unit's engaged front, or a routed unit's cornered men (SoldierCornered.fight).
+## a fighting unit's engaged front, or a routed unit's cornered men (SoldierBreakOut.fight).
 static func resolve_men(attacker: Unit, attackers: PackedInt32Array, defenders: Array[Unit]) -> void:
 	if attackers.is_empty() or defenders.is_empty():
 		return

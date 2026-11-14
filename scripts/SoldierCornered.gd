@@ -2,9 +2,9 @@ class_name SoldierCornered
 extends RefCounted
 ## A routed man with no way to run turns and fights. He is cornered when the way he wants to
 ## run, and the ways to either side of it, are each shut within his weapon's reach: by
-## impassable ground, or by an enemy body, with a foe in reach. He then stands, faces the foe nearest
-## him and strikes with the men beside him at his unit's cadence (fight), and runs again once he
-## looks round and finds a way open (SoldierLookRound).
+## impassable ground, or by an enemy body, with a foe in reach. What he then does, cut his way out
+## or stand and fight, is SoldierBreakOut's; he runs freely again once he looks round and finds a
+## way open (SoldierLookRound).
 
 ## Half the width of a direction's sector, in radians: ahead, left and right each cover a
 ## quarter-turn, so the three cover everything but the way he came.
@@ -79,22 +79,3 @@ static func _spread(foe: Unit) -> float:
 	var spread: float = sqrt(far_sq) + SPREAD_PAD
 	_spreads[foe] = [count, spread]
 	return spread
-
-
-## The cornered men of a routed `unit` (those whose chosen direction is ZERO) strike the foes
-## within their reach, as a fighting rank does (SoldierMelee.resolve_men). Returns whether any
-## man stood to fight, so the caller arms the next blow's cooldown.
-static func fight(unit: Unit) -> bool:
-	var men := PackedInt32Array()
-	for i in range(mini(unit._sim_flight_dir.size(), unit._sim_soldier_pos.size())):
-		if unit._sim_flight_dir[i] == Vector2.ZERO:
-			men.push_back(i)
-	if men.is_empty():
-		return false
-	var defenders: Array[Unit] = []
-	for i in men:
-		for foe in foes_near(unit, unit._sim_soldier_pos[i], unit.soldier_reach()):
-			if not defenders.has(foe):
-				defenders.append(foe)
-	SoldierMelee.resolve_men(unit, men, defenders)
-	return true

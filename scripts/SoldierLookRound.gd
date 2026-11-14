@@ -2,9 +2,9 @@ class_name SoldierLookRound
 extends RefCounted
 ## A routed man looking round (SoldierFlightStep, once a reaction time): he chooses his way from
 ## what he perceives (SoldierFlightWay.choose). With a foe within his reach and no way open he is
-## cornered, and turns to that foe to fight (SoldierCornered). Rock alone never corners him: he
-## sees it, and runs the open way nearest the one he wants, so he backs out of a dead end and
-## goes round a hill or a wall rather than into it.
+## cornered (SoldierCornered), and cuts his way out or stands (SoldierBreakOut). Rock alone never
+## corners him: he sees it, and runs the open way nearest the one he wants, so he backs out of a
+## dead end and goes round a hill or a wall rather than into it.
 
 ## The turns off his wanted way he tries, nearest first, in radians.
 const TURNS: Array[float] = [PI / 4.0, PI / 2.0, 3.0 * PI / 4.0, PI]
@@ -17,10 +17,13 @@ static func look(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
 	var own: Vector2 = SoldierFlightWay.choose(unit, i, seen["threat"], grown)
 	var foe: Unit = seen["nearest_unit"]
 	if foe != null and SoldierCornered.is_cornered(unit, i, own, seen, grown):
-		var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
-		if to_foe.length_squared() > 0.0:
-			unit._sim_soldier_facing[i] = to_foe.normalized()
-		own = Vector2.ZERO
+		if unit.cornered == SoldierBreakOut.Mode.CUT:
+			own = SoldierBreakOut.way_out(unit, i, own)   # he forces his way out
+		else:
+			var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
+			if to_foe.length_squared() > 0.0:
+				unit._sim_soldier_facing[i] = to_foe.normalized()
+			own = Vector2.ZERO
 	else:
 		own = way_round_rock(unit, i, own, grown)
 	unit._sim_flight_dir[i] = own

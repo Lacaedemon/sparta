@@ -1,6 +1,7 @@
 extends GutTest
-## SoldierCornered: a routed man with no way to run turns and fights, and runs again once a
-## way opens. Bare units outside a battle, with bodies placed by hand.
+## SoldierCornered and SoldierBreakOut: a routed man with no way to run cuts his way out where the
+## foes stand thinnest (CUT) or stands and fights (STAND), and runs freely again once a way opens.
+## Bare units outside a battle, with bodies placed by hand.
 
 const TICK := 1.0 / 60.0
 const AT := Vector2(500, 500)
@@ -78,15 +79,16 @@ func test_cornered_men_strike_the_foes_within_reach() -> void:
 	var r: Unit = pair[0]
 	var f: Unit = pair[1]
 	r._rout()
+	r.cornered = SoldierBreakOut.Mode.STAND
 	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
-	assert_false(SoldierCornered.fight(r), "a man still running does not fight")
+	assert_false(SoldierBreakOut.fight(r), "standing his ground, a man still running does not fight")
 	r._sim_flight_dir[0] = Vector2.ZERO
 	var before: float = 0.0
 	for hp in f._sim_soldier_hp:
 		before += hp
 	var struck: bool = false
 	for _k in range(40):
-		struck = SoldierCornered.fight(r) or struck
+		struck = SoldierBreakOut.fight(r) or struck
 	var after: float = 0.0
 	for hp in f._sim_soldier_hp:
 		after += hp
@@ -103,6 +105,7 @@ func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() 
 	var r: Unit = pair[0]
 	var f: Unit = pair[1]
 	r._rout()
+	r.cornered = SoldierBreakOut.Mode.STAND
 	var frame: int = Engine.get_physics_frames()
 	SoldierFlight.prepare(frame, [r, f], [], null)
 	var period: int = r.rout_reaction_ticks()
@@ -119,6 +122,44 @@ func test_a_cornered_man_stands_faces_his_foe_and_runs_again_once_a_way_opens() 
 	SoldierLookRound.look(r, 0, frame, [] as Array[Rect2])
 	assert_ne(r._sim_flight_dir[0], Vector2.ZERO, "when he next looks round he runs again")
 	assert_gt(period, 0, "sanity: he looks round every %d ticks" % period)
+
+
+func test_a_cornered_man_cuts_his_way_out_where_the_foes_stand_thinnest() -> void:
+	# Foes all round him, two deep but for one thin stretch to his south-east.
+	var ring: Array[Vector2] = []
+	for k in range(8):
+		ring.append(Vector2.UP.rotated(k * PI / 4.0) * 20.0)
+		if k != 3:
+			ring.append(Vector2.UP.rotated(k * PI / 4.0) * 30.0)
+	var pair: Array = _router_and_foes(ring)
+	var r: Unit = pair[0]
+	r._rout()
+	assert_eq(r.cornered, SoldierBreakOut.Mode.CUT, "cutting out is the default")
+	var frame: int = Engine.get_physics_frames()
+	SoldierFlight.prepare(frame, [r, pair[1]], [], null)
+	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
+	SoldierLookRound.look(r, 0, frame, [] as Array[Rect2])
+	var way: Vector2 = r._sim_flight_dir[0]
+	assert_ne(way, Vector2.ZERO, "hemmed in, he does not stand")
+	assert_gt(way.dot(Vector2.UP.rotated(3.0 * PI / 4.0)), 0.9, "he makes for the thinnest stretch")
+	var lone := _unit(0, 1)
+	lone._sim_soldier_pos[0] = AT + Vector2(5000, 5000)
+	var even := SoldierBreakOut.way_out(lone, 0, Vector2.LEFT)
+	assert_gt(even.dot(Vector2.LEFT), 0.99, "with no foe about, the way he wants")
+
+
+func test_a_man_cutting_out_strikes_only_the_foe_in_his_way() -> void:
+	var pair: Array = _router_and_foes([Vector2(0, 20)])   # one foe, behind him
+	var r: Unit = pair[0]
+	r._rout()
+	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
+	assert_false(SoldierBreakOut.has_foe_to_strike(r, 0, Vector2.UP), "a foe behind is not in his way")
+	assert_false(SoldierBreakOut.fight(r), "so he does not stop to strike him")
+	assert_true(SoldierBreakOut.has_foe_to_strike(r, 0, Vector2.DOWN), "running at him, he is")
+	r._sim_flight_dir[0] = Vector2.DOWN
+	assert_true(SoldierBreakOut.fight(r), "and he strikes the foe in his way")
+	r.cornered = SoldierBreakOut.Mode.STAND
+	assert_false(SoldierBreakOut.fight(r), "standing his ground instead, a running man strikes nobody")
 
 
 func test_a_dead_man_s_chosen_way_goes_with_him() -> void:
