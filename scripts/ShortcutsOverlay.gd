@@ -38,6 +38,7 @@ const _ROWS: Array = [
 	["Line width (narrower/wider)", "[ / ]"],
 	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],
 	["Asymmetric explicatio (hold right / left flank fixed)", "Shift+B / Ctrl+B"],
+	["Choose the explicatio: drill / side / ground (cycle)", "Alt+B / Alt+Shift+B / Alt+Ctrl+B"],
 	["Form-up split mode", "Y (Shift+Y reverses)"],
 	["Nudge (small drill step, holds facing)", "Arrow keys"],
 	["Disengage and step back (breaks contact, holds facing)", "Ctrl+Down"],

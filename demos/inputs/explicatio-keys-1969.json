@@ -1,0 +1,24 @@
+{
+  "_comment": "A lone block of 96 Spearmen (6 files of 16) facing west, doubled to 12 files of 8 by an explicatio the player chose from the keyboard, not by the input script: Alt+B steps the drill to the alternate rank (Polyaenus 2.10.4), Alt+Shift+B steps the side outward to inward, spear side and shield side, and a plain B deals the choice. Every key goes through the real SelectionManager, so the order carries the drill and the side and the clip shows the alternate-rank epistatai stepping into the interval on the shield side of each file. The controls are held in the order, the replay and the demo's key overlay. Drill mode, no enemy. World coordinates; physics ticks (60/s).",
+  "seed": "1969",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 720, "y": 420, "count": 96, "facing": [-1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 720.0, "y": 420.0, "zoom": 2.2}
+  ],
+  "steps": [
+    {"tick": 12, "click": [720, 420]},
+    {"tick": 24, "key": "B", "alt": true},
+    {"tick": 30, "key": "B", "alt": true, "shift": true},
+    {"tick": 36, "key": "B", "alt": true, "shift": true},
+    {"tick": 42, "key": "B", "alt": true, "shift": true},
+    {"tick": 54, "key": "B"}
+  ],
+  "state": [8, 60, 120, 240, 360, 480, 600],
+  "expect": [
+    {"tick": 60, "uid": 0, "field": "frontage", "value": 12},
+    {"tick": 600, "uid": 0, "field": "position", "value": [684.0, 429.0], "tol": 2.25}
+  ]
+}
