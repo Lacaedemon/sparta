@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/turn-explicatio-deep-1967.json",
+  "caption": "Turn and unfold (Shift+Q) on a block deeper than it is wide: 140 Spearmen, 9 files of 16, quarter-turn left to present 16 files as their front, then double them to 32 files of 5 as the explicatio drill, each man following a man he can see, while the front the turn brought round keeps its line. Before, the combo's widen doubled the 16 files against the 9 the block had before the turn, which is no doubling, so the files were dealt anew laterally about the centre and the front fell back 30 wu.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 12,
+  "width": 720
+}

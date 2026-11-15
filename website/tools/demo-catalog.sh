@@ -144,6 +144,9 @@ DEMOS=(
   "explicatio_keys|demos/inputs/explicatio-keys-1969.json|30|300|720|input"
   "duplicatio_reverse|demos/inputs/duplicatio-reverse-1966.json|30|660|720|input"
   "duplicatio_face_about|demos/inputs/duplicatio-face-about-1985.json|30|660|720|input"
+  "turn_explicatio_deep|demos/inputs/turn-explicatio-deep-1967.json|30|360|720|input"
+  "explicatio_files_first|demos/inputs/explicatio-files-first-1967.json|30|450|720|input"
+  "explicatio_held_by_terrain|demos/inputs/explicatio-held-by-terrain-1967.json|30|420|720|input"
 )
 
 # The SPARTA_DUMP_CLIPS narrowing helpers (demo_catalog_selected,

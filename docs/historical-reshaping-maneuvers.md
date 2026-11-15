@@ -183,6 +183,34 @@ Whether the doubled line keeps its pitch or its ground (`UnitFormation.Explicati
   A block already at locked shields, or in a shield wall, testudo or square, has no closer order to take,
   so it cannot keep its ground: the order is not issued to it.
 
+When the files open, against when the men step into the intervals (`ExplicatioOpening.Reading`):
+
+- **`together`** (the default, the sim's own inference).
+  The files open out sideways while the men who change file step out and come up the intervals.
+
+- **`files_first`**.
+  Each old file opens out to its distance as a whole, every man keeping his place in it behind the man who stood ahead of him,
+  and only once its file leader has taken his place do its men step into the interval beside it and come up.
+  Asclepiodotus 10.17 inserts the new files "between the original files", so the files already stand apart,
+  and Bingham's note on Aelian 29.3 says the insertion "must be done in open order".
+  In Aelian 33 the opening is the files moving out to their distance, "the rest proceeding on to the Target",
+  and in Bingham's note on it they "moue on till the first distance recouered".
+  The lengthening explicatio opens and inserts in one drill,
+  so doing its opening first is the sim's inference from those passages.
+  The files open one after another, from the file that stands outward, since each file leader dresses on the next one in.
+  In the alternate-rank drill this keeps every file leader on the line he stood on:
+  together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead,
+  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle.
+  The man coming up into line beside the leader still runs a little past it before he settles, either way
+  ([#1989](https://github.com/Lacaedemon/sparta/issues/1989)).
+
+Arrian's *Tactica* (25.3 to 25.5, Hercher's Greek text on [classics.andrewgadsden.com](https://classics.andrewgadsden.com/library/arrian/tactica/25)) runs the other way:
+the men from the depth are first put into the spaces between the hoplites, and the front "is made dense" (πυκνοῦται),
+and only to double the ground as well are they then ordered to wheel out (ἐξελίσσεσθαι), half to the right and half to the left.
+Asclepiodotus 10.18 likewise doubles the ground of an inserted line "when the interjected men counter-march by rank".
+That order is the same-ground reading followed by an opening of the order, both of which the sim already deals,
+so it is not a third reading here.
+
 The leader of the file that stands is the guide the front rank dresses on.
 Chapter 33 is about opening a closed phalanx, not about doubling it, so applying it to the explicatio is the sim's inference, in every reading.
 Xenophon's drill on the march (Cyropaedia 2.3.21) is not built as a variant yet:
@@ -214,8 +242,17 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   when he stands within the reform settle distance of his place,
   or when a man of another regiment presses on him so he can come no nearer
   (a man in an interval, only once his lane is empty),
-  or, for a man in an interval, when every man standing in his lane has stopped following, so it will open no further.
-  From then on he keeps to his place as he would to his slot.
+  or, for a man in an interval, when every man standing in his lane has stopped following, so it will open no further,
+  or when a step he took for his place brought him no nearer it and he is going toward it no faster than he was,
+  so something he cannot pass, a face of rock or a friend's body, holds him off it.
+  A man still shedding a way he carried off his place gains pace toward it each step, so he is not held,
+  and nor is a man against whom a man of his own block who is still following stands on his way, since that man will move on.
+  A man so held takes his place where he stands and keeps it, and the men who follow him dress on him there.
+  The other men keep to their places as they would to their slots.
+  When the drill ends the grid is laid on the men who reached their places.
+  So each file is dressed from the front back, each man once the man ahead of him is,
+  by what each man sees of his own place and his own way to it.
+  Nothing measures the block against its slots, and nothing times it.
 
 The block's position is read off its men while the drill runs.
 When no man is still following, the drill ends, and the slot grid is laid on the men where they stand.
@@ -226,9 +263,8 @@ and so does any other change of width that happens to double the files (a drag o
 and so does a block whose grid stands turned from its men's facing, as an about-face leaves it,
 since its file leaders stand behind its men and its files would cross
 ([#1968](https://github.com/Lacaedemon/sparta/issues/1968)).
-The turn-and-unfold combo's widen doubles the turned block's files against the width it had before the turn,
-so it is the drill only for a block as deep as it was wide ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
-A man held off his place by terrain, rather than by another regiment, keeps the drill running ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)).
+The turn-and-unfold combo's widen doubles the files the turned block stands on across its new facing,
+its old ranks, dealt afresh from where its men stand, so it is the drill for a block of any depth.
 
 ## The duplicatio in reverse
 

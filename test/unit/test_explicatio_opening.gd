@@ -67,19 +67,27 @@ func _nearest_pair(points: PackedVector2Array) -> float:
 
 ## Widen `u` by `drill` held on `anchor` with `opening`, and walk the drill: the farthest the
 ## front stood ahead of where it began ("ahead") and behind it ("behind"), the closest two men
-## came ("closest"), the tick the drill ended ("ended", -1 if it did not), and the most men held in
-## their old files on any tick ("held").
+## came ("closest"), the tick the drill ended ("ended", -1 if it did not), the most men held in
+## their old files on any tick ("held"), and the farthest the leader of any file that stays, the
+## front of an old file, stood ahead of where the front began ("leaders_ahead").
 func _walk(u: Unit, drill: int, anchor: int, opening: int) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
 	_battle.enqueue_file_double([u.uid], 1, anchor, drill, OUTWARD, LENGTHEN,
 			DuplicatioMarch.Reading.WALK, opening)
-	var out := {"ahead": -INF, "behind": INF, "closest": INF, "ended": -1, "held": 0}
+	var out := {"ahead": -INF, "behind": INF, "closest": INF, "ended": -1, "held": 0,
+			"leaders_ahead": -INF}
 	for t in range(DRILL_TICKS):
 		await get_tree().physics_frame
 		var front: float = _front(u, forward) - front0
 		out["ahead"] = maxf(out["ahead"], front)
 		out["behind"] = minf(out["behind"], front)
+		for i in range(u.soldiers):
+			if u.explicatio_drill_active() and u._sim_soldier_rank[i] == 0 \
+					and UnitFormation.explicatio_file_stays(u._sim_soldier_file[i],
+							u._explicatio_lane_split, u._explicatio_inward):
+				out["leaders_ahead"] = maxf(out["leaders_ahead"],
+						u._sim_soldier_pos[i].dot(forward) - front0)
 		if t % 4 == 0:
 			out["closest"] = minf(out["closest"], _nearest_pair(u._sim_soldier_pos))
 		var held: int = 0
@@ -193,28 +201,42 @@ func test_the_reading_rides_the_live_order_and_a_snapshot() -> void:
 	var cmd: Dictionary = _battle._pending_orders.back()
 	assert_eq(int(cmd["explicatio_opening"]), FILES_FIRST, "the recorded order names it")
 	assert_eq(u._explicatio_opening, FILES_FIRST, "the drill under way reads it")
-	var snap: Dictionary = u.snapshot()
+	var snap: Dictionary = u.to_snapshot_dict()
 	u._explicatio_opening = TOGETHER
-	u.restore_snapshot(snap)
+	u.apply_snapshot_dict(snap)
 	assert_eq(u._explicatio_opening, FILES_FIRST, "a snapshot carries it")
 
 
 # --- Live ---------------------------------------------------------------------------
 
 
-## Files first, the alternate-rank drill's front stays on its line: no man of it gets a tenth of a
-## rank pitch ahead, where together it runs 1.07 to 1.24 wu (an eighth of the 9 wu rank pitch)
-## ahead, measured on this build for 140 Spearmen 9 files by 16, centred and held on the right.
-## The files open with their men in them, so the men wait in their files on the way, and the drill
+## Together, the alternate-rank drill's file leaders run ahead of the line they stood on: each
+## epistates steps out from right behind his file leader while the leader is still opening out, and
+## comes up inside a body's width of his back, pressing him forward, 1.07 wu (an eighth of the 9 wu
+## rank pitch) for 140 Spearmen 9 files by 16 centred and 1.24 wu held on the right, measured on
+## this build. Files first, each file opens out with its men still in it and only then does its
+## epistates step in beside the leader, so no file leader gets a fortieth of a rank pitch ahead.
+## The column leaders still come up into line a little past it before they settle, as they do
+## together, so the front as a whole runs no further ahead files first than a quarter of a rank
+## pitch, the bound every other reading keeps (TODO(#1989): a man coming up into line with way on
+## across his front still overshoots it). The men wait in their files on the way, and the drill
 ## ends with the files doubled and nobody closer than a body radius to another man.
-func test_files_first_keeps_the_alternate_rank_front_on_its_line() -> void:
+func test_files_first_keeps_the_alternate_rank_file_leaders_on_their_line() -> void:
 	for anchor in [UnitFormation.Anchor.CENTRE, UnitFormation.Anchor.RIGHT]:
 		var u: Unit = await _stage()
+		var together: Dictionary = await _walk(u, ALTERNATE_RANK, anchor, TOGETHER)
+		assert_gt(together["leaders_ahead"], 0.1 * u.rank_pitch_wu(),
+			"precondition, anchor %d: together a file leader went %.2f wu ahead"
+			% [anchor, together["leaders_ahead"]])
+		await _free_battle()
+		u = await _stage()
 		var walk: Dictionary = await _walk(u, ALTERNATE_RANK, anchor, FILES_FIRST)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
 		assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 		assert_gt(walk["held"], 0, "anchor %d: men waited in their files" % anchor)
-		assert_lt(walk["ahead"], 0.1 * u.rank_pitch_wu(),
+		assert_lt(walk["leaders_ahead"], 0.025 * u.rank_pitch_wu(),
+			"anchor %d: a file leader went %.2f wu ahead" % [anchor, walk["leaders_ahead"]])
+		assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
 			"anchor %d: the front went %.2f wu ahead" % [anchor, walk["ahead"]])
 		assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(),
 			"anchor %d: the front fell %.2f wu back" % [anchor, -walk["behind"]])

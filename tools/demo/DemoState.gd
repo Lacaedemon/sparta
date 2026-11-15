@@ -125,6 +125,17 @@ static func countermarch_variant_name(value: int) -> String:
 	return name_from(COUNTERMARCH_VARIANT_NAMES, value, "COUNTERMARCH_VARIANT")
 
 
+## How many of `u`'s men are still following in the explicatio or duplicatio drill under way,
+## null when none is under way (the unit record's explicatio_following).
+static func explicatio_following(u: Node):
+	if not u.explicatio_drill_active():
+		return null
+	var n: int = 0
+	for flag in u._explicatio_following:
+		n += flag
+	return n
+
+
 ## An order_mode int -> its readable name using Battle.ORDER_MODE_NAMES (passed in so this
 ## stays node-free and testable). Falls back to "MODE(<n>)" for an unmapped value.
 static func order_mode_name(order_mode_names: Dictionary, value: int) -> String:
@@ -426,6 +437,11 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		# Unit.countermarch_variant().
 		"countermarch_variant": countermarch_variant_name(u.countermarch_variant()) \
 				if u.countermarch_variant() >= 0 else null,
+		# How many men of an explicatio or duplicatio drill under way are still following the
+		# man they follow (Unit._advance_explicatio_drill), null when no drill is under way: a
+		# drill ends when the last man has taken his place, so a count that never reaches
+		# null is a drill that never ends.
+		"explicatio_following": explicatio_following(u),
 		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
 		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.
 		# Serialized as the readable name via FormationTier's own stable table.

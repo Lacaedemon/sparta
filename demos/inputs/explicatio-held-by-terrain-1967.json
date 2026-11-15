@@ -1,0 +1,19 @@
+{
+  "_comment": "PLACEHOLDER",
+  "seed": "19672",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 1075, "y": 470, "count": 140, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 1100.0, "y": 470.0, "zoom": 1.8}
+  ],
+  "steps": [
+    {"tick": 12, "click": [1075, 470]},
+    {"tick": 30, "key": "B"}
+  ],
+  "state": [8, 32, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900],
+  "expect": [
+    {"tick": 32, "uid": 0, "field": "frontage", "value": 18}
+  ]
+}

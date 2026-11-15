@@ -994,25 +994,66 @@ func test_a_drill_held_off_its_places_by_terrain_still_ends() -> void:
 	var u: Unit = units[0]
 	_battle.enqueue_file_double([u.uid], 1)
 	assert_true(u.explicatio_drill_active(), "precondition: the widen is the drill")
+	assert_eq(DemoState.explicatio_following(u), SPEARMEN, "the dump counts every man following")
 	var held_off: int = 0
+	var kept: int = 0
+	var short: int = 0
 	var ended: int = -1
+	var taken := {}   # man -> where he took his place, for the men the rock held
 	for t in range(2 * DRILL_TICKS):
 		var following: PackedByteArray = u._explicatio_following.duplicate()
 		var places: PackedVector2Array = _places(u).duplicate()
 		await get_tree().physics_frame
+		if u.explicatio_drill_active():
+			short = maxi(short, u._explicatio_short.count(1))
+			var now: PackedVector2Array = _places(u)
+			for i in taken:
+				if now[i] == taken[i]:
+					kept += 1
+				else:
+					assert_eq(now[i], taken[i], "man %d keeps the place he took" % i)
 		for i in range(mini(following.size(), u._explicatio_following.size())):
 			if following[i] == 1 and u._explicatio_following[i] == 0 \
 					and u._sim_soldier_pos[i].distance_to(places[i]) > Unit.REFORM_SETTLE_EPS:
 				held_off += 1
+				if u._explicatio_taken.size() == u.soldiers and u._explicatio_taken[i].is_finite():
+					taken[i] = u._explicatio_taken[i]
 		if not u.explicatio_drill_active():
 			ended = t
 			break
 	assert_gt(held_off, 0, "precondition: the rock held a man off his place")
+	assert_gt(taken.size(), 0, "a man the rock held took his place where he stood")
+	assert_gt(kept, 0, "and kept it on the ticks after")
+	assert_gt(short, taken.size(), "the men who follow a man held short stand short too")
 	assert_gte(ended, 0, "the drill ended")
+	assert_null(DemoState.explicatio_following(u), "and the dump says no drill is under way")
 	var right_edge: float = -INF
 	for p in u._sim_soldier_pos:
 		right_edge = maxf(right_edge, p.x)
 	assert_lt(right_edge, 1150.0, "nobody stands on the rock")
+
+
+## The grid is laid on the men who reached their places: men standing short of theirs, held off
+## them or following a man who is, do not pull it back; if every man stands short, it is laid on
+## them all.
+func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	var laid: Vector2 = u.explicatio_grid_position()
+	for i in range(5):
+		u._sim_soldier_pos[i] -= u.facing * 40.0
+	var dragged: Vector2 = u.explicatio_grid_position()
+	assert_gt(dragged.distance_to(laid), 1.0, "precondition: five men 40 wu back drag the fit")
+	u._explicatio_short = PackedByteArray()
+	u._explicatio_short.resize(u.soldiers)
+	for i in range(5):
+		u._explicatio_short[i] = 1
+	assert_almost_eq(u.explicatio_grid_position(), laid, Vector2(0.05, 0.05),
+		"the men short of their places are left out")
+	u._explicatio_short.fill(1)
+	assert_almost_eq(u.explicatio_grid_position(), dragged, Vector2(0.05, 0.05),
+		"every man short: laid on them all")
+	u._explicatio_short = PackedByteArray()
 
 
 ## A man can come no nearer when he stands no nearer his place than where he stepped from and is

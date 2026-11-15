@@ -1,0 +1,25 @@
+{
+  "_comment": "A lone block of 140 Spearmen (9 files of 16, close order, 9 wu pitch) facing east, doubled to 18 files of 8 by the alternate-rank explicatio (Polyaenus, Stratagems 2.10.4) read files first: Alt+B steps the drill to the alternate rank, Alt+Ctrl+Shift+B steps the opening from together to files first, and a plain B deals it. Each old file opens out to its distance from the middle file outward with every man still in it, each man keeping his place behind the man who stood ahead of him, and only once its file leader has taken his place does its every second man step into the interval beside the man ahead of him and come up (Asclepiodotus 10.17 inserts the new files between files that already stand apart; Bingham's note on Aelian 29.3: the insertion must be done in open order; doing the opening first is the sim's inference). explicatio_following counts the men still following: 134 at tick 120, while the files open. The front rank keeps its line at x 587.5 and the block settles at [555.99, 384.5]. Measured 2026-11-14 on FULL dumps every 60 ticks to tick 900, seed run 0; the drill plays out identically on seed runs 0 to 4 (no enemy, no roll). On main, which has no opening reading, Alt+Ctrl+Shift+B steps the side to inward instead, so the block settles at y 375.5, and the dump has no explicatio_following, so those expects fail there. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "19671",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 520, "y": 380, "count": 140, "facing": [1, 0]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 540.0, "y": 380.0, "zoom": 1.8}
+  ],
+  "steps": [
+    {"tick": 12, "click": [520, 380]},
+    {"tick": 24, "key": "B", "alt": true},
+    {"tick": 32, "key": "B", "alt": true, "ctrl": true, "shift": true},
+    {"tick": 44, "key": "B"}
+  ],
+  "state": [8, 46, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900],
+  "expect": [
+    {"tick": 46, "uid": 0, "field": "frontage", "value": 18},
+    {"tick": 120, "uid": 0, "field": "explicatio_following", "value": 134},
+    {"tick": 600, "uid": 0, "field": "front_rank_line", "value": [587.5, 587.5], "tol": 2.25},
+    {"tick": 600, "uid": 0, "field": "position", "value": [555.99, 384.5], "tol": 2.25},
+    {"tick": 900, "uid": 0, "field": "explicatio_following", "value": null}
+  ]
+}
