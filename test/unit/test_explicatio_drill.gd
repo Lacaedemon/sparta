@@ -22,7 +22,8 @@ const SPEARMEN := 140
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
 ## The x 1090 terrain drill after it ends, measured on this build (seed 1948): the front walks back
-## 26.09 wu in the 240 ticks after, and the nearest two men come 1.00 wu apart (TODO(#1990)).
+## 26.09 wu in the 240 ticks after, and the nearest two men come 1.00 wu apart.
+# TODO(#1990): the block should keep the shape its men took, not walk to slots on the rock.
 const TERRAIN_FELL := 26.09
 const TERRAIN_CLOSEST := 1.00
 const HALF_FILE := UnitFormation.ExplicatioDrill.HALF_FILE
@@ -1004,8 +1005,9 @@ func test_a_drill_crowded_by_a_friendly_block_still_ends() -> void:
 ## drill never ended (it was still running after 3000 ticks with 7 to 38 men following, for blocks
 ## 30 to 50 wu off it). But once it ends the grid's slots of the men held short lie on the rock,
 ## they press on for them, and the block walks back after them, a regression of the drill now
-## ending that waits on relational formation keeping (TODO(#1954), TODO(#1990)): the measured
-## values are pinned here, so a change to them shows.
+## ending that waits on relational formation keeping: the measured values are pinned here, so a
+## change to them shows.
+# TODO(#1990): the walk back after the drill, which waits on relational formation keeping.
 func test_a_drill_held_off_its_places_by_terrain_still_ends() -> void:
 	var units: Array = await _stage([_spearmen([0, 1], Vector2(1090, 470))])
 	var u: Unit = units[0]
