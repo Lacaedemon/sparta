@@ -110,7 +110,7 @@ const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # a press after a rout, 1.60 wu against 2.25). The rule is the pair's own, in a REFORM hold as
 # anywhere: a closing pair takes it when one of the two is walking back to his place, more than
 # Unit.standoff_off_slot_pitches file pitches off it with no fighting foe man within twice his
-# reach (SoldierPress: an engaged man, or one standing body to body with a man of this block;
+# reach (SoldierPress: an engaged man, or one standing with his body touching an enemy body;
 # a running man fights no one), and its stopping reaches the speed the block's men may move at,
 # so a man coming back from far off at a jog or a gallop cannot walk through another. A pair
 # near its places, or in the press of a fight, takes the overlap push alone, so the pushes a

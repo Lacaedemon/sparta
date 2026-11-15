@@ -1853,6 +1853,10 @@ var _far_flee_pace: float = 0.0
 # he runs in until he next looks round, or ZERO while he stands cornered and fights
 # (SoldierCornered). Empty outside a rout; SoldierMelee.reap trims a dead man's entry.
 var _sim_flight_dir: PackedVector2Array = PackedVector2Array()
+# Per man, 1 when his body touched an enemy body this tick, index-aligned with the bodies:
+# cleared and filled by SoldierEnemyContact.accumulate, which visits the touching pairs, before
+# the bodies step (SoldierPress reads it); empty for a unit that pass did not visit.
+var _sim_touching_foe: PackedByteArray = PackedByteArray()
 # True from a rally until its grid is laid out where its men have pulled up
 # (_reform_where_men_stand): while it holds, each man still running slows on his own
 # (SoldierBodies.pull_up_rallied) and `position` reads the men, as for a router. Set by _rally

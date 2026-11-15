@@ -816,6 +816,8 @@ func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
 		foe._sim_soldier_pos[0] = foe.position
 		foe.state = foe_state
 		foe.engaged_soldier_indices(1)   # as its melee picks them, each tick it fights
+		if foe_gap <= u.soldier_body_radius() + foe.soldier_body_radius():
+			foe._sim_touching_foe = PackedByteArray([1])   # as the enemy body-contact pass marks him
 		if foe_running:
 			foe._sim_flight_dir = PackedVector2Array([Vector2.UP])
 		if foe_aimed_at:

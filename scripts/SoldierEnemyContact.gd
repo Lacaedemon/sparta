@@ -113,12 +113,14 @@ static func accumulate(units: Array, frame: int) -> void:
 		var u: Unit = o as Unit
 		if u == null or u.state == Unit.State.DEAD:
 			continue
+		u._sim_touching_foe = PackedByteArray()   # filled below for the men this pass visits
 		var nb: int = u._sim_soldier_pos.size()
 		if nb == 0 or u._sim_body_vel.size() != nb:
 			continue
 		var idxs: PackedInt32Array = u.contact_soldier_indices(nb)
 		if idxs.is_empty():
 			continue
+		u._sim_touching_foe.resize(nb)
 		var r: float = u.soldier_body_radius()
 		var contain: float = u.formation_containment_margin()
 		var mass: float = u.combat_profile()["mass"]
@@ -214,6 +216,10 @@ static func accumulate(units: Array, frame: int) -> void:
 			pair_b.push_back(b)
 			pair_impulse_a.push_back(impulses[0])
 			pair_impulse_b.push_back(impulses[1])
+			var owner_a: Unit = sowners[a]   # each man of the pair touches a foe
+			owner_a._sim_touching_foe[sslots[a]] = 1
+			var owner_b: Unit = sowners[b]
+			owner_b._sim_touching_foe[sslots[b]] = 1
 
 			# Real closing speed only (never the overlap_frac term above) -- a pair that's
 			# merely interpenetrating at low relative speed causes zero collision damage. Only
