@@ -1462,7 +1462,8 @@ func update_explicatio(summary: String) -> void:
 		summary = ExplicatioChoice.summary(UnitFormation.ExplicatioDrill.HALF_FILE,
 				UnitFormation.ExplicatioSide.OUTWARD, UnitFormation.ExplicatioGround.LENGTHEN)
 	_ctrl_explicatio_btn.text = "Explicatio: " + summary
-	_ctrl_explicatio_btn.tooltip_text = "Alt+B drill, Alt+Shift+B side, Alt+Ctrl+B ground"
+	_ctrl_explicatio_btn.tooltip_text = "Alt+B drill, Alt+Shift+B side, Alt+Ctrl+B ground, " \
+			+ "Alt+Ctrl+Shift+B opening"
 
 
 ## Reflect how the next N that undoes an explicatio marches the men back (DuplicatioMarch.Reading)
@@ -2160,7 +2161,7 @@ func _build_ctrl_option_buttons() -> Control:
 	hbox.add_child(_ctrl_group_attack_btn)
 
 	_ctrl_explicatio_btn = Button.new()
-	_ctrl_explicatio_btn.custom_minimum_size = Vector2(220, 28)
+	_ctrl_explicatio_btn.custom_minimum_size = Vector2(280, 28)
 	_ctrl_explicatio_btn.add_theme_font_size_override("font_size", 13)
 	_ctrl_explicatio_btn.pressed.connect(func():
 		if _sel_mgr != null:

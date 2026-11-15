@@ -39,6 +39,7 @@ const _ROWS: Array = [
 	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],
 	["Asymmetric explicatio (hold right / left flank fixed)", "Shift+B / Ctrl+B"],
 	["Choose the explicatio: drill / side / ground (cycle)", "Alt+B / Alt+Shift+B / Alt+Ctrl+B"],
+	["Choose when the explicatio's files open (cycle)", "Alt+Ctrl+Shift+B"],
 	["Choose how N marches the men back: walk / face about (cycle)", "Alt+N"],
 	["Form-up split mode", "Y (Shift+Y reverses)"],
 	["Nudge (small drill step, holds facing)", "Arrow keys"],

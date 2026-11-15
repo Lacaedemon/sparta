@@ -47,7 +47,7 @@ func test_defaults_are_half_file_outward_lengthen() -> void:
 	assert_eq(sm.explicatio_drill, HALF_FILE, "B deals the half-file drill by default")
 	assert_eq(sm.explicatio_side, UnitFormation.ExplicatioSide.OUTWARD, "outward by default")
 	assert_eq(sm.explicatio_ground, UnitFormation.ExplicatioGround.LENGTHEN, "lengthening by default")
-	assert_eq(sm.get_explicatio_summary(), "half-file, outward, lengthen", "and the HUD words them so")
+	assert_eq(sm.get_explicatio_summary(), "half-file, outward, lengthen, together", "and the HUD words them so")
 
 
 func test_alt_b_steps_the_drill_and_wraps() -> void:
@@ -76,6 +76,21 @@ func test_alt_ctrl_b_steps_the_ground() -> void:
 	assert_eq(sm.explicatio_ground, UnitFormation.ExplicatioGround.SAME_GROUND, "same ground first")
 	assert_true(sm._dispatch_key(_key(KEY_B, true, true)), "again")
 	assert_eq(sm.explicatio_ground, UnitFormation.ExplicatioGround.LENGTHEN, "and back to lengthen")
+
+
+## Alt+Ctrl+Shift+B steps when the files open (ExplicatioOpening): files first, then back to
+## together, leaving the side and the ground alone.
+func test_alt_ctrl_shift_b_steps_the_opening() -> void:
+	var sm := _sm()
+	assert_true(sm._dispatch_key(_key(KEY_B, true, true, true)), "Alt+Ctrl+Shift+B is handled")
+	assert_eq(sm.explicatio_opening, ExplicatioOpening.Reading.FILES_FIRST, "files first first")
+	assert_eq(sm.explicatio_side, UnitFormation.ExplicatioSide.OUTWARD, "the side is untouched")
+	assert_eq(sm.explicatio_ground, UnitFormation.ExplicatioGround.LENGTHEN,
+		"and the ground")
+	assert_eq(sm.get_explicatio_summary(), "half-file, outward, lengthen, files first",
+		"and the HUD words it")
+	assert_true(sm._dispatch_key(_key(KEY_B, true, true, true)), "again")
+	assert_eq(sm.explicatio_opening, ExplicatioOpening.Reading.TOGETHER, "and back to together")
 
 
 func test_alt_with_another_key_is_not_claimed() -> void:
@@ -117,11 +132,14 @@ func test_the_choice_reaches_the_order_b_deals() -> void:
 	sm._dispatch_key(_key(KEY_B))
 	sm._dispatch_key(_key(KEY_B, true, false, true))
 	sm._dispatch_key(_key(KEY_B, true, true))
+	sm._dispatch_key(_key(KEY_B, true, true, true))
 	sm._dispatch_key(_key(KEY_B, false))
 	var cmd: Dictionary = b._pending_orders.back()
 	assert_eq(int(cmd["explicatio"]), ALTERNATE_RANK, "the order names the chosen drill")
 	assert_eq(int(cmd["explicatio_side"]), UnitFormation.ExplicatioSide.INWARD, "and side")
 	assert_eq(int(cmd["explicatio_ground"]), UnitFormation.ExplicatioGround.SAME_GROUND, "and ground")
+	assert_eq(int(cmd["explicatio_opening"]), ExplicatioOpening.Reading.FILES_FIRST,
+		"and opening")
 
 
 func test_default_b_order_carries_no_variant_fields() -> void:
@@ -148,8 +166,8 @@ func test_each_choice_flashes_and_updates_the_hud() -> void:
 	var hud := StubHud.new()
 	sm._hud = hud
 	sm._dispatch_key(_key(KEY_B))
-	assert_eq(hud.flashes, ["Explicatio: alternate rank, outward, lengthen"], "the toast names it")
-	assert_eq(hud.summaries, ["alternate rank, outward, lengthen"], "the control bar is told")
+	assert_eq(hud.flashes, ["Explicatio: alternate rank, outward, lengthen, together"], "the toast names it")
+	assert_eq(hud.summaries, ["alternate rank, outward, lengthen, together"], "the control bar is told")
 
 
 func test_key_label_names_alt() -> void:
@@ -163,10 +181,10 @@ func test_hud_button_shows_the_choice() -> void:
 	h._ctrl_explicatio_btn = Button.new()
 	autofree(h._ctrl_explicatio_btn)
 	h.update_explicatio("")
-	assert_eq(h._ctrl_explicatio_btn.text, "Explicatio: half-file, outward, lengthen",
+	assert_eq(h._ctrl_explicatio_btn.text, "Explicatio: half-file, outward, lengthen, together",
 			"an empty summary shows the defaults")
-	h.update_explicatio("alternate rank, inward, same ground")
-	assert_eq(h._ctrl_explicatio_btn.text, "Explicatio: alternate rank, inward, same ground",
+	h.update_explicatio("alternate rank, inward, same ground, files first")
+	assert_eq(h._ctrl_explicatio_btn.text, "Explicatio: alternate rank, inward, same ground, files first",
 			"a chosen reading shows as given")
 
 
@@ -180,14 +198,14 @@ func test_built_control_bar_shows_the_default_and_follows_the_selection_manager(
 	var h = HUDScript.new()
 	add_child_autofree(h)
 	var button: Button = h._ctrl_explicatio_btn
-	assert_eq(button.text, "Explicatio: half-file, outward, lengthen", "the bar starts on the defaults")
+	assert_eq(button.text, "Explicatio: half-file, outward, lengthen, together", "the bar starts on the defaults")
 	var sm := _sm()
 	sm.explicatio_side = UnitFormation.ExplicatioSide.SHIELD_SIDE
 	h._sel_mgr = sm
 	var u: Unit = UnitScript.new()
 	add_child_autofree(u)
 	h.show_unit(u, 1)
-	assert_eq(button.text, "Explicatio: half-file, shield side, lengthen",
+	assert_eq(button.text, "Explicatio: half-file, shield side, lengthen, together",
 			"showing a unit reads the selection manager's choice")
 	button.pressed.emit()
 	assert_eq(sm.explicatio_drill, ALTERNATE_RANK, "pressing the button steps the drill")

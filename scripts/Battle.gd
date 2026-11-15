@@ -1969,7 +1969,8 @@ func _physics_process(delta: float) -> void:
 					int(o.get("explicatio_held", UnitFormation.Anchor.CENTRE)),
 					int(o.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD)),
 					int(o.get("explicatio_ground", UnitFormation.ExplicatioGround.LENGTHEN)),
-					int(o.get("duplicatio_march", DuplicatioMarch.Reading.WALK)))
+					int(o.get("duplicatio_march", DuplicatioMarch.Reading.WALK)),
+					int(o.get("explicatio_opening", ExplicatioOpening.Reading.TOGETHER)))
 			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
 			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
 			# only records it here, it must not apply it a second time. A second apply
@@ -2655,7 +2656,8 @@ func enqueue_file_double(uids: Array, direction: int,
 		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE,
 		side: int = UnitFormation.ExplicatioSide.OUTWARD,
 		ground: int = UnitFormation.ExplicatioGround.LENGTHEN,
-		march: int = DuplicatioMarch.Reading.WALK) -> void:
+		march: int = DuplicatioMarch.Reading.WALK,
+		opening: int = ExplicatioOpening.Reading.TOGETHER) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
 		return
 	for uid in uids:
@@ -2700,6 +2702,8 @@ func enqueue_file_double(uids: Array, direction: int,
 				cmd["explicatio_side"] = side
 			if ground != UnitFormation.ExplicatioGround.LENGTHEN:
 				cmd["explicatio_ground"] = ground
+			if opening != ExplicatioOpening.Reading.TOGETHER:
+				cmd["explicatio_opening"] = opening
 		# A narrowing of a block an explicatio dealt is that explicatio in reverse (Unit.
 		# explicatio_undoable), standing on the flank and keeping the ground its explicatio kept;
 		# any other narrowing records as it always has.
@@ -3026,10 +3030,13 @@ func _apply_order_cmd(cmd: Dictionary, from_player: bool = true) -> void:
 			var ground: int = int(cmd.get("explicatio_ground",
 					UnitFormation.ExplicatioGround.LENGTHEN))
 			var march: int = int(cmd.get("duplicatio_march", DuplicatioMarch.Reading.WALK))
+			var opening: int = int(cmd.get("explicatio_opening",
+					ExplicatioOpening.Reading.TOGETHER))
 			for uid in cmd["units"]:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
-					u.set_frontage(files, anchor_offset, drill, held, side, ground, march)
+					u.set_frontage(files, anchor_offset, drill, held, side, ground, march,
+							opening)
 					# Same idle-only queue write as the formation branch above.
 					if u.current_order == null:
 						u.set_current_order(Order.new_frontage(files, anchor_offset))

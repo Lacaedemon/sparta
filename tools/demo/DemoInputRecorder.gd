@@ -354,6 +354,7 @@ func _start_battle() -> void:
 		_sel.explicatio_drill = _explicatio["drill"]
 		_sel.explicatio_side = _explicatio["side"]
 		_sel.explicatio_ground = _explicatio["ground"]
+		_sel.explicatio_opening = _explicatio["opening"]
 	_apply_demo_tray()
 	if _initial_time_scale != 1.0 and _initial_time_scale > 0.0:
 		_set_time_scale(_initial_time_scale, 0)

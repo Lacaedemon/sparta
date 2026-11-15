@@ -190,6 +190,8 @@ var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH_SPACE
 var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
 var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
+# Whether the files open before the men step in (ExplicatioOpening.Reading); Alt+Ctrl+Shift+B.
+var explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
 # How the men an explicatio sent up the intervals march back when N undoes it
 # (DuplicatioMarch.Reading): the walk until Alt+N steps it.
 var duplicatio_march: int = DuplicatioMarch.Reading.WALK
@@ -544,13 +546,16 @@ func _cycle_form_up_dist(reverse: bool = false) -> void:
 	queue_redraw()
 
 
-## Alt+B steps the explicatio's drill, Alt+Shift+B the side its intervals open on and Alt+Ctrl+B
-## the ground it keeps, each to its next reading (ExplicatioChoice). The B, Shift+B and Ctrl+B that
-## deal the explicatio read the choice; Alt alone never orders anything. False for any other key.
+## Alt+B steps the explicatio's drill, Alt+Shift+B the side its intervals open on, Alt+Ctrl+B
+## the ground it keeps and Alt+Ctrl+Shift+B when its files open, each to its next reading
+## (ExplicatioChoice). The B, Shift+B and Ctrl+B that deal the explicatio read the choice; Alt
+## alone never orders anything. False for any other key.
 func _dispatch_explicatio_choice(event: InputEventKey) -> bool:
 	if not event.alt_pressed or not _is_key(event, KEY_B):
 		return false
-	if event.shift_pressed:
+	if event.shift_pressed and event.ctrl_pressed:
+		explicatio_opening = ExplicatioChoice.next(ExplicatioOpening.READINGS, explicatio_opening)
+	elif event.shift_pressed:
 		explicatio_side = ExplicatioChoice.next(ExplicatioChoice.SIDES, explicatio_side)
 	elif event.ctrl_pressed:
 		explicatio_ground = ExplicatioChoice.next(ExplicatioChoice.GROUNDS, explicatio_ground)
@@ -562,7 +567,8 @@ func _dispatch_explicatio_choice(event: InputEventKey) -> bool:
 
 ## The chosen explicatio worded for the HUD and the toast ("half-file, outward, lengthen").
 func get_explicatio_summary() -> String:
-	return ExplicatioChoice.summary(explicatio_drill, explicatio_side, explicatio_ground)
+	return ExplicatioChoice.summary(explicatio_drill, explicatio_side, explicatio_ground,
+			explicatio_opening)
 
 
 ## Step the drill, from the control bar's explicatio button (same as Alt+B).
@@ -1797,7 +1803,8 @@ func _resize_frontage(delta: int) -> void:
 ## CENTRE (default) is the plain symmetric maneuver. Routed through Battle so it reshapes
 ## each unit from its own current width, is recorded, and replays exactly -- the same path
 ## as the [ / ] single-file resize, one whole factor instead of one file. A widen is the
-## explicatio explicatio_drill, read as explicatio_side and explicatio_ground; a narrow that undoes
+## explicatio explicatio_drill, read as explicatio_side, explicatio_ground and explicatio_opening;
+## a narrow that undoes
 ## an explicatio marches its men back as duplicatio_march. Blocked during
 ## playback, and while a grip drag owns the width (see _resize_frontage).
 func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
@@ -1807,7 +1814,7 @@ func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTR
 	if uids.is_empty():
 		return
 	_battle.enqueue_file_double(uids, direction, anchor, explicatio_drill, explicatio_side,
-			explicatio_ground, duplicatio_march)
+			explicatio_ground, duplicatio_march, explicatio_opening)
 	_refresh_hud()
 	Sfx.play(&"order")
 

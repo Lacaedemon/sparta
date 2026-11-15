@@ -1,9 +1,9 @@
 class_name ExplicatioChoice
-## The explicatio the player has chosen: its drill, the side its intervals open on and the ground
-## it keeps, as the three SelectionManager fields explicatio_drill, explicatio_side and
-## explicatio_ground. Alt+B, Alt+Shift+B and Alt+Ctrl+B step each one to the next reading, as Y
-## and X step the form-up split and the group-attack mode, and the HUD shows the choice. Pure:
-## functions of their arguments only.
+## The explicatio the player has chosen: its drill, the side its intervals open on, the ground
+## it keeps and when its files open, as the four SelectionManager fields explicatio_drill,
+## explicatio_side, explicatio_ground and explicatio_opening. Alt+B, Alt+Shift+B, Alt+Ctrl+B and
+## Alt+Ctrl+Shift+B step each one to the next reading, as Y and X step the form-up split and the
+## group-attack mode, and the HUD shows the choice. Pure: functions of their arguments only.
 
 const DRILLS := [UnitFormation.ExplicatioDrill.HALF_FILE,
 		UnitFormation.ExplicatioDrill.ALTERNATE_RANK]
@@ -35,7 +35,8 @@ static func next(readings: Array, current: int) -> int:
 	return readings[(idx + 1) % readings.size()] if idx >= 0 else readings[0]
 
 
-## The choice as the HUD and the toast word it: "half-file, outward, lengthen".
-static func summary(drill: int, side: int, ground: int) -> String:
-	return "%s, %s, %s" % [DRILL_NAMES.get(drill, "?"), SIDE_NAMES.get(side, "?"),
-			GROUND_NAMES.get(ground, "?")]
+## The choice as the HUD and the toast word it: "half-file, outward, lengthen, together".
+static func summary(drill: int, side: int, ground: int,
+		opening: int = ExplicatioOpening.Reading.TOGETHER) -> String:
+	return "%s, %s, %s, %s" % [DRILL_NAMES.get(drill, "?"), SIDE_NAMES.get(side, "?"),
+			GROUND_NAMES.get(ground, "?"), ExplicatioOpening.NAMES.get(opening, "?")]

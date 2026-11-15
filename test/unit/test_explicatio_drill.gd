@@ -615,10 +615,12 @@ func test_a_block_about_faced_on_its_grid_is_not_dealt_the_drill() -> void:
 	assert_false(u.explicatio_drill_active(), "no drill on a grid turned from the men")
 
 
-## The turn-and-unfold combo's widen doubles the turned block's files against the width it had
-## before the turn, so a block deeper than it is wide widens with the lateral deal; the turn's
-## transposed grid leaves the files to be dealt afresh from where the men stand.
-func test_the_combo_widen_of_a_deep_block_keeps_the_lateral_deal() -> void:
+## The turn-and-unfold combo's widen doubles the files the turned block stands on across its new
+## facing, 16 for 140 Spearmen 9 files by 16 ranks, dealt from where the men stand, and does it as
+## the drill: the front the turn brought round holds its line while the block opens to 32 files.
+## Before, the widen doubled 16 files against the 9 the block had before the turn, which is no
+## doubling, and so the files were dealt anew laterally.
+func test_the_combo_widen_of_a_deep_block_is_the_drill() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
 	assert_true(u.quarter_turn_explicatio(1), "precondition: the combo starts")
@@ -626,8 +628,34 @@ func test_the_combo_widen_of_a_deep_block_keeps_the_lateral_deal() -> void:
 	while UnitFormation.frontage(u) == 9 and waited < 600:
 		await get_tree().physics_frame
 		waited += 1
-	assert_ne(UnitFormation.frontage(u), 9, "precondition: the combo widened")
-	assert_false(u.explicatio_drill_active(), "the combo's widen is not the drill")
+	assert_eq(UnitFormation.frontage(u), 32, "the combo doubled the turned block's 16 files")
+	assert_true(u.explicatio_drill_active(), "the combo's widen is the drill")
+	assert_eq(_count_role(u, UnitFormation.SoldierRole.HEMILOCHITES), 16,
+		"one hemilochites for each file the turned block stood on")
+	var walk: Dictionary = await _walk(u, DRILL_TICKS)
+	assert_gte(walk["ended"], 0, "the drill ended")
+	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(), "the front went %.2f wu ahead"
+			% walk["ahead"])
+	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(), "the front fell %.2f wu back"
+			% -walk["behind"])
+	assert_lt(walk["overtake"], 0.25 * u.rank_pitch_wu(), "a man got %.2f wu ahead of the man "
+			% walk["overtake"] + "ahead of him")
+
+
+## A combo whose widen is no drill (Order.new_file_double with ExplicatioDrill.NONE) still
+## deals the turned block's files afresh from where the men stand, with nobody following.
+func test_a_combo_widen_with_no_drill_keeps_the_lateral_deal() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	var steps: Array[Order] = [Order.new_quarter_turn(1),
+			Order.new_file_double(1, UnitFormation.ExplicatioDrill.NONE)]
+	assert_true(u.begin_combo(steps), "precondition: the combo starts")
+	var waited: int = 0
+	while UnitFormation.frontage(u) == 9 and waited < 600:
+		await get_tree().physics_frame
+		waited += 1
+	assert_eq(UnitFormation.frontage(u), 32, "the combo widened")
+	assert_false(u.explicatio_drill_active(), "a widen with no drill is not the drill")
 	u.formation_slots(u.soldiers)
 	assert_eq(u._file_assignment_files, UnitFormation.frontage(u),
 		"the files are dealt afresh for the new width")
@@ -954,6 +982,57 @@ func test_a_drill_crowded_by_a_friendly_block_still_ends() -> void:
 			break
 	assert_gt(pressed_off, 0, "precondition: the friend held a man off his place")
 	assert_gte(ended, 0, "the drill ended")
+
+
+## A block widened beside the field's hill (Battle.TERRAIN's block patch at x 1150) opens its east
+## wing onto the rock: the men it holds off their places, whom no regiment presses, take their
+## places where they stand once a step brings them no nearer, and the drill ends. On main the men
+## the rock held kept following, and every man behind them, so the drill never ended (it was
+## still running after 3000 ticks with 7 to 38 men following, for blocks 30 to 50 wu off it).
+func test_a_drill_held_off_its_places_by_terrain_still_ends() -> void:
+	var units: Array = await _stage([_spearmen([0, 1], Vector2(1090, 470))])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	assert_true(u.explicatio_drill_active(), "precondition: the widen is the drill")
+	var held_off: int = 0
+	var ended: int = -1
+	for t in range(2 * DRILL_TICKS):
+		var following: PackedByteArray = u._explicatio_following.duplicate()
+		var places: PackedVector2Array = _places(u).duplicate()
+		await get_tree().physics_frame
+		for i in range(mini(following.size(), u._explicatio_following.size())):
+			if following[i] == 1 and u._explicatio_following[i] == 0 \
+					and u._sim_soldier_pos[i].distance_to(places[i]) > Unit.REFORM_SETTLE_EPS:
+				held_off += 1
+		if not u.explicatio_drill_active():
+			ended = t
+			break
+	assert_gt(held_off, 0, "precondition: the rock held a man off his place")
+	assert_gte(ended, 0, "the drill ended")
+	var right_edge: float = -INF
+	for p in u._sim_soldier_pos:
+		right_edge = maxf(right_edge, p.x)
+	assert_lt(right_edge, 1150.0, "nobody stands on the rock")
+
+
+## A man can come no nearer when he stands no nearer his place than where he stepped from and is
+## going toward it no faster; any way at all, a pace toward it that grows (a man shedding a way
+## he carried off it), and a man who did not step for it, are not held.
+func test_a_step_that_brings_a_man_no_nearer_makes_no_way() -> void:
+	var place := Vector2(10, 0)
+	var still := Vector2.ZERO
+	assert_true(Unit.explicatio_step_made_no_way(Vector2.ZERO, Vector2.ZERO, still, still, place),
+		"standing where he stepped from")
+	assert_true(Unit.explicatio_step_made_no_way(Vector2.ZERO, Vector2(-0.1, 0), still, still,
+			place), "pushed back")
+	assert_true(Unit.explicatio_step_made_no_way(Vector2(0, 1), Vector2(0, -1), Vector2(0, -60),
+			Vector2(0, -60), place), "sliding along a face no nearer")
+	assert_false(Unit.explicatio_step_made_no_way(Vector2.ZERO, Vector2(0.001, 0), still, still,
+			place), "a little way is way")
+	assert_false(Unit.explicatio_step_made_no_way(Vector2.ZERO, Vector2(-0.5, 0), Vector2(-40, 0),
+			Vector2(-35, 0), place), "a man slowing a way he carried off it still comes on")
+	assert_false(Unit.explicatio_step_made_no_way(Vector2.INF, Vector2.ZERO, still, still, place),
+		"a man who did not step for his place is not held")
 
 
 # --- The column and its leader, live ---------------------------------------------
