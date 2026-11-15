@@ -815,6 +815,7 @@ func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
 		SoldierBodies.seed(foe)
 		foe._sim_soldier_pos[0] = foe.position
 		foe.state = foe_state
+		foe.engaged_soldier_indices(1)   # as its melee picks them, each tick it fights
 		if foe_running:
 			foe._sim_flight_dir = PackedVector2Array([Vector2.UP])
 		if foe_aimed_at:
@@ -831,6 +832,7 @@ func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
 	var target_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var is_engaged := PackedByteArray()
 	is_engaged.resize(2)
+	SoldierPress.reset()   # the field changed within this frame
 	var sep_vel: PackedVector2Array = SoldierBodies._separate_same_unit(
 		u, 2, target_slots, is_engaged, 1.0 / 60.0)
 	if foe != null:
@@ -928,13 +930,14 @@ func _band_cut(state: int, gap: float, running: bool = false, aimed_at: bool = f
 
 
 func test_a_man_near_a_fighting_foe_man_is_in_the_press() -> void:
-	var reach: float = _make_unit(42, 2).soldier_reach()
-	var idle := Unit.State.IDLE
+	var probe := _make_unit(42, 2)
+	var reach: float = probe.soldier_reach()
+	var touching: float = probe.soldier_body_radius()   # nearer than the two bodies' radii
 	assert_almost_eq(_band_cut(Unit.State.FIGHTING, 1.5 * reach), 0.0, 0.001,
 		"an engaged foe man within twice the reach holds the pair in the press")
-	assert_almost_eq(_band_cut(idle, 0.5 * reach), 0.0, 0.001,
-		"so does one standing within his own reach of a man of the block")
-	assert_almost_eq(_band_cut(Unit.State.ROUTING, 0.5 * reach), 0.0, 0.001,
+	assert_almost_eq(_band_cut(Unit.State.IDLE, touching), 0.0, 0.001,
+		"so does one standing body to body with a man of the block")
+	assert_almost_eq(_band_cut(Unit.State.ROUTING, touching), 0.0, 0.001,
 		"and a routed man standing to fight")
 
 
@@ -944,12 +947,12 @@ func test_a_man_near_no_fighting_foe_man_is_walking_back() -> void:
 	var reach: float = probe.soldier_reach()
 	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
 	var idle := Unit.State.IDLE
-	assert_almost_eq(_band_cut(idle, 1.5 * reach), -5.0, 0.001,
-		"a foe man out of his reach of the block and not engaged fights no one of it")
+	assert_almost_eq(_band_cut(idle, 0.5 * reach), -5.0, 0.001,
+		"a foe man only within his reach of the block, and not engaged, fights no one of it")
 	assert_almost_eq(_band_cut(idle, 1.5 * reach, false, true), -5.0, 0.001,
 		"the block marching on him does not make him fight")
-	assert_almost_eq(_band_cut(Unit.State.ROUTING, 0.5 * reach, true), -5.0, 0.001,
-		"a routed man running fights no one")
+	assert_almost_eq(_band_cut(Unit.State.ROUTING, probe.soldier_body_radius(), true), -5.0, 0.001,
+		"a routed man running fights no one, even body to body")
 	assert_almost_eq(_band_cut(Unit.State.FIGHTING, 2.0 * reach + d + 1.0), -5.0, 0.001,
 		"an engaged foe man past twice the reach presses no one")
 
