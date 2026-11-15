@@ -66,3 +66,13 @@ func test_a_dead_foe_man_presses_no_one() -> void:
 	var foe := _unit(1, AT + Vector2(ours.soldier_body_radius(), 0))
 	foe._sim_soldier_hp[0] = 0.0
 	assert_false(_pressed(ours), "a dead man presses no one")
+
+
+func test_a_standing_man_just_out_of_touch_presses_no_one() -> void:
+	var probe := _unit(0, AT)
+	var cell: float = 2.0 * probe.soldier_body_radius()   # the cells bodies are filed in
+	var at := Vector2(floorf(AT.x / cell) * cell + 0.1 * cell, AT.y)
+	var ours := _unit(0, at)
+	probe._sim_soldier_pos[0] = AT + Vector2(0, 5000)
+	_unit(1, at + Vector2(1.2 * cell, 0))   # in the next cell, past two body radii
+	assert_false(_pressed(ours), "not touching and not engaged, he presses no one")
