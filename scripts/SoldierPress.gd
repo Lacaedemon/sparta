@@ -7,16 +7,17 @@ extends RefCounted
 ## fights no one. Close-tier men are filed once a frame (a test rebuilding it calls reset()).
 
 static var _frame: int = -1
-static var _engaged: Grid = Grid.new(1.0)
-static var _standing: Grid = Grid.new(1.0)
+static var _engaged: Grid = null   # set by _build; made there, not here, as coverage instruments
+static var _standing: Grid = null
 
 
-## Per man of `unit`, 1 when `want` has him and a fighting enemy man stands within `dist` of him
-## (`dist` no more than twice the longest reach on the field).
+## Per man of `unit`, 1 when `want` has him and a fighting enemy man stands within `dist` of him.
 static func mask(unit: Unit, want: PackedByteArray, dist: float) -> PackedByteArray:
 	var out := PackedByteArray()
 	out.resize(unit._sim_soldier_pos.size())
 	_build(unit)
+	if _engaged == null:
+		return out
 	var touching := Grid.new(_engaged.size)   # the enemy men standing body to body with this block
 	for i in range(out.size()):
 		if i >= unit._sim_soldier_hp.size() or unit._sim_soldier_hp[i] > 0.0:
@@ -45,8 +46,7 @@ static func _build(unit: Unit) -> void:
 			.get_nodes_in_group("routers")).filter(func(o: Unit) -> bool: return o.tier != FormationTier.FAR)
 	_engaged = Grid.new(2.0 * units.reduce(func(a: float, o: Unit) -> float: return maxf(a, o.soldier_reach()), 1.0))
 	_standing = Grid.new(2.0 * units.reduce(func(a: float, o: Unit) -> float: return maxf(a, o.soldier_body_radius()), 1.0))
-	for o in units:
-		var u: Unit = o
+	for u: Unit in units:
 		var picked: bool = u._engaged_indices_cache_frame >= frame - 1 and u._engaged_indices_cache_engaged
 		for j in range(u._sim_soldier_pos.size()):
 			if j < u._sim_soldier_hp.size() and u._sim_soldier_hp[j] <= 0.0:
