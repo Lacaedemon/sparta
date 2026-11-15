@@ -525,8 +525,7 @@ static func step(unit: Unit, delta: float) -> void:
 		var to_slot: Vector2 = Vector2.ZERO
 		if not turning:
 			if leader != SoldierFollow.NOT_FOLLOWING:
-				var man_facing: Vector2 = unit._sim_soldier_facing[i] \
-						if i < unit._sim_soldier_facing.size() else unit.facing
+				var man_facing: Vector2 = unit.follow_front(i)
 				to_slot = SoldierFollowSteer.steer_point(unit._sim_soldier_pos[i], man_facing, own_slot,
 						follow_width, unit.follow_room(i)) - unit._sim_soldier_pos[i]
 			else:

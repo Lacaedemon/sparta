@@ -254,8 +254,34 @@ What the sim builds (`DuplicatioDrill`, `Unit._begin_duplicatio`):
   Until then he keeps his own line and drops back along it.
   So the men of each interval fall back down it in column and step in behind the man they follow once they are behind him.
   The files that stayed close up only once the intervals beside them are empty.
-  That walk is the sim's inference.
-  The sources say "countermarch", and a countermarch proper turns the men about (Asclepiodotus 10.13 to 10.16), which this drill does not do ([#1985](https://github.com/Lacaedemon/sparta/issues/1985)).
+  That walk, facing front, is the sim's inference, and the default.
+  The sources say "countermarch", and a countermarch turns the men about, so the sim also builds a reading with the men facing about, below.
+
+- **The face-about reading** (`DuplicatioMarch.FACE_ABOUT`, chosen by Alt+N before N).
+  Each man of an interval faces about where he stands, marches back down his interval with its rear man leading, and faces front again on his station.
+  The men who stayed in the files do not turn: they did not change their position.
+  He turns through his own facing at the drill's turn rate (`Unit.CONVERSIO_TURN_RATE`, half a second for a half turn), through his right when he faces straight away from where he turns to, never in a snap.
+  He faces about until he has taken his station, then turns front again.
+  The column's rear man leads it: each man with a man of his own column to stand right behind him follows that man, a rank ahead of him, and the others follow the nearest man of their file ahead of them who stayed (`DuplicatioMarch.march_plan`).
+  So after the half-file drill the column's rear man marches back until he stands as many ranks behind his file's last man as his column has men, and the men before him follow him down.
+  After the every-second-man drill each man follows the man he will stand behind, as in the walk.
+  He covers the same file leader and waits on the same men as in the walk, and steers by his file's front, which he reads off his file leader, since his own facing is turned about.
+  Facing the way he goes, he is not held to the slower pace of a man stepping backward (`back_speed_fraction`), so the men are back sooner than in the walk.
+  If the drill is cut short, each man still turned turns on to the front at the same rate.
+
+  Why this reading, and why only this one.
+  Asclepiodotus describes three kinds of countermarch (10.13 to 10.15), each done by file or by rank.
+  10.16 says when the countermarch by rank is used; it adds no fourth kind.
+  In the Macedonian the file leaders hold their ground and the files end on the ground before them;
+  in the Laconian the file closers hold theirs and the files end beyond them;
+  in the Cretan, or Persian, the leader and the closer change places and the files keep their ground.
+  Each turns a file to face the other way with its leader at its new head.
+  Neither 10.20 nor Aelian 29.3 says which the men of an interval perform.
+  An interval's men end on stations behind them, facing front, in the order they stood: any of the three, done once, would leave the column facing the rear with its head at the far end, so no man would stand on his own station.
+  The face-about reading is none of the three.
+  It keeps what every countermarch ends with, each man facing about, and keeps the order of the column, so its rear man leads it back: that is the sim's inference.
+  A column could also come back in order by doing two countermarches, the Laconian onto the ground behind its rear and then the Cretan on its stations to face front, its men passing each other in the interval.
+  That reading is not built ([#1987](https://github.com/Lacaedemon/sparta/issues/1987)).
 
 - **The front rank holds its line.**
   The file that stands is the one the explicatio stood on, which the block records with the ground: the middle file after a widen about the middle, or the held flank's corner file after one held on a flank, so a held flank does not move on the way back either.

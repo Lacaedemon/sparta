@@ -224,6 +224,7 @@ var _ctrl_stance_btn: MenuButton
 var _ctrl_reform_btn: Button
 var _ctrl_group_attack_btn: Button
 var _ctrl_explicatio_btn: Button
+var _ctrl_duplicatio_btn: Button
 var _sel_mgr = null
 var _info_panel: PanelContainer
 # The panel's content column sits inside a ScrollContainer so its height can be
@@ -1076,6 +1077,8 @@ func show_unit(u, group_count: int) -> void:
 		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
 		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
 		update_explicatio(_sel_mgr.get_explicatio_summary() if _sel_mgr != null else "")
+		update_duplicatio(_sel_mgr.duplicatio_march if _sel_mgr != null
+				else DuplicatioMarch.Reading.WALK)
 	_clamp_info_panel()
 
 
@@ -1462,6 +1465,15 @@ func update_explicatio(summary: String) -> void:
 	_ctrl_explicatio_btn.tooltip_text = "Alt+B drill, Alt+Shift+B side, Alt+Ctrl+B ground"
 
 
+## Reflect how the next N that undoes an explicatio marches the men back (DuplicatioMarch.Reading)
+## on the ctrl bar button beside the explicatio's, whose press steps it like Alt+N.
+func update_duplicatio(reading: int) -> void:
+	if _ctrl_duplicatio_btn == null:
+		return
+	_ctrl_duplicatio_btn.text = "Duplicatio: " + str(DuplicatioMarch.NAMES.get(reading, "?"))
+	_ctrl_duplicatio_btn.tooltip_text = "Alt+N: how N marches the men back to undo an explicatio"
+
+
 # --- Distance legend (map scale bar, #364) ----------------------------------
 # A small semi-translucent panel in the top-left corner showing the battlefield's
 # real metre scale at the current camera zoom (DistanceLegend has the pure math).
@@ -1839,6 +1851,7 @@ func _build_ctrl_bar() -> void:
 
 	update_group_attack_mode(BattleRef.GroupAttackMode.FOCUSED)
 	update_explicatio("")
+	update_duplicatio(DuplicatioMarch.Reading.WALK)
 
 
 func _build_ctrl_section(label_text: String, content: Control) -> Control:
@@ -2153,6 +2166,14 @@ func _build_ctrl_option_buttons() -> Control:
 		if _sel_mgr != null:
 			_sel_mgr.toggle_explicatio_drill())
 	hbox.add_child(_ctrl_explicatio_btn)
+
+	_ctrl_duplicatio_btn = Button.new()
+	_ctrl_duplicatio_btn.custom_minimum_size = Vector2(150, 28)
+	_ctrl_duplicatio_btn.add_theme_font_size_override("font_size", 13)
+	_ctrl_duplicatio_btn.pressed.connect(func():
+		if _sel_mgr != null:
+			_sel_mgr.toggle_duplicatio_march())
+	hbox.add_child(_ctrl_duplicatio_btn)
 
 	return hbox
 
