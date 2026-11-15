@@ -1,0 +1,1684 @@
+{
+  "ticks": [
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": false,
+        "formation_text": "0.9 m",
+        "info_text": "No unit selected",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": null,
+        "stance_text": "Normal"
+      },
+      "tick": 8,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": null,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            380.0
+          ],
+          "position_m": [
+            26.0,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              135.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.0,
+              381.93
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              6.75
+            ],
+            "centroid_m": [
+              26.0,
+              19.096
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 9 files (16/file)\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 20,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": null,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            520.0,
+            380.0
+          ],
+          "position_m": [
+            26.0,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              135.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.0,
+              381.93
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              6.75
+            ],
+            "centroid_m": [
+              26.0,
+              19.096
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 9 files (16/file)\nOrder: Quarter-turning (step 1 of 2)\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 32,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": "COMBO",
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": null,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 9,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": -1,
+          "maneuver": "QUARTER_TURN",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": "QUARTER_TURN",
+          "position": [
+            520.0,
+            380.0
+          ],
+          "position_m": [
+            26.0,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              135.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.0,
+              381.93
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.6,
+              6.75
+            ],
+            "centroid_m": [
+              26.0,
+              19.096
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +1.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 60,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 130,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            517.43,
+            381.92
+          ],
+          "position_m": [
+            25.871,
+            19.096
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              72.06,
+              135.17
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.0,
+              381.92
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.603,
+              6.758
+            ],
+            "centroid_m": [
+              26.0,
+              19.096
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.5 m/s\nAccel: +0.7 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 90,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 130,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            517.27,
+            381.41
+          ],
+          "position_m": [
+            25.864,
+            19.07
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              75.9,
+              144.72
+            ],
+            "broken_count": 0,
+            "centroid": [
+              519.85,
+              381.41
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.795,
+              7.236
+            ],
+            "centroid_m": [
+              25.992,
+              19.07
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.6 m/s\nAccel: +0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 120,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 126,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            516.98,
+            380.48
+          ],
+          "position_m": [
+            25.849,
+            19.024
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              81.23,
+              167.25
+            ],
+            "broken_count": 0,
+            "centroid": [
+              519.55,
+              380.48
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.061,
+              8.363
+            ],
+            "centroid_m": [
+              25.977,
+              19.024
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.7 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 180,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 102,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            516.83,
+            379.82
+          ],
+          "position_m": [
+            25.841,
+            18.991
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              83.59,
+              214.22
+            ],
+            "broken_count": 0,
+            "centroid": [
+              519.4,
+              379.82
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.18,
+              10.711
+            ],
+            "centroid_m": [
+              25.97,
+              18.991
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.5 m/s\nAccel: -0.2 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 240,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 80,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            518.4,
+            379.86
+          ],
+          "position_m": [
+            25.92,
+            18.993
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              81.32,
+              257.38
+            ],
+            "broken_count": 0,
+            "centroid": [
+              520.97,
+              379.86
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              4.066,
+              12.869
+            ],
+            "centroid_m": [
+              26.048,
+              18.993
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.4 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 300,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 61,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            523.02,
+            379.97
+          ],
+          "position_m": [
+            26.151,
+            18.998
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              76.83,
+              276.06
+            ],
+            "broken_count": 0,
+            "centroid": [
+              525.59,
+              379.97
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.841,
+              13.803
+            ],
+            "centroid_m": [
+              26.28,
+              18.998
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.3 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 360,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 51,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            529.36,
+            379.97
+          ],
+          "position_m": [
+            26.468,
+            18.998
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              76.25,
+              279.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              531.93,
+              379.97
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.813,
+              13.95
+            ],
+            "centroid_m": [
+              26.597,
+              18.998
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.2 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 420,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 29,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            534.91,
+            380.04
+          ],
+          "position_m": [
+            26.745,
+            19.002
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              67.07,
+              279.29
+            ],
+            "broken_count": 0,
+            "centroid": [
+              537.48,
+              380.04
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              3.354,
+              13.964
+            ],
+            "centroid_m": [
+              26.874,
+              19.002
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.1 m/s\nAccel: -0.1 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 480,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 8,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            537.53,
+            380.01
+          ],
+          "position_m": [
+            26.876,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              47.64,
+              279.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              540.1,
+              380.01
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              2.382,
+              13.95
+            ],
+            "centroid_m": [
+              27.005,
+              19.0
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 540,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": 1,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            537.99,
+            380.0
+          ],
+          "position_m": [
+            26.899,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              279.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              540.56,
+              380.0
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              13.95
+            ],
+            "centroid_m": [
+              27.028,
+              19.0
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 600,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": null,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            537.99,
+            380.0
+          ],
+          "position_m": [
+            26.9,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              279.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              540.56,
+              380.0
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              13.95
+            ],
+            "centroid_m": [
+              27.028,
+              19.0
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 660,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": null,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            537.99,
+            380.0
+          ],
+          "position_m": [
+            26.9,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              279.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              540.56,
+              380.0
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              13.95
+            ],
+            "centroid_m": [
+              27.028,
+              19.0
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    },
+    {
+      "fog_terrain": {
+        "active": false,
+        "cell_size": 40.0,
+        "explored_count": 0,
+        "grid_h": 67,
+        "grid_w": 40,
+        "total_cells": 2680,
+        "visible_now_count": 0
+      },
+      "ghosts": [],
+      "hud": {
+        "ctrl_bar_visible": true,
+        "formation_text": "0.45 m locked",
+        "info_text": "Spearmen 1\nType: Spearmen\nCommander: Primus Pilus\nSoldiers: 140 / 140\nMorale: 100 (berserk)\nFatigue: 0%\nTraining: 75%\nFormation: 0.45 m locked\nWidth: 32 files\nOrder: Holding position\nHP per man: 100 ±0 of 100\nStamina per man: 100 ±0 of 100\nGait: Auto\nSpeed: 0.0 m/s\nAccel: +0.0 m/s²",
+        "order_mode_text": "",
+        "paused": false,
+        "shown_unit_uid": 0,
+        "stance_text": "Normal"
+      },
+      "tick": 720,
+      "units": [
+        {
+          "anchor_held": false,
+          "countermarch_variant": null,
+          "current_order": null,
+          "current_speed": 0.0,
+          "current_speed_mps": 0.0,
+          "delegated_group_id": null,
+          "engaged": false,
+          "explicatio_following": null,
+          "facing": [
+            1.0,
+            0.0
+          ],
+          "file_pitch": 9.0,
+          "formation": "TIGHT",
+          "formation_label": "0.45 m locked",
+          "frontage": 32,
+          "in_enemy_contact": false,
+          "last_redeal_tick": -1,
+          "last_reshape_tick": 58,
+          "maneuver": "IDLE",
+          "missile_ammo": null,
+          "morale": 100.0,
+          "move_target": null,
+          "name": "Spearmen 1",
+          "order_guard": null,
+          "order_mode": "Normal",
+          "order_phase": null,
+          "position": [
+            537.99,
+            380.0
+          ],
+          "position_m": [
+            26.9,
+            19.0
+          ],
+          "queue_tail": [],
+          "rally_halting": false,
+          "rank_pitch": 9.0,
+          "rank_relief": true,
+          "requested_move_target": null,
+          "soldier_summary": {
+            "bbox": [
+              36.0,
+              279.0
+            ],
+            "broken_count": 0,
+            "centroid": [
+              540.56,
+              380.0
+            ],
+            "count": 140,
+            "prone_count": 0
+          },
+          "soldier_summary_m": {
+            "bbox_m": [
+              1.8,
+              13.95
+            ],
+            "centroid_m": [
+              27.028,
+              19.0
+            ]
+          },
+          "soldiers": 140,
+          "soldiers_at_block_terrain_edge": 0,
+          "soldiers_in_block_terrain": 0,
+          "stamina_mean": 100.0,
+          "state": "IDLE",
+          "subcommander_rank": null,
+          "subunit_size": 16,
+          "subunit_structure": "FILE_GROUP",
+          "target_enemy_uid": null,
+          "team": 0,
+          "tier": "CLOSE",
+          "uid": 0,
+          "under_fire": false,
+          "under_fire_can_reply": false,
+          "visible": true,
+          "weapon": "Spear"
+        }
+      ]
+    }
+  ]
+}
