@@ -5,11 +5,12 @@ class_name ExplicatioOpening
 ##   who change file step out and come up the intervals.
 ## - FILES_FIRST: each old file opens out to its distance as a whole, its men keeping their
 ##   places in it, and only then do its men step into the interval beside it. Asclepiodotus 10.17
-##   inserts the new files "between the original files" of a line that already stands open
-##   (Bingham's note on Aelian 29.3: the insertion "must be done in open order"), and the opening
-##   is the files moving out to their distance, as in Aelian 33, where the files "proceed on to
-##   the Target" and "moue on till the first distance recouered". Doing the opening first in the
-##   lengthening explicatio, which opens and inserts in one drill, is the sim's inference.
+##   inserts the new files "between the original files", and Bingham's note on Aelian 29.3 says
+##   the insertion "must be done in open order"; that the files must therefore stand open first
+##   is the sim's reading. The opening is the files moving out to their distance, as in Aelian
+##   33, "the rest proceeding on to the Target", and Bingham's note on it, "moue on till the
+##   first distance recouered". Doing the opening first in the lengthening explicatio, which
+##   opens and inserts in one drill, is the sim's inference.
 ## Arrian, Tactica 25.3 to 25.5, inserts first, on the same ground, and only then extends the line;
 ## that is the same-ground reading (UnitFormation.ExplicatioGround.SAME_GROUND) followed by an
 ## opening of the order, not a reading of this one. Pure: functions of their arguments only.

@@ -1804,8 +1804,7 @@ func _resize_frontage(delta: int) -> void:
 ## each unit from its own current width, is recorded, and replays exactly -- the same path
 ## as the [ / ] single-file resize, one whole factor instead of one file. A widen is the
 ## explicatio explicatio_drill, read as explicatio_side, explicatio_ground and explicatio_opening;
-## a narrow that undoes
-## an explicatio marches its men back as duplicatio_march. Blocked during
+## a narrow that undoes an explicatio marches its men back as duplicatio_march. Blocked during
 ## playback, and while a grip drag owns the width (see _resize_frontage).
 func _issue_file_double(direction: int, anchor: int = UnitFormation.Anchor.CENTRE) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK or _resizing:

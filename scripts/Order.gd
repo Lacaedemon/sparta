@@ -312,7 +312,7 @@ var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 ## (UnitFormation.ExplicatioGround), as Unit.set_frontage reads them.
 var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
 var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
-# Whether that drill's files open before its men step in (ExplicatioOpening.Reading).
+## Whether that drill's files open before its men step in (ExplicatioOpening.Reading).
 var explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0

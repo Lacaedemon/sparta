@@ -6922,6 +6922,9 @@ func _advance_explicatio_drill() -> void:
 	var stepped_vel := PackedVector2Array()
 	stepped_vel.resize(soldiers)
 	var still: bool = false
+	# Whether a man of the block is on his way, read as the tick's judging begins, so no man's
+	# judgment turns on who was judged before him (_explicatio_way_barred_by_a_follower).
+	var on_way: PackedByteArray = _explicatio_following.duplicate()
 	for i in range(soldiers):
 		if _explicatio_following[i] == 0:
 			continue
@@ -6936,7 +6939,7 @@ func _advance_explicatio_drill() -> void:
 		var held: bool = judged and free \
 				and Unit.explicatio_step_made_no_way(_explicatio_stepped_from[i],
 						_sim_soldier_pos[i], _explicatio_stepped_vel[i], _sim_body_vel[i], place) \
-				and not _explicatio_way_barred_by_a_follower(i, place)
+				and not _explicatio_way_barred_by_a_follower(i, place, on_way)
 		var led_in: bool = a < 0 or _explicatio_following[a] == 0
 		if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
 			still = true   # his old file has not opened yet
@@ -6958,11 +6961,11 @@ func _advance_explicatio_drill() -> void:
 		_end_explicatio_drill()
 
 
-## Whether a man of this block who is still following stands against man `i` on his way to
-## `place`: ahead of him toward it, his body touching or overlapping `i`'s (centres within two
-## body radii along the way and across it). Such a man will move on, so `i` waits for him rather
-## than take his place short of it, as a man waits for his lane to open.
-func _explicatio_way_barred_by_a_follower(i: int, place: Vector2) -> bool:
+## Whether a man of this block who is still following (`on_way` 1 for him) stands against man
+## `i` on his way to `place`: ahead of him toward it, his body touching or overlapping `i`'s
+## (centres within two body radii along the way and across it). Such a man will move on, so `i`
+## waits for him rather than take his place short of it, as a man waits for his lane to open.
+func _explicatio_way_barred_by_a_follower(i: int, place: Vector2, on_way: PackedByteArray) -> bool:
 	var to_place: Vector2 = place - _sim_soldier_pos[i]
 	if to_place == Vector2.ZERO:
 		return false
@@ -6970,7 +6973,7 @@ func _explicatio_way_barred_by_a_follower(i: int, place: Vector2) -> bool:
 	var side: Vector2 = way.orthogonal()
 	var touch: float = 2.0 * soldier_body_radius()
 	for j in range(soldiers):
-		if j == i or _explicatio_following[j] == 0:
+		if j == i or on_way[j] == 0:
 			continue
 		var d: Vector2 = _sim_soldier_pos[j] - _sim_soldier_pos[i]
 		var along: float = d.dot(way)
@@ -7030,17 +7033,18 @@ func _end_explicatio_drill() -> void:
 	_explicatio_waiting = PackedByteArray()
 	_explicatio_following = PackedByteArray()
 	_explicatio_follow_frame = -1
-	position = explicatio_grid_position()   # on the men who reached their places
+	position = explicatio_grid_position(true)   # on the men who reached their places
 	_explicatio_taken = PackedVector2Array()
 	_explicatio_short = PackedByteArray()
 	_render_dirty = true
 
 
-## Where `position` puts the slot grid on the men as they stand: the grid's centroid on theirs,
-## leaving out any man who stands short of his place (_take_place_where_he_stands) unless every
-## man does. While an explicatio is under way the block's position is this reading of its men,
-## taken each tick (SoldierBodies.couple), and the grid is laid there when the drill ends.
-func explicatio_grid_position() -> Vector2:
+## Where `position` puts the slot grid on the men as they stand: the grid's centroid on theirs.
+## While an explicatio is under way the block's position is this reading of all its men, taken
+## each tick (SoldierBodies.couple). When the drill ends the grid is laid by the same reading with
+## `leave_short`: leaving out any man who stands short of his place (_take_place_where_he_stands),
+## unless every man does, so the men who could not reach theirs do not drag it back.
+func explicatio_grid_position(leave_short: bool = false) -> Vector2:
 	var n: int = mini(soldiers, _sim_soldier_pos.size())
 	if n <= 0:
 		return position
@@ -7050,7 +7054,8 @@ func explicatio_grid_position() -> Vector2:
 	var ang: float = soldier_block_world_angle()
 	# A man who stands short of his place (_explicatio_short) stands off the grid, so the grid is
 	# laid on the men who reached theirs, unless none did.
-	var skip: bool = _explicatio_short.size() == n and _explicatio_short.count(1) < n
+	var skip: bool = leave_short and _explicatio_short.size() == n \
+			and _explicatio_short.count(1) < n
 	var body_sum := Vector2.ZERO
 	var slot_sum := Vector2.ZERO
 	var counted: int = 0

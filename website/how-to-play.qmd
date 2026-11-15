@@ -1404,7 +1404,8 @@ Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to t
   doing the opening first in a drill that opens and inserts at once is the game's inference.
   With every second man stepping in, the file leaders then keep the line they stood on,
   where together each man stepping out from right behind his file leader presses him about 1 wu (5 cm) ahead of it.
-  The men coming up into line beside them still run a little past it before they settle, either way.
+  But the men coming up into line beside them run about 1.25 wu (6 cm) past it before they settle,
+  a little further than the file leaders run ahead together, so the front as a whole still runs ahead.
 
 ::: {#fig-explicatio-files-first .demo}
 

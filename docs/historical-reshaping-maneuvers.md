@@ -197,12 +197,14 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
   and in Bingham's note on it they "moue on till the first distance recouered".
   The lengthening explicatio opens and inserts in one drill,
   so doing its opening first is the sim's inference from those passages.
-  The files open one after another, from the file that stands outward, since each file leader dresses on the next one in.
-  In the alternate-rank drill this keeps every file leader on the line he stood on:
-  together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead,
-  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle.
-  The man coming up into line beside the leader still runs a little past it before he settles, either way
+  The files open one after another, the files next to the one that stands first and the flank files last, since each file leader dresses on the next one in toward it.
+  In the alternate-rank drill this keeps every file leader on the line he stood on.
+  Together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead:
+  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, measured 2026-11-14.
+  But files first does not keep the front as a whole on its line.
+  The epistates coming up into line beside his file leader runs past it before he settles, 1.24 to 1.27 wu, measured the same day, which is further than the file leaders run ahead together
   ([#1989](https://github.com/Lacaedemon/sparta/issues/1989)).
+  So the front's run ahead in the alternate-rank drill moves from the file leaders to the column leaders and is not removed.
 
 Arrian's *Tactica* (25.3 to 25.5, Hercher's Greek text on [classics.andrewgadsden.com](https://classics.andrewgadsden.com/library/arrian/tactica/25)) runs the other way:
 the men from the depth are first put into the spaces between the hoplites, and the front "is made dense" (πυκνοῦται),
@@ -247,9 +249,11 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   so something he cannot pass, a face of rock or a friend's body, holds him off it.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held,
   and nor is a man against whom a man of his own block who is still following stands on his way, since that man will move on.
-  A man so held takes his place where he stands and keeps it, and the men who follow him dress on him there.
+  A man so held takes his place where he stands and keeps it for the rest of the drill, and the men who follow him dress on him there.
   The other men keep to their places as they would to their slots.
-  When the drill ends the grid is laid on the men who reached their places.
+  When the drill ends the grid is laid on the men who reached their places,
+  and a held man's slot is then the place he could not reach
+  ([#1990](https://github.com/Lacaedemon/sparta/issues/1990)).
   So each file is dressed from the front back, each man once the man ahead of him is,
   by what each man sees of his own place and his own way to it.
   Nothing measures the block against its slots, and nothing times it.

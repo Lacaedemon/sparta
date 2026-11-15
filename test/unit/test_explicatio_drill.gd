@@ -210,6 +210,7 @@ func test_the_front_rank_holds_its_ground() -> void:
 	var walk: Dictionary = await _walk(u, DRILL_TICKS)
 	assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 	assert_gte(walk["ended"], 0, "the drill ended")
+	assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
 	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
 		"the front went %.2f wu ahead of where it stood" % walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(),
@@ -325,6 +326,7 @@ func test_no_two_men_come_onto_each_other() -> void:
 		_battle.enqueue_file_double([u.uid], 1, anchor)
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
+		assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
 		assert_gte(walk["closest"], floor_wu,
 			"anchor %d: the nearest two men came within %.2f wu" % [anchor, walk["closest"]])
 		assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
@@ -643,6 +645,7 @@ func test_the_combo_widen_of_a_deep_block_is_the_drill() -> void:
 		"one hemilochites for each file the turned block stood on")
 	var walk: Dictionary = await _walk(u, DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
+	assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
 	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(), "the front went %.2f wu ahead"
 			% walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(), "the front fell %.2f wu back"
@@ -1057,10 +1060,12 @@ func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
 	u._explicatio_short.resize(u.soldiers)
 	for i in range(5):
 		u._explicatio_short[i] = 1
-	assert_almost_eq(u.explicatio_grid_position(), laid, Vector2(0.05, 0.05),
-		"the men short of their places are left out")
-	u._explicatio_short.fill(1)
+	assert_almost_eq(u.explicatio_grid_position(true), laid, Vector2(0.05, 0.05),
+		"the men short of their places are left out when the grid is laid")
 	assert_almost_eq(u.explicatio_grid_position(), dragged, Vector2(0.05, 0.05),
+		"while the drill runs the position reads every man")
+	u._explicatio_short.fill(1)
+	assert_almost_eq(u.explicatio_grid_position(true), dragged, Vector2(0.05, 0.05),
 		"every man short: laid on them all")
 	u._explicatio_short = PackedByteArray()
 
@@ -1246,6 +1251,7 @@ func test_the_alternate_rank_drill_keeps_its_columns() -> void:
 		assert_eq(_count_role(u, UnitFormation.SoldierRole.HEMILOCHITES), 0, "and no hemilochites")
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
+		assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
 		assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 		assert_lt(walk["overtake"], 0.25 * u.rank_pitch_wu(), "anchor %d: the farthest any man "
 				% anchor + "got ahead of the man ahead of him is %.2f wu" % walk["overtake"])
