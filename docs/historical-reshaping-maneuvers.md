@@ -244,22 +244,26 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   when he stands within the reform settle distance of his place,
   or when a man of another regiment presses on him so he can come no nearer
   (a man in an interval, only once his lane is empty),
-  or, for a man in an interval, when every man standing in his lane has stopped following, so it will open no further,
-  or when a step he took for his place brought him no nearer it and he is going toward it no faster than he was,
-  so something he cannot pass, a face of rock or a friend's body, holds him off it.
+  or, for a man in an interval, when every man standing in his lane has stopped following, so it will open no further.
+  From then on he keeps to his place as he would to his slot.
+
+- A man is also held, judged afresh on every tick, while the step he took toward the point he steers on brought him no nearer it and he is going toward it no faster than he was,
+  so something he cannot pass, a face of rock or a friend's body, holds him off his place.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held,
   and nor is a man against whom a man of his own block who is still following stands on his way, since that man will move on.
-  A man so held takes his place where he stands and keeps it for the rest of the drill, and the men who follow him dress on him there.
-  The other men keep to their places as they would to their slots.
+  A held man goes on pressing for his place, and the first step that makes way again ends his being held.
+  While he is held and the man he follows is done, he is done too, and the men who follow him dress on him where he stands.
   When the drill ends the grid is laid on the men who reached their places,
-  and a held man's slot is then the place he could not reach
-  ([#1990](https://github.com/Lacaedemon/sparta/issues/1990)).
+  and a held man's slot is then the place he could not reach.
+  The men whose slots lie on the rock press on for them, and the block walks back after them:
+  that is a regression of the drill now ending, which waits on relational formation keeping
+  ([#1954](https://github.com/Lacaedemon/sparta/issues/1954), [#1990](https://github.com/Lacaedemon/sparta/issues/1990)).
   So each file is dressed from the front back, each man once the man ahead of him is,
   by what each man sees of his own place and his own way to it.
   Nothing measures the block against its slots, and nothing times it.
 
 The block's position is read off its men while the drill runs.
-When no man is still following, the drill ends, and the slot grid is laid on the men where they stand.
+When every man is done, the drill ends, and the slot grid is laid on the men where they stand.
 
 The drill is for a block standing still, from wherever its men stand, settled on their slots or not.
 A block on the march widens with the lateral deal ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)),

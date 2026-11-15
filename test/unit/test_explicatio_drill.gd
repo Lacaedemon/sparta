@@ -21,6 +21,10 @@ const SPEARMEN := 140
 ## Ticks for the drill to play out: the half-file drill measured on this build ends by tick 620
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
+## The x 1090 terrain drill after it ends, measured on this build (seed 1948): the front walks back
+## 26.09 wu in the 240 ticks after, and the nearest two men come 1.00 wu apart (TODO(#1990)).
+const TERRAIN_FELL := 26.09
+const TERRAIN_CLOSEST := 1.00
 const HALF_FILE := UnitFormation.ExplicatioDrill.HALF_FILE
 const ALTERNATE_RANK := UnitFormation.ExplicatioDrill.ALTERNATE_RANK
 
@@ -151,15 +155,15 @@ func _worst_off_slot(u: Unit) -> float:
 ## stood off the line the front stood on, either way, while the drill ran ("line"), and the
 ## farthest any man of the front rank stood off it when the drill ended ("end_line"); the closest
 ## two men came ("closest"); the farthest any man stood ahead of the man ahead of him in his file
-## along the facing ("overtake", negative when every man stayed behind); the most men who took
-## their places short of them on any tick ("held", Unit._take_place_where_he_stands); and the
-## tick it ended ("ended", -1 if it did not). `kill_tick` >= 0 kills man `kill_index` on that tick
+## along the facing ("overtake", negative when every man stayed behind); the most men held on any
+## tick ("held", Unit._explicatio_held_men); how many stood short of their places when it ended
+## ("short", Unit.explicatio_last_short); and the tick it ended ("ended", -1 if it did not). `kill_tick` >= 0 kills man `kill_index` on that tick
 ## through SoldierMelee.reap.
 func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
 	var out := {"ahead": -INF, "behind": INF, "line": 0.0, "end_line": INF, "closest": INF,
-			"overtake": -INF, "ended": -1, "held": 0}
+			"overtake": -INF, "ended": -1, "held": 0, "short": -1}
 	for t in range(ticks):
 		if t == kill_tick:
 			u._sim_soldier_hp[kill_index] = 0.0
@@ -169,11 +173,7 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		out["ahead"] = maxf(out["ahead"], front)
 		out["behind"] = minf(out["behind"], front)
 		out["closest"] = minf(out["closest"], _nearest_pair(u._sim_soldier_pos))
-		var held: int = 0
-		for p in u._explicatio_taken:
-			if p.is_finite():
-				held += 1
-		out["held"] = maxi(out["held"], held)
+		out["held"] = maxi(out["held"], u._explicatio_men_held.count(1))
 		var end_line: float = 0.0
 		for i in range(u.soldiers):
 			if u._sim_soldier_rank[i] != 0:
@@ -185,6 +185,7 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		if not u.explicatio_drill_active():
 			out["ended"] = t
 			out["end_line"] = end_line
+			out["short"] = u.explicatio_last_short
 			break
 		var ahead_of: PackedInt32Array = _man_ahead(u)
 		for i in range(u.soldiers):
@@ -210,7 +211,7 @@ func test_the_front_rank_holds_its_ground() -> void:
 	var walk: Dictionary = await _walk(u, DRILL_TICKS)
 	assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 	assert_gte(walk["ended"], 0, "the drill ended")
-	assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
+	assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
 	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
 		"the front went %.2f wu ahead of where it stood" % walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(),
@@ -326,7 +327,7 @@ func test_no_two_men_come_onto_each_other() -> void:
 		_battle.enqueue_file_double([u.uid], 1, anchor)
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
-		assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
+		assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
 		assert_gte(walk["closest"], floor_wu,
 			"anchor %d: the nearest two men came within %.2f wu" % [anchor, walk["closest"]])
 		assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
@@ -536,7 +537,7 @@ func test_an_explicatio_during_a_duplicatio_is_the_drill_and_ends() -> void:
 	assert_true(u.explicatio_drill_active(), "the widen is the drill")
 	var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
-	assert_eq(walk["held"], 0, "nobody took his place short of it")
+	assert_eq(walk["short"], 0, "nobody ended short of his place")
 	assert_lt(_worst_off_slot(u), Unit.REFORM_SETTLE_EPS, "every man stands on his slot")
 
 
@@ -645,7 +646,7 @@ func test_the_combo_widen_of_a_deep_block_is_the_drill() -> void:
 		"one hemilochites for each file the turned block stood on")
 	var walk: Dictionary = await _walk(u, DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
-	assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
+	assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
 	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(), "the front went %.2f wu ahead"
 			% walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(), "the front fell %.2f wu back"
@@ -997,57 +998,44 @@ func test_a_drill_crowded_by_a_friendly_block_still_ends() -> void:
 
 
 ## A block widened beside the field's hill (Battle.TERRAIN's block patch at x 1150) opens its east
-## wing onto the rock: the men it holds off their places, whom no regiment presses, take their
-## places where they stand once a step brings them no nearer, and the drill ends. On main the men
-## the rock held kept following, and every man behind them, so the drill never ended (it was
-## still running after 3000 ticks with 7 to 38 men following, for blocks 30 to 50 wu off it).
+## wing onto the rock: the men it holds off their places, whom no regiment presses, are held while
+## their steps make no way, the men behind them dress on them, and the drill ends with them short
+## of their places. On main the men the rock held kept following, and every man behind them, so the
+## drill never ended (it was still running after 3000 ticks with 7 to 38 men following, for blocks
+## 30 to 50 wu off it). But once it ends the grid's slots of the men held short lie on the rock,
+## they press on for them, and the block walks back after them, a regression of the drill now
+## ending that waits on relational formation keeping (TODO(#1954), TODO(#1990)): the measured
+## values are pinned here, so a change to them shows.
 func test_a_drill_held_off_its_places_by_terrain_still_ends() -> void:
 	var units: Array = await _stage([_spearmen([0, 1], Vector2(1090, 470))])
 	var u: Unit = units[0]
 	_battle.enqueue_file_double([u.uid], 1)
 	assert_true(u.explicatio_drill_active(), "precondition: the widen is the drill")
 	assert_eq(DemoState.explicatio_following(u), SPEARMEN, "the dump counts every man following")
-	var held_off: int = 0
-	var kept: int = 0
-	var short: int = 0
-	var ended: int = -1
-	var taken := {}   # man -> where he took his place, for the men the rock held
-	for t in range(2 * DRILL_TICKS):
-		var following: PackedByteArray = u._explicatio_following.duplicate()
-		var places: PackedVector2Array = _places(u).duplicate()
-		await get_tree().physics_frame
-		if u.explicatio_drill_active():
-			short = maxi(short, u._explicatio_short.count(1))
-			var now: PackedVector2Array = _places(u)
-			for i in taken:
-				if now[i] == taken[i]:
-					kept += 1
-				else:
-					assert_eq(now[i], taken[i], "man %d keeps the place he took" % i)
-		for i in range(mini(following.size(), u._explicatio_following.size())):
-			if following[i] == 1 and u._explicatio_following[i] == 0 \
-					and u._sim_soldier_pos[i].distance_to(places[i]) > Unit.REFORM_SETTLE_EPS:
-				held_off += 1
-				if u._explicatio_taken.size() == u.soldiers and u._explicatio_taken[i].is_finite():
-					taken[i] = u._explicatio_taken[i]
-		if not u.explicatio_drill_active():
-			ended = t
-			break
-	assert_gt(held_off, 0, "precondition: the rock held a man off his place")
-	assert_gt(taken.size(), 0, "a man the rock held took his place where he stood")
-	assert_gt(kept, 0, "and kept it on the ticks after")
-	assert_gt(short, taken.size(), "the men who follow a man held short stand short too")
-	assert_gte(ended, 0, "the drill ended")
+	var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
+	assert_gt(walk["held"], 0, "precondition: the rock held a man off his place")
+	assert_gte(walk["ended"], 0, "the drill ended")
+	assert_gt(walk["short"], 0, "with men short of their places")
 	assert_null(DemoState.explicatio_following(u), "and the dump says no drill is under way")
+	var front_at_end: float = _front(u, u.facing)
+	var front_low: float = front_at_end
+	var closest: float = INF
+	for _t in range(240):
+		await get_tree().physics_frame
+		front_low = minf(front_low, _front(u, u.facing))
+		closest = minf(closest, _nearest_pair(u._sim_soldier_pos))
 	var right_edge: float = -INF
 	for p in u._sim_soldier_pos:
 		right_edge = maxf(right_edge, p.x)
 	assert_lt(right_edge, 1150.0, "nobody stands on the rock")
+	assert_almost_eq(front_at_end - front_low, TERRAIN_FELL, 0.5,
+			"the front fell %.2f wu back in the 240 ticks after" % (front_at_end - front_low))
+	assert_almost_eq(closest, TERRAIN_CLOSEST, 0.1, "the nearest two men came %.2f wu apart" % closest)
 
 
-## The grid is laid on the men who reached their places: men standing short of theirs, held off
-## them or following a man who is, do not pull it back; if every man stands short, it is laid on
-## them all.
+## When the drill ends the grid is laid on the men who reached their places: a man held short and
+## the men who follow him do not drag it back (Unit._explicatio_short_men); while it runs the
+## position reads every man; if every man is short, the grid is laid on them all.
 func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
@@ -1056,25 +1044,93 @@ func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
 		u._sim_soldier_pos[i] -= u.facing * 40.0
 	var dragged: Vector2 = u.explicatio_grid_position()
 	assert_gt(dragged.distance_to(laid), 1.0, "precondition: five men 40 wu back drag the fit")
-	u._explicatio_short = PackedByteArray()
-	u._explicatio_short.resize(u.soldiers)
+	var short := PackedByteArray()
+	short.resize(u.soldiers)
 	for i in range(5):
-		u._explicatio_short[i] = 1
-	assert_almost_eq(u.explicatio_grid_position(true), laid, Vector2(0.05, 0.05),
+		short[i] = 1
+	assert_almost_eq(u.explicatio_grid_position(true, short), laid, Vector2(0.05, 0.05),
 		"the men short of their places are left out when the grid is laid")
-	assert_almost_eq(u.explicatio_grid_position(), dragged, Vector2(0.05, 0.05),
+	assert_almost_eq(u.explicatio_grid_position(false, short), dragged, Vector2(0.05, 0.05),
 		"while the drill runs the position reads every man")
-	u._explicatio_short.fill(1)
-	assert_almost_eq(u.explicatio_grid_position(true), dragged, Vector2(0.05, 0.05),
+	short.fill(1)
+	assert_almost_eq(u.explicatio_grid_position(true, short), dragged, Vector2(0.05, 0.05),
 		"every man short: laid on them all")
-	u._explicatio_short = PackedByteArray()
+
+
+## The end of a drill lays the grid on the men who reached their places: with the guide's file
+## held, its men are short and the position the drill leaves is the fit without them.
+func test_the_drill_ends_with_the_grid_off_the_men_held_short() -> void:
+	var units: Array = await _stage([_spearmen()])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	assert_true(u.explicatio_drill_active(), "precondition: the widen is the drill")
+	assert_true(u._refresh_explicatio_follow(u.soldiers), "precondition: a plan this tick")
+	var file: int = u._sim_soldier_file[0]
+	for i in range(u.soldiers):
+		if u._sim_soldier_file[i] == file:
+			u._sim_soldier_pos[i] -= u.facing * 40.0
+	u._explicatio_men_held = PackedByteArray()
+	u._explicatio_men_held.resize(u.soldiers)
+	var leader: int = -1
+	for i in range(u.soldiers):
+		if u._sim_soldier_file[i] == file and u._sim_soldier_rank[i] == 0:
+			leader = i
+	u._explicatio_men_held[leader] = 1
+	var short: PackedByteArray = u._explicatio_short_men()
+	assert_gt(short.count(1), 1, "precondition: his file stands short behind him")
+	var expected: Vector2 = u.explicatio_grid_position(true, short)
+	assert_gt(expected.distance_to(u.explicatio_grid_position()), 1.0,
+		"precondition: leaving them out moves the fit")
+	u._end_explicatio_drill()
+	assert_almost_eq(u.position, expected, Vector2(0.01, 0.01), "the grid is laid without them")
+	assert_eq(u.explicatio_last_short, short.count(1), "and the count of men short is kept")
+
+
+## A friendly block marched through a block doing the drill presses men off their places as it
+## passes; they are held only while it presses, set off again once it has gone, and nobody ends
+## the drill short of his place.
+func test_a_friendly_block_passing_through_the_drill_leaves_nobody_short() -> void:
+	var units: Array = await _stage([_spearmen(), _spearmen([1, 0], SPAWN + Vector2(-160, 0), 40)])
+	var u: Unit = units[0]
+	var friend: Unit = units[1]
+	_battle.enqueue_file_double([u.uid], 1)
+	_battle._apply_order_cmd({"units": [friend.uid], "x": SPAWN.x + 200.0, "y": SPAWN.y,
+			"target": -1})
+	var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
+	assert_gte(walk["ended"], 0, "the drill ended")
+	assert_eq(walk["short"], 0, "nobody ended short of his place")
+
+
+## Whether a follower bars a man is read off the flags it is given, the following flags as the
+## tick's judging began, not off the unit's live ones: a man touching him ahead on his way bars
+## him, one behind or out of reach or not following does not.
+func test_a_follower_on_his_way_bars_a_man_by_the_flags_given() -> void:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 2
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	u.soldiers = 2
+	var r: float = u.soldier_body_radius()
+	u._sim_soldier_pos = PackedVector2Array([Vector2.ZERO, Vector2(0, 1.5 * r)])
+	u._explicatio_following = PackedByteArray([1, 0])
+	var aim := Vector2(0, 50)
+	assert_true(u._explicatio_way_barred_by_a_follower(0, aim, PackedByteArray([1, 1])),
+		"a man touching him ahead, following by the given flags, bars him")
+	assert_false(u._explicatio_way_barred_by_a_follower(0, aim, PackedByteArray([1, 0])),
+		"not following by the given flags, he does not")
+	assert_false(u._explicatio_way_barred_by_a_follower(0, Vector2(0, -50), PackedByteArray([1, 1])),
+		"a man behind him on his way does not")
+	u._sim_soldier_pos[1] = Vector2(0, 2.5 * r)
+	assert_false(u._explicatio_way_barred_by_a_follower(0, aim, PackedByteArray([1, 1])),
+		"nor one out of his reach")
 
 
 ## The file-doubling clip's block (the default army's Spearmen on seed 12345, beside the other
 ## units of the army), widened 100 or 110 ticks into a duplicatio: men still walking from the
-## duplicatio press on men of their own block who are still following, and none of them takes his
-## place short of it. Judged without that wait, one to three men were frozen where the press held
-## them, one of them 17 wu ahead of the line.
+## duplicatio press on men of their own block who are still following, and nobody ends the drill
+## short of his place. Judged without the follower on his way, one to three men were held where the
+## press held them, one of them 17 wu ahead of the line.
 func test_men_jostled_by_their_own_block_do_not_take_their_places_short() -> void:
 	for gap in [100, 110]:
 		Replay.forced_seed = 12345
@@ -1087,8 +1143,9 @@ func test_men_jostled_by_their_own_block_do_not_take_their_places_short() -> voi
 		await _run(gap)
 		_battle.enqueue_file_double([u.uid], 1)
 		assert_true(u.explicatio_drill_active(), "precondition, gap %d: the widen is the drill" % gap)
-		var walk: Dictionary = await _walk(u, 500)
-		assert_eq(walk["held"], 0, "gap %d: nobody took his place short of it" % gap)
+		var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
+		assert_gte(walk["ended"], 0, "gap %d: the drill ended" % gap)
+		assert_eq(walk["short"], 0, "gap %d: nobody ended short of his place" % gap)
 		await _free_battle()
 
 
@@ -1273,7 +1330,7 @@ func test_the_alternate_rank_drill_keeps_its_columns() -> void:
 		assert_eq(_count_role(u, UnitFormation.SoldierRole.HEMILOCHITES), 0, "and no hemilochites")
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
-		assert_eq(walk["held"], 0, "on open ground nobody took his place short of it")
+		assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
 		assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 		assert_lt(walk["overtake"], 0.25 * u.rank_pitch_wu(), "anchor %d: the farthest any man "
 				% anchor + "got ahead of the man ahead of him is %.2f wu" % walk["overtake"])
