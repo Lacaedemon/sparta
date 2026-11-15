@@ -52,9 +52,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-9a6bfe3352ba6dc8ce3318bde1ee1a3f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-270b29d9e0fbc0b608088680ea862c4d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-9a6bfe3352ba6dc8ce3318bde1ee1a3f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-9a826d658782125d805e471eff4bdbc6.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-18191497f9f4aa9a5d4869de83687e3d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-9a826d658782125d805e471eff4bdbc6.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -484,7 +484,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-11-14</p>
+      <p class="date">Last updated: 2026-11-15</p>
     </div>
   </div>
   
@@ -617,7 +617,7 @@ Table&nbsp;1: Battle controls: selection, orders, formations, drill maneuvers, a
 </tr>
 <tr class="odd">
 <td>File-doubling</td>
-<td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed) · <kbd>Alt+B</kbd> / <kbd>Alt+Shift+B</kbd> / <kbd>Alt+Ctrl+B</kbd> choose the explicatio’s drill / side / ground (each press steps to the next reading; the control bar shows the choice)</td>
+<td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>Shift+B</kbd> / <kbd>Ctrl+B</kbd> anchored explicatio (right / left flank held fixed) · <kbd>Alt+B</kbd> / <kbd>Alt+Shift+B</kbd> / <kbd>Alt+Ctrl+B</kbd> choose the explicatio’s drill / side / ground (each press steps to the next reading; the control bar shows the choice) · <kbd>Alt+N</kbd> choose how <kbd>N</kbd> marches the men back when it undoes an explicatio (walk / face about; the control bar shows it)</td>
 </tr>
 <tr class="even">
 <td>Drill turn in place</td>
@@ -1326,6 +1326,21 @@ Figure&nbsp;38: The duplicatio in reverse: a block of 96 Spearmen unfolds from 6
 </figcaption>
 </figure>
 </div>
+<p><strong>Facing about on the way back.</strong> The sources say the men “counter-march” back to their stations (Asclepiodotus 10.20, Aelian 29.3), and a countermarch turns the men about (Asclepiodotus 10.13 to 10.15). Neither says which countermarch, so the walk above, facing front, is the game’s own reading and stays the default. Press <kbd>Alt+N</kbd> before <kbd>N</kbd> to choose the face-about reading instead; each press steps between the two, and a message names the choice. The control bar’s Duplicatio button, beside the Explicatio button, shows the reading the next <kbd>N</kbd> uses, and pressing it steps the reading too. Each man of an interval then faces about where he stands, marches back down the interval with its rear man leading, and faces front again on his station. Every man turns through his own facing at the drill’s pace rather than in a snap, and the men who stayed in the files do not turn. Facing the way they go, the men are back sooner than in the walk. That they face front again at their stations, and that the column keeps its order with its rear man leading, is the game’s inference. <kbd>Alt+N</kbd> only chooses; a block no explicatio dealt narrows as always, whichever reading is chosen.</p>
+<div id="fig-duplicatio-face-about" class="demo quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-duplicatio-face-about-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/duplicatio_face_about.jpg">
+  <source src="media/duplicatio_face_about.mp4" type="video/mp4">
+  Your browser can't play this clip --- see the
+  <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+</video>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-duplicatio-face-about-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;39: The face-about reading: a block of 96 Spearmen unfolds from 6 files to 12 (B); Alt+N chooses the reading, and N folds it back. The 48 men of the intervals face about, march back down them, and face front again on their stations.
+</figcaption>
+</figure>
+</div>
 <div id="fig-file-doubling" class="demo quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1336,7 +1351,7 @@ Figure&nbsp;38: The duplicatio in reverse: a block of 96 Spearmen unfolds from 6
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;39: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
+Figure&nbsp;40: File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.
 </figcaption>
 </figure>
 </div>
@@ -1350,7 +1365,7 @@ Figure&nbsp;39: File-doubling: duplicatio (N) folds the line into a deep column;
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-explicatio-half-file-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;40: A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8, each man following a man he can see. The two middle files stand and each wing opens outward. The rear half of each file steps sideways into the interval on its outer side, then comes up it in column behind its half-file leader once the interval has opened where he is. The front rank ends within 2 mm of the line it stood on. No two men come closer than 0.44 m, centre to centre, where men shoulder to shoulder stand 0.45 m apart.
+Figure&nbsp;41: A block of 96 spearmen, 6 files of 16, doubles its frontage to 12 files of 8, each man following a man he can see. The two middle files stand and each wing opens outward. The rear half of each file steps sideways into the interval on its outer side, then comes up it in column behind its half-file leader once the interval has opened where he is. The front rank ends within 2 mm of the line it stood on. No two men come closer than 0.44 m, centre to centre, where men shoulder to shoulder stand 0.45 m apart.
 </figcaption>
 </figure>
 </div>
@@ -1365,7 +1380,7 @@ Figure&nbsp;40: A block of 96 spearmen, 6 files of 16, doubles its frontage to 1
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-explicatio-keys-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;41: Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to the alternate rank, <kbd>Alt+Shift+B</kbd> steps the side three times to the shield side, and <kbd>B</kbd> deals it on a block of 96 spearmen.
+Figure&nbsp;42: Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to the alternate rank, <kbd>Alt+Shift+B</kbd> steps the side three times to the shield side, and <kbd>B</kbd> deals it on a block of 96 spearmen.
 </figcaption>
 </figure>
 </div>
@@ -1386,7 +1401,7 @@ Figure&nbsp;41: Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> step
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-explicatio-inward-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;42: The inward reading: a block of 64 infantry, 8 files of 8, doubles to 16 files of 4. Each wing’s rear half-files step toward the middle into their intervals. Only the right-hand middle file stands, so the left flank steps out 5 files and the right 3, and the front rank keeps the line it stood on.
+Figure&nbsp;43: The inward reading: a block of 64 infantry, 8 files of 8, doubles to 16 files of 4. Each wing’s rear half-files step toward the middle into their intervals. Only the right-hand middle file stands, so the left flank steps out 5 files and the right 3, and the front rank keeps the line it stood on.
 </figcaption>
 </figure>
 </div>
@@ -1400,7 +1415,7 @@ Figure&nbsp;42: The inward reading: a block of 64 infantry, 8 files of 8, double
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-explicatio-same-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;43: On the same ground: a block of 48 infantry in loose order, 6 files of 8, doubles to 12 files of 4 and closes into normal order as each rear half-file comes up in the gap on the right of its own file. Every file leader keeps the ground he stood on, and the line keeps its length but for half a file’s old spacing on the right flank.
+Figure&nbsp;44: On the same ground: a block of 48 infantry in loose order, 6 files of 8, doubles to 12 files of 4 and closes into normal order as each rear half-file comes up in the gap on the right of its own file. Every file leader keeps the ground he stood on, and the line keeps its length but for half a file’s old spacing on the right flank.
 </figcaption>
 </figure>
 </div>
@@ -1415,7 +1430,7 @@ Figure&nbsp;43: On the same ground: a block of 48 infantry in loose order, 6 fil
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-file-doubling-asymmetric-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;44: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
+Figure&nbsp;45: Anchored explicatio (Shift+B): the right flank stays fixed while the whole widen lands on the left.
 </figcaption>
 </figure>
 </div>
@@ -1438,7 +1453,7 @@ Figure&nbsp;44: Anchored explicatio (Shift+B): the right flank stays fixed while
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-form-up-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;45: Three regiments of different size — Spearmen (Tight, 0.45 m), Infantry (Normal, 0.9 m), Archers (Loose, 1.8 m) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. The three densities now occupy genuinely different frontage, so the split is density-driven for all three, not only the Archers.
+Figure&nbsp;46: Three regiments of different size — Spearmen (Tight, 0.45 m), Infantry (Normal, 0.9 m), Archers (Loose, 1.8 m) — box-selected and dragged into a flank line under the default equal-depth (space) split: each forms up to the same physical depth. The three densities now occupy genuinely different frontage, so the split is density-driven for all three, not only the Archers.
 </figcaption>
 </figure>
 </div>
@@ -1453,7 +1468,7 @@ Figure&nbsp;45: Three regiments of different size — Spearmen (Tight, 0.45 m), 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-checkerboard-form-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;46: Four Infantry regiments, box-selected and dragged into a line under the checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd land behind them, each centred on a front-row gap.
+Figure&nbsp;47: Four Infantry regiments, box-selected and dragged into a line under the checkerboard split: the 2nd and 4th land on the front row, the 1st and 3rd land behind them, each centred on a front-row gap.
 </figcaption>
 </figure>
 </div>
@@ -1468,7 +1483,7 @@ Figure&nbsp;46: Four Infantry regiments, box-selected and dragged into a line un
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-echelon-form-up-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;47: Three Spearmen regiments, box-selected and dragged into a line under the echelon (right leads) split: the unit nearest the right flank advances furthest, the unit nearest the left flank trails, and the middle regiment splits the difference — a clean staggered diagonal.
+Figure&nbsp;48: Three Spearmen regiments, box-selected and dragged into a line under the echelon (right leads) split: the unit nearest the right flank advances furthest, the unit nearest the left flank trails, and the middle regiment splits the difference — a clean staggered diagonal.
 </figcaption>
 </figure>
 </div>
@@ -1486,7 +1501,7 @@ Figure&nbsp;47: Three Spearmen regiments, box-selected and dragged into a line u
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tray-formation-deploy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;48: Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed: the two Line-1 units land on the front with a gap between them, and the Line-2 unit sits behind in that gap.
+Figure&nbsp;49: Three Infantry regiments laid out in the tray as a quincunx (Line 1: unit, gap, unit; Line 2: gap, unit, gap), then box-selected and drag-deployed: the two Line-1 units land on the front with a gap between them, and the Line-2 unit sits behind in that gap.
 </figcaption>
 </figure>
 </div>
@@ -1501,7 +1516,7 @@ Figure&nbsp;48: Three Infantry regiments laid out in the tray as a quincunx (Lin
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-formation-preview-square-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;49: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
+Figure&nbsp;50: Move-order ghost preview: a unit forms Square, then marches under the hold-Space orders overlay. The destination ghost shows the real hollow-square footprint, matching the stance it is actually marching into.
 </figcaption>
 </figure>
 </div>
@@ -1516,7 +1531,7 @@ Figure&nbsp;49: Move-order ghost preview: a unit forms Square, then marches unde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-order-distance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;50: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
+Figure&nbsp;51: Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.
 </figcaption>
 </figure>
 </div>
@@ -1531,7 +1546,7 @@ Figure&nbsp;50: Order distance labels: the green move line shows the remaining m
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-slow-motion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;51: A marching unit visibly covers less ground per stretch of the clip as F5 steps through 50%, 25%, and 10% speed.
+Figure&nbsp;52: A marching unit visibly covers less ground per stretch of the clip as F5 steps through 50%, 25%, and 10% speed.
 </figcaption>
 </figure>
 </div>
@@ -1548,7 +1563,7 @@ Figure&nbsp;51: A marching unit visibly covers less ground per stretch of the cl
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-of-war-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;52: Toggling fog of war mid-battle with F7. Units outside sight range are hidden and leave fading ghost markers where last seen.
+Figure&nbsp;53: Toggling fog of war mid-battle with F7. Units outside sight range are hidden and leave fading ghost markers where last seen.
 </figcaption>
 </figure>
 </div>
@@ -1563,7 +1578,7 @@ Figure&nbsp;52: Toggling fog of war mid-battle with F7. Units outside sight rang
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ai-honors-fog-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;53: The enemy AI honors fog of war: a lone enemy unit issues no order while a player unit sits beyond its sight disc, then attacks on the first AI decision after the player marches that unit into view.
+Figure&nbsp;54: The enemy AI honors fog of war: a lone enemy unit issues no order while a player unit sits beyond its sight disc, then attacks on the first AI decision after the player marches that unit into view.
 </figcaption>
 </figure>
 </div>
@@ -1577,7 +1592,7 @@ Figure&nbsp;53: The enemy AI honors fog of war: a lone enemy unit issues no orde
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-terrain-occlusion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;54: Terrain occlusion under fog of war: enemy units positioned behind hills are occluded until cavalry scouts advance past the shoulder to open an unobstructed line of sight.
+Figure&nbsp;55: Terrain occlusion under fog of war: enemy units positioned behind hills are occluded until cavalry scouts advance past the shoulder to open an unobstructed line of sight.
 </figcaption>
 </figure>
 </div>
@@ -1591,7 +1606,7 @@ Figure&nbsp;54: Terrain occlusion under fog of war: enemy units positioned behin
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fog-terrain-explored-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;55: The explored/unexplored terrain overlay: the field starts entirely dark, and a marching unit leaves a dimmed trail of explored-but-no-longer-visible ground behind it as it advances into still-unexplored territory.
+Figure&nbsp;56: The explored/unexplored terrain overlay: the field starts entirely dark, and a marching unit leaves a dimmed trail of explored-but-no-longer-visible ground behind it as it advances into still-unexplored territory.
 </figcaption>
 </figure>
 </div>
@@ -1610,7 +1625,7 @@ Figure&nbsp;55: The explored/unexplored terrain overlay: the field starts entire
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-charge-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;56: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
+Figure&nbsp;57: Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.
 </figcaption>
 </figure>
 </div>
@@ -1636,7 +1651,7 @@ Figure&nbsp;56: Cavalry charge: two horse units receive an attack order and acce
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-parade-ground-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;57: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
+Figure&nbsp;58: Parade Ground: the standard player line, no enemy on the field, given a group move order and settling into formation.
 </figcaption>
 </figure>
 </div>
@@ -1654,7 +1669,7 @@ Figure&nbsp;57: Parade Ground: the standard player line, no enemy on the field, 
 </video>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-all-teams-control-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;58: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
+Figure&nbsp;59: All-Teams Control: both the top (team 0) and bottom (team 1) lines box-selected and marched forward in turn, one commanded directly by the player just like the other.
 </figcaption>
 </figure>
 </div>
@@ -1668,7 +1683,7 @@ Figure&nbsp;58: All-Teams Control: both the top (team 0) and bottom (team 1) lin
 <img src="media/custom-battle-setup.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-custom-battle-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;59: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
+Figure&nbsp;60: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each side’s roster shown alongside its own faction dropdown.
 </figcaption>
 </figure>
 </div>
@@ -1684,7 +1699,7 @@ Figure&nbsp;59: Custom Battle Setup: picking Sparta vs.&nbsp;Rome, with each sid
 <img src="media/faction-identity-hud-sparta.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-sparta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;60: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
+Figure&nbsp;61: A Spartan spear block at normal order: the control bar and the info panel both read <em>0.9 m (pyknosis)</em>, and the identity pair sits below the live-state block — <strong>Faction</strong> Sparta (Laconian), with <strong>Doctrine</strong> Phalanx Shock Push (othismos) on the line under it, at the panel’s scroll fold in this 720p frame.
 </figcaption>
 </figure>
 </div>
@@ -1694,7 +1709,7 @@ Figure&nbsp;60: A Spartan spear block at normal order: the control bar and the i
 <img src="media/faction-identity-hud-rome.png" class="img-fluid figure-img" width="700">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-faction-formation-rome-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;61: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
+Figure&nbsp;62: The same battle, a Roman maniple selected instead. Its shield wall reads <em>0.34 m Shield Wall (scuta undique)</em>; the Spartan army in the same clip stands a shield wall of its own, and that one reads <em>phalanx</em> — one stance, two names. <strong>Faction</strong> reads Rome (Latin / Roman), with the Manipular Line Rotation (acies triplex) doctrine on the line below it.
 </figcaption>
 </figure>
 </div>
