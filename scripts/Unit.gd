@@ -6937,7 +6937,7 @@ func _advance_explicatio_drill() -> void:
 	_explicatio_stepped_from = stepped
 	_explicatio_stepped_vel = stepped_vel
 	if not still:
-		_end_explicatio_drill()
+		_end_explicatio_drill(_explicatio_short_men())   # every man is done: some stand short
 
 
 ## Which of the men still following stand this tick (_advance_explicatio_drill): 1 for each man
@@ -7024,10 +7024,11 @@ func _explicatio_way_barred_by_a_follower(i: int, aim: Vector2, on_way: PackedBy
 	return false
 
 
-## Which men stand short of their places as the drill ends: every man still following, who
-## stood that tick (_explicatio_standing_men: pressed, held, waiting on a lane that stood, or
-## dressing on a man who did) rather than having taken his place. The grid laid when the drill
-## ends is not laid on them (explicatio_grid_position).
+## Which men stand short of their places as the drill ends of itself, every man done: every man
+## still following, who stood that tick (_explicatio_standing_men: pressed, held, waiting on a
+## lane that stood, or dressing on a man who did) rather than having taken his place. The grid
+## laid when the drill ends is not laid on them (explicatio_grid_position). A drill ended by an
+## order, a fight or a change of width lays the grid on every man, as it always has.
 func _explicatio_short_men() -> PackedByteArray:
 	var short := PackedByteArray()
 	short.resize(soldiers)
@@ -7055,7 +7056,7 @@ static func explicatio_step_made_no_way(from: Vector2, now: Vector2, vel_from: V
 
 ## End an explicatio drill under way: the slot grid takes over, laid on the men where they stand
 ## (explicatio_grid_position).
-func _end_explicatio_drill() -> void:
+func _end_explicatio_drill(short: PackedByteArray = PackedByteArray()) -> void:
 	if not explicatio_drill_active():
 		return
 	_explicatio_drill = UnitFormation.ExplicatioDrill.NONE
@@ -7070,7 +7071,6 @@ func _end_explicatio_drill() -> void:
 	_explicatio_stepped_from = PackedVector2Array()
 	_explicatio_stepped_vel = PackedVector2Array()
 	_explicatio_waiting = PackedByteArray()
-	var short: PackedByteArray = _explicatio_short_men()   # read while the follow plan stands
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_following = PackedByteArray()
 	_explicatio_follow_frame = -1

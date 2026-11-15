@@ -1229,10 +1229,9 @@ and facing the way its formation does.
 A block on the march widens as it always has ([#1967](https://github.com/Lacaedemon/sparta/issues/1967)), and so does a block that has about-faced
 ([#1968](https://github.com/Lacaedemon/sparta/issues/1968)).
 Each man is done once he stands on his place behind or beside the man he follows, after that man is done.
-A man who cannot get there, held off it by rock or by a friendly block, counts as done where he stands
-while each step brings him no nearer and he is going toward it no faster,
-unless a man of his own block still on his way stands against him;
-the step that makes way again sets him going once more.
+A man who cannot get there, held off it by rock or pressed by a friendly block, stands where he is
+while each step brings him no nearer or the friend presses him, and he goes on the moment it stops;
+the men behind him wait on him.
 So a block widened against a hill still finishes its drill.
 Once it has, the men whose places lie on the rock press on for them and the block slowly walks back after them,
 which waits on the men keeping their formation from one another rather than from slots

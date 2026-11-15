@@ -1078,8 +1078,10 @@ func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
 		"every man short: laid on them all")
 
 
-## The end of a drill lays the grid on the men who reached their places: with the guide's file
-## held, its men are short and the position the drill leaves is the fit without them.
+## A drill that ends of itself lays the grid on the men who took their places: with one file's
+## men still following when every man is done (standing short of their places, 40 wu back), the
+## position the drill leaves is the fit without them. A drill ended by anything else (an order,
+## a fight, a change of width) lays the grid on every man, as it always has.
 func test_the_drill_ends_with_the_grid_off_the_men_held_short() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
@@ -1090,19 +1092,14 @@ func test_the_drill_ends_with_the_grid_off_the_men_held_short() -> void:
 	for i in range(u.soldiers):
 		if u._sim_soldier_file[i] == file:
 			u._sim_soldier_pos[i] -= u.facing * 40.0
-	u._explicatio_men_held = PackedByteArray()
-	u._explicatio_men_held.resize(u.soldiers)
-	var leader: int = -1
-	for i in range(u.soldiers):
-		if u._sim_soldier_file[i] == file and u._sim_soldier_rank[i] == 0:
-			leader = i
-	u._explicatio_men_held[leader] = 1
+		else:
+			u._explicatio_following[i] = 0   # every other man has taken his place
 	var short: PackedByteArray = u._explicatio_short_men()
-	assert_gt(short.count(1), 1, "precondition: his file stands short behind him")
+	assert_gt(short.count(1), 1, "precondition: the file's men stand short")
 	var expected: Vector2 = u.explicatio_grid_position(true, short)
-	assert_gt(expected.distance_to(u.explicatio_grid_position()), 1.0,
-		"precondition: leaving them out moves the fit")
-	u._end_explicatio_drill()
+	var on_all: Vector2 = u.explicatio_grid_position()
+	assert_gt(expected.distance_to(on_all), 1.0, "precondition: leaving them out moves the fit")
+	u._end_explicatio_drill(short)
 	assert_almost_eq(u.position, expected, Vector2(0.01, 0.01), "the grid is laid without them")
 	assert_eq(u.explicatio_last_short, short.count(1), "and the count of men short is kept")
 

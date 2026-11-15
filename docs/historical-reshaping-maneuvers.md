@@ -240,19 +240,22 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
 - If a leader falls, the man behind him takes his place and his role.
   The roles belong to the files the explicatio dealt, and a later re-deal of the files, such as a duplicatio, takes them away.
 
-- Each man stops following once he has taken his place and the man he follows has taken his:
+- Each man stops following for good once he has taken his place and the man he follows has stopped:
   when he stands within the reform settle distance of his place,
-  or when a man of another regiment presses on him so he can come no nearer
-  (a man in an interval, only once his lane is empty),
   or, for a man in an interval, when every man standing in his lane has stopped following, so it will open no further.
   From then on he keeps to his place as he would to his slot.
 
-- A man is also held, judged afresh on every tick, while the step he took toward the point he steers on brought him no nearer it and he is going toward it no faster than he was,
-  so something he cannot pass, a face of rock or a friend's body, holds him off his place.
-  A man still shedding a way he carried off his place gains pace toward it each step, so he is not held,
-  and nor is a man against whom a man of his own block who is still following stands on his way, since that man will move on.
-  A held man goes on pressing for his place, and the first step that makes way again ends his being held.
-  While he is held and the man he follows is done, he is done too, and the men who follow him dress on him where he stands.
+- Every other man is judged afresh on every tick, and keeps following.
+  While the man he follows has stopped or stands, he stands too, for that tick,
+  when he is on his place,
+  when a man of another regiment presses on him (a man in an interval, only once his lane has room for him),
+  when he is held: the step he took toward the point he steers on brought him no nearer it and he is going toward it no faster,
+  so something he cannot pass, a face of rock or a friend's body, holds him off his place,
+  or when every man of the lane he waits on has stopped or stands.
+  A man still shedding a way he carried off his place gains pace toward it each step, so he is not held.
+  A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
+  A friendly block that presses men and then marches off leaves them to go on to their places.
+  Only taking one's place is for good.
   When the drill ends the grid is laid on the men who reached their places,
   and a held man's slot is then the place he could not reach.
   The men whose slots lie on the rock press on for them, and the block walks back after them:
