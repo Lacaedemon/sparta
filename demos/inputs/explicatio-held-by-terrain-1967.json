@@ -1,5 +1,5 @@
 {
-  "_comment": "PLACEHOLDER",
+  "_comment": "A lone block of 140 Spearmen (9 files of 16, close order, 9 wu pitch) facing south at x 1075, its left flank 39 wu short of the field's hill (Battle.TERRAIN's block patch from x 1150), doubled to 18 files of 8 by a plain explicatio (B). The wing that opens toward the hill runs its outer files onto the rock: the men the rock holds off their places, whom no regiment presses, take their places where they stand once a step brings them no nearer and they are going toward them no faster, keep them, and the men behind them dress on them, so the drill ends by tick 660 (explicatio_following, the men still following: 124 at tick 32, null from tick 660). The front rank keeps its line at y 537.5 and the block stands at [1069.42, 505.96] at tick 900, nobody on the rock. On main the men the rock held kept following for ever and the drill never ended: 7 men were still following after 3000 ticks, and main's dump has no explicatio_following, so those expects fail there. Measured 2026-11-14 on FULL dumps every 60 ticks to tick 900, seed runs 0 to 4, which play out identically (no enemy, no roll). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "19672",
   "drill": true,
   "scenario": [
@@ -14,6 +14,10 @@
   ],
   "state": [8, 32, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900],
   "expect": [
-    {"tick": 32, "uid": 0, "field": "frontage", "value": 18}
+    {"tick": 32, "uid": 0, "field": "frontage", "value": 18},
+    {"tick": 32, "uid": 0, "field": "explicatio_following", "value": 124},
+    {"tick": 660, "uid": 0, "field": "explicatio_following", "value": null},
+    {"tick": 900, "uid": 0, "field": "front_rank_line", "value": [537.5, 537.5], "tol": 2.25},
+    {"tick": 900, "uid": 0, "field": "position", "value": [1069.42, 505.96], "tol": 2.25}
   ]
 }

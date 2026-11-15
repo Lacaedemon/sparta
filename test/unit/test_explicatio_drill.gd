@@ -151,14 +151,15 @@ func _worst_off_slot(u: Unit) -> float:
 ## stood off the line the front stood on, either way, while the drill ran ("line"), and the
 ## farthest any man of the front rank stood off it when the drill ended ("end_line"); the closest
 ## two men came ("closest"); the farthest any man stood ahead of the man ahead of him in his file
-## along the facing ("overtake", negative when every man stayed behind); and the tick it ended
-## ("ended", -1 if it did not). `kill_tick` >= 0 kills man `kill_index` on that tick through
-## SoldierMelee.reap.
+## along the facing ("overtake", negative when every man stayed behind); the most men who took
+## their places short of them on any tick ("held", Unit._take_place_where_he_stands); and the
+## tick it ended ("ended", -1 if it did not). `kill_tick` >= 0 kills man `kill_index` on that tick
+## through SoldierMelee.reap.
 func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
 	var out := {"ahead": -INF, "behind": INF, "line": 0.0, "end_line": INF, "closest": INF,
-			"overtake": -INF, "ended": -1}
+			"overtake": -INF, "ended": -1, "held": 0}
 	for t in range(ticks):
 		if t == kill_tick:
 			u._sim_soldier_hp[kill_index] = 0.0
@@ -168,6 +169,11 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		out["ahead"] = maxf(out["ahead"], front)
 		out["behind"] = minf(out["behind"], front)
 		out["closest"] = minf(out["closest"], _nearest_pair(u._sim_soldier_pos))
+		var held: int = 0
+		for p in u._explicatio_taken:
+			if p.is_finite():
+				held += 1
+		out["held"] = maxi(out["held"], held)
 		var end_line: float = 0.0
 		for i in range(u.soldiers):
 			if u._sim_soldier_rank[i] != 0:
@@ -516,7 +522,9 @@ func test_a_block_widened_as_it_halts_does_the_drill_from_where_its_men_stand() 
 
 
 ## A widen ordered while a duplicatio is still walking is the drill too, from the files and ranks
-## the duplicatio dealt and from where the men stand, and it ends with the block doubled.
+## the duplicatio dealt and from where the men stand, and it ends with the block doubled. The men
+## still walking from the duplicatio jostle men of their own block who are still following, so
+## none of them takes his place short of it: each waits for the man on his way to move on.
 func test_an_explicatio_during_a_duplicatio_is_the_drill_and_ends() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
@@ -526,6 +534,7 @@ func test_an_explicatio_during_a_duplicatio_is_the_drill_and_ends() -> void:
 	assert_true(u.explicatio_drill_active(), "the widen is the drill")
 	var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
+	assert_eq(walk["held"], 0, "nobody took his place short of it")
 	assert_lt(_worst_off_slot(u), Unit.REFORM_SETTLE_EPS, "every man stands on his slot")
 
 

@@ -8809,9 +8809,9 @@ func _apply_file_double_step(step: Order) -> void:
 			_grid_lag_resquare = false
 			_resquare_pending = false
 			_render_dirty = true
-			if step.dir > 0 and step.explicatio_drill != UnitFormation.ExplicatioDrill.NONE:
+			if step.dir > 0:
 				# The turned block stands `current` files wide across its new facing, so the
-				# drill doubles those files from where the men stand, as a B on the turned block.
+				# widen doubles those files from where the men stand, as a B on the turned block.
 				frontage_override = current
 		elif _grid_lag != 0.0 and is_quarter_turn_off(_formation_angle):
 			# Any lag folded this way leaves a re-square waiting to run from the new fold, as
