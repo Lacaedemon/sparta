@@ -18,6 +18,8 @@ extends GutTest
 
 const SPAWN := Vector2(500, 300)
 const SPEARMEN := 140
+## Ticks the friendly block stands pressing the drilling block before it is marched off.
+const FRIEND_STANDS := 240
 ## Ticks for the drill to play out: the half-file drill measured on this build ends by tick 620
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
@@ -157,14 +159,20 @@ func _worst_off_slot(u: Unit) -> float:
 ## farthest any man of the front rank stood off it when the drill ended ("end_line"); the closest
 ## two men came ("closest"); the farthest any man stood ahead of the man ahead of him in his file
 ## along the facing ("overtake", negative when every man stayed behind); the most men held on any
-## tick ("held", Unit._explicatio_held_men); how many stood short of their places when it ended
-## ("short", Unit.explicatio_last_short); and the tick it ended ("ended", -1 if it did not). `kill_tick` >= 0 kills man `kill_index` on that tick
-## through SoldierMelee.reap.
+## tick ("held", Unit._explicatio_held_men) and the most who stood ("stood",
+## Unit._explicatio_standing); how many men stood on one tick and on a later tick went on, still
+## following ("resumed"), and how many of those had stood pressed by a man of another regiment
+## ("press_resumed"); how many stood short of their places when it ended ("short",
+## Unit.explicatio_last_short); and the tick it ended ("ended", -1 if it did not).
+## `kill_tick` >= 0 kills man `kill_index` on that tick through SoldierMelee.reap.
 func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
 	var out := {"ahead": -INF, "behind": INF, "line": 0.0, "end_line": INF, "closest": INF,
-			"overtake": -INF, "ended": -1, "held": 0, "short": -1}
+			"overtake": -INF, "ended": -1, "held": 0, "stood": 0, "resumed": 0,
+			"press_resumed": 0, "short": -1}
+	var stood_before := PackedByteArray()
+	var stood_pressed := {}
 	for t in range(ticks):
 		if t == kill_tick:
 			u._sim_soldier_hp[kill_index] = 0.0
@@ -175,6 +183,17 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		out["behind"] = minf(out["behind"], front)
 		out["closest"] = minf(out["closest"], _nearest_pair(u._sim_soldier_pos))
 		out["held"] = maxi(out["held"], u._explicatio_men_held.count(1))
+		var standing: PackedByteArray = u._explicatio_standing
+		out["stood"] = maxi(out["stood"], standing.count(1))
+		if stood_before.size() == u.soldiers and standing.size() == u.soldiers:
+			for i in range(u.soldiers):
+				if stood_before[i] == 1 and standing[i] == 0 and u._explicatio_following[i] == 1:
+					out["resumed"] += 1
+					if stood_pressed.has(i):
+						out["press_resumed"] += 1
+				if standing[i] == 1 and i < u._sim_steer.size() and u._sim_steer[i] != Vector2.ZERO:
+					stood_pressed[i] = true
+		stood_before = standing.duplicate()
 		var end_line: float = 0.0
 		for i in range(u.soldiers):
 			if u._sim_soldier_rank[i] != 0:
@@ -1088,19 +1107,73 @@ func test_the_drill_ends_with_the_grid_off_the_men_held_short() -> void:
 	assert_eq(u.explicatio_last_short, short.count(1), "and the count of men short is kept")
 
 
-## A friendly block marched through a block doing the drill presses men off their places as it
-## passes; they are held only while it presses, set off again once it has gone, and nobody ends
-## the drill short of his place.
-func test_a_friendly_block_passing_through_the_drill_leaves_nobody_short() -> void:
-	var units: Array = await _stage([_spearmen(), _spearmen([1, 0], SPAWN + Vector2(-160, 0), 40)])
+## A friendly block standing where the drilling block's west wing opens presses its men off their
+## places: each stands while it presses him and keeps following. Marched off, it leaves them room,
+## they go on to their places, and nobody ends the drill short. A press by another regiment used to
+## stop a man following for good, so he walked on to his place as to a slot once the friend had
+## gone, not as the man he follows leads him. (A friendly block on the march passes through a
+## drilling block without pressing it, so the friend stands, then goes.)
+func test_a_friendly_block_that_presses_and_goes_leaves_nobody_short() -> void:
+	var units: Array = await _stage([_spearmen(), _spearmen([0, 1], SPAWN + Vector2(-110, 0))])
 	var u: Unit = units[0]
 	var friend: Unit = units[1]
 	_battle.enqueue_file_double([u.uid], 1)
-	_battle._apply_order_cmd({"units": [friend.uid], "x": SPAWN.x + 200.0, "y": SPAWN.y,
+	var walk: Dictionary = await _walk(u, FRIEND_STANDS)
+	assert_gt(walk["stood"], 0, "precondition: men stood while it pressed")
+	_battle._apply_order_cmd({"units": [friend.uid], "x": SPAWN.x - 500.0, "y": SPAWN.y,
 			"target": -1})
+	var rest: Dictionary = await _walk(u, 2 * DRILL_TICKS)
+	assert_gt(walk["press_resumed"] + rest["press_resumed"], 0,
+		"precondition: a man stood while the friend pressed him, and then went on")
+	assert_gte(rest["ended"], 0, "the drill ended")
+	assert_eq(rest["short"], 0, "nobody ended short of his place")
+
+
+## A snapshot taken while men stand restores a drill that plays on exactly as before: each tick's
+## standing, lanes and holds are read afresh from the restored men, the steps they last took.
+func test_a_drill_with_men_standing_plays_on_alike_after_a_restore() -> void:
+	var units: Array = await _stage([_spearmen([0, 1], Vector2(1090, 470))])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	var waited: int = 0
+	while u._explicatio_standing.count(1) == 0 and waited < 2 * DRILL_TICKS:
+		await get_tree().physics_frame
+		waited += 1
+	assert_gt(u._explicatio_standing.count(1), 0, "precondition: men stand")
+	var snap: Dictionary = u.to_snapshot_dict()
+	await _run(90)
+	var first: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var first_following: PackedByteArray = u._explicatio_following.duplicate()
+	u.apply_snapshot_dict(snap)
+	await _run(90)
+	assert_eq(u._explicatio_following, first_following, "the same men follow")
+	var worst: float = 0.0
+	for i in range(u.soldiers):
+		worst = maxf(worst, first[i].distance_to(u._sim_soldier_pos[i]))
+	assert_lt(worst, 0.001, "every man stands where he stood the first time (%.4f wu off)" % worst)
+
+
+## A man killed while men stand leaves every per-man array of the drill lined up with the men
+## left, and the drill plays on to its end.
+func test_a_casualty_while_men_stand_keeps_the_drill_lined_up() -> void:
+	var units: Array = await _stage([_spearmen([0, 1], Vector2(1090, 470))])
+	var u: Unit = units[0]
+	_battle.enqueue_file_double([u.uid], 1)
+	var waited: int = 0
+	while u._explicatio_standing.count(1) == 0 and waited < 2 * DRILL_TICKS:
+		await get_tree().physics_frame
+		waited += 1
+	assert_gt(u._explicatio_standing.count(1), 0, "precondition: men stand")
+	var victim: int = u._explicatio_standing.find(1)
+	u._sim_soldier_hp[victim] = 0.0
+	SoldierMelee.reap(u, null)
+	assert_eq(u.soldiers, SPEARMEN - 1, "precondition: a man fell")
+	await get_tree().physics_frame
+	assert_eq(u._explicatio_following.size(), u.soldiers, "one following flag for each man left")
+	assert_eq(u._explicatio_standing.size(), u.soldiers, "one standing flag for each man left")
+	assert_eq(u._explicatio_men_held.size(), u.soldiers, "one held flag for each man left")
 	var walk: Dictionary = await _walk(u, 2 * DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
-	assert_eq(walk["short"], 0, "nobody ended short of his place")
 
 
 ## Whether a follower bars a man is read off the flags it is given, the following flags as the

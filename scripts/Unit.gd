@@ -6598,6 +6598,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 	_explicatio_places = PackedVector2Array()
 	_explicatio_rooms = PackedFloat32Array()
 	_explicatio_shut = PackedByteArray()
+	_explicatio_lanes = {}
 	_explicatio_waiting = PackedByteArray()
 	_explicatio_follow_frame = frame
 	_explicatio_follow_count = count
@@ -6655,9 +6656,10 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		if lane.is_empty():
 			continue
 		_explicatio_rooms[i] = 0.0
+		_explicatio_lanes[i] = lane
 		var moving: bool = not lined_up
 		for j in lane:
-			if lined_up and _explicatio_following[j] == 1 and not _explicatio_was_held(j):
+			if lined_up and _explicatio_following[j] == 1:
 				moving = true
 		_explicatio_shut[i] = 0 if moving else 1
 	return true
@@ -6737,6 +6739,7 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 		var across: float = (places[i] - bodies[i]).dot(right)
 		var blocked: bool = false
 		var moving: bool = not lined_up
+		var lane := PackedInt32Array()
 		for j in _explicatio_cell_men(cells, bodies[i], places[i], maxf(rank_pitch_wu(), clear),
 				clear, clear):
 			if _duplicatio_returning[j] == _duplicatio_returning[i] \
@@ -6745,12 +6748,15 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 			var a: float = (bodies[j] - bodies[i]).dot(right) * signf(across)
 			if a > 0.0 and a < absf(across) + clear:
 				blocked = true
-				moving = moving or (_explicatio_following[j] == 1 and not _explicatio_was_held(j))
+				moving = moving or _explicatio_following[j] == 1
+				lane.push_back(j)
 		if not blocked:
 			continue
 		_duplicatio_steer[i] = bodies[i] + front * (places[i] - bodies[i]).dot(front)
-		if not moving and _duplicatio_steer[i].distance_to(bodies[i]) <= REFORM_SETTLE_EPS:
-			_explicatio_shut[i] = 1
+		if _duplicatio_steer[i].distance_to(bodies[i]) <= REFORM_SETTLE_EPS:
+			_explicatio_lanes[i] = lane   # he waits on these men at the point he heads for
+			if not moving:
+				_explicatio_shut[i] = 1
 	return true
 
 
@@ -6869,27 +6875,24 @@ func follow_line_width() -> float:
 
 
 ## Advance an explicatio drill under way, before the bodies step. Each man who is still
-## following takes his place, and stops following, once the man he follows is done (or he
-## follows nobody) and he stands within REFORM_SETTLE_EPS of his place, or a man of another
-## regiment presses on him (SoldierSteering's push, this tick's `_sim_steer`), so he can come no
-## nearer. A man in an interval stops for a press only once it has room for him where he is
-## (follow_room 1): until then the men in his lane, not the press, hold him back. And he stops,
-## room or none, once every man standing in his lane has stopped following, so it will open no
-## further (a friend pressing them, say).
-## Each man is also judged held, afresh on every tick (_explicatio_men_held): the step he took last
-## tick toward the point he steers on (SoldierFollowSteer.steer_point), with nothing of the drill
-## holding him back, left him no nearer it and no faster toward it
-## (explicatio_step_made_no_way), and no man of his block who is still following stands against
-## him on his way (_explicatio_way_barred_by_a_follower). A face of rock or a friend's body he
-## cannot pass holds him off his place. A held man goes on following and pressing for it, and
-## the tick a step makes way again he is no longer held; while he is held and the man he follows
-## is done, he is done too, and the men behind him dress on him where he stands. So each file is
-## dressed from the front back, each man once the man ahead of him is, by what each man sees of
-## his own way, never by a distance laid on the block or a time. After he stops following he
-## keeps to his place as a man keeps to his slot. The drill ends when every man is done, and at
-## once when the block marches, fights, routs, squares, changes width, loses its file-major grid,
-## or its men no longer line up with the roles the drill dealt them (a reinforcement re-deals the
-## block). Either way the slot grid takes over from where the men stand (_end_explicatio_drill).
+## following takes his place, and stops following for good, once the man he follows has stopped
+## (or he follows nobody) and he stands within REFORM_SETTLE_EPS of his place, or he is a man in
+## an interval whose lane is held by men who have all stopped following, so it will open no
+## further. After he stops following he keeps to his place as a man keeps to his slot.
+## Every other man is judged afresh on every tick, from what he does, and keeps following:
+## - he stands, for this tick, while the man he follows is done and he is pressed by a man of
+##   another regiment (SoldierSteering's push, this tick's `_sim_steer`, once his lane has room
+##   for him where he is), held (_explicatio_held_men: his last step made no way and gained no
+##   pace toward his place), or waiting on a lane every man of which is done this tick;
+## - then he is done this tick, and the men behind him who are done too dress on him there.
+## A man who stands goes on pressing for his place, and the tick nothing holds him he is no
+## longer done, nor are the men who were done behind him. So each file is dressed from the front
+## back, each man once the man ahead of him is, by what each man sees of his own way, never by a
+## distance laid on the block or a time, and nothing latches but taking one's place. The drill
+## ends when every man is done, and at once when the block marches, fights, routs, squares,
+## changes width, loses its file-major grid, or its men no longer line up with the roles the drill
+## dealt them (a reinforcement re-deals the block). Either way the slot grid takes over from where
+## the men stand (_end_explicatio_drill), laid on the men who took their places.
 func _advance_explicatio_drill() -> void:
 	if not explicatio_drill_active():
 		return
@@ -6901,7 +6904,7 @@ func _advance_explicatio_drill() -> void:
 		_end_explicatio_drill()
 		return
 	_explicatio_men_held = _explicatio_held_men()
-	var done: PackedByteArray = _explicatio_done_men(_explicatio_men_held)
+	_explicatio_standing = _explicatio_standing_men(_explicatio_men_held)
 	var stepped := PackedVector2Array()
 	stepped.resize(soldiers)
 	stepped.fill(Vector2.INF)
@@ -6916,25 +6919,63 @@ func _advance_explicatio_drill() -> void:
 		var placed: bool = _sim_soldier_pos[i].distance_to(place) <= REFORM_SETTLE_EPS
 		var shut: bool = _explicatio_shut[i] == 1
 		var free: bool = _explicatio_rooms[i] >= 1.0
-		var pressed: bool = i < _sim_steer.size() and _sim_steer[i] != Vector2.ZERO and free
 		# In the reverse, a man the other part of the block holds back heads elsewhere and waits.
 		free = free and (_duplicatio_steer.size() != soldiers or _duplicatio_steer[i] == place)
-		var led_in: bool = a < 0 or _explicatio_following[a] == 0 or done[a] == 1
+		var led_in: bool = a < 0 or _explicatio_following[a] == 0
 		if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
 			still = true   # his old file has not opened yet
 			continue
-		if led_in and (placed or pressed or shut):
+		if led_in and (placed or shut):
 			_explicatio_following[i] = 0
 			continue
-		if done[i] == 0:
+		if _explicatio_standing[i] == 0:
 			still = true
-		if led_in and free and not placed and i < _sim_body_vel.size():
+		var lead_done: bool = led_in or _explicatio_standing[a] == 1
+		if lead_done and free and not placed and i < _sim_body_vel.size():
 			stepped[i] = _sim_soldier_pos[i]   # he steps for his place this tick
 			stepped_vel[i] = _sim_body_vel[i]
 	_explicatio_stepped_from = stepped
 	_explicatio_stepped_vel = stepped_vel
 	if not still:
 		_end_explicatio_drill()
+
+
+## Which of the men still following stand this tick (_advance_explicatio_drill): 1 for each man
+## whose leader has stopped following or stands, and who stands on his place, is pressed by a
+## man of another regiment with room where he is, `held` (_explicatio_held_men), or waiting on a
+## lane (`_explicatio_lanes`) every man of which has stopped following or stands. Read down each
+## follow chain from the
+## front, so a man stands only once the man he dresses on does. Each man's lane and press are
+## this tick's, read from where the men stand.
+func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
+	var stand := PackedByteArray()
+	stand.resize(soldiers)
+	var changed: bool = true
+	while changed:
+		changed = false
+		for i in range(soldiers):
+			if stand[i] == 1 or _explicatio_following[i] == 0:
+				continue
+			if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
+				continue
+			var a: int = _explicatio_leaders[i]
+			if not (a < 0 or _explicatio_following[a] == 0 or stand[a] == 1):
+				continue
+			var free: bool = _explicatio_rooms[i] >= 1.0
+			var pressed: bool = i < _sim_steer.size() and _sim_steer[i] != Vector2.ZERO and free
+			var lane_stood: bool = false
+			if _explicatio_lanes.has(i):
+				lane_stood = true
+				for j in _explicatio_lanes[i]:
+					if _explicatio_following[j] == 1 and stand[j] == 0:
+						lane_stood = false
+						break
+			var placed: bool = _sim_soldier_pos[i].distance_to(_explicatio_places[i]) \
+					<= REFORM_SETTLE_EPS
+			if placed or pressed or held[i] == 1 or lane_stood:
+				stand[i] = 1
+				changed = true
+	return stand
 
 
 ## Which of the men still following are held this tick (_advance_explicatio_drill): 1 for each
@@ -6962,27 +7003,6 @@ func _explicatio_held_men() -> PackedByteArray:
 	return held
 
 
-## Which men are done this tick: every man who has stopped following, and every man `held`
-## (_explicatio_held_men) whose leader is done, so a held man ends the drill only once the man
-## he dresses on has, and the men behind him then dress on him where he stands.
-func _explicatio_done_men(held: PackedByteArray) -> PackedByteArray:
-	var done := PackedByteArray()
-	done.resize(soldiers)
-	for i in range(soldiers):
-		done[i] = 1 if _explicatio_following[i] == 0 else 0
-	var changed: bool = true
-	while changed:
-		changed = false
-		for i in range(soldiers):
-			if done[i] == 1 or held[i] == 0:
-				continue
-			var a: int = _explicatio_leaders[i]
-			if a < 0 or done[a] == 1:
-				done[i] = 1
-				changed = true
-	return done
-
-
 ## Whether a man of this block who is still following (`on_way` 1 for him) stands against man
 ## `i` on his way to `aim`: ahead of him toward it, his body touching or overlapping `i`'s
 ## (centres within two body radii along the way and across it). Such a man will move on, so `i`
@@ -7004,30 +7024,17 @@ func _explicatio_way_barred_by_a_follower(i: int, aim: Vector2, on_way: PackedBy
 	return false
 
 
-## Whether man `j` was held on the last tick judged (_explicatio_men_held). A held man presses on
-## where he stands and moves no further, so a lane he holds opens no further, as one held by men
-## who have stopped following (_refresh_explicatio_follow's shut lanes).
-func _explicatio_was_held(j: int) -> bool:
-	return j < _explicatio_men_held.size() and _explicatio_men_held[j] == 1
-
-
-## Which men stand short of their places as the drill stands now: each man held this tick
-## (_explicatio_men_held), and every man who follows one, down the follow chain. The grid laid when
-## the drill ends is not laid on them (explicatio_grid_position).
+## Which men stand short of their places as the drill ends: every man still following, who
+## stood that tick (_explicatio_standing_men: pressed, held, waiting on a lane that stood, or
+## dressing on a man who did) rather than having taken his place. The grid laid when the drill
+## ends is not laid on them (explicatio_grid_position).
 func _explicatio_short_men() -> PackedByteArray:
 	var short := PackedByteArray()
 	short.resize(soldiers)
-	if _explicatio_men_held.size() != soldiers or _explicatio_leaders.size() != soldiers:
+	if _explicatio_following.size() != soldiers:
 		return short
 	for i in range(soldiers):
-		var j: int = i
-		for _step in range(soldiers):   # a chain is at most every man long
-			if _explicatio_men_held[j] == 1:
-				short[i] = 1
-				break
-			j = _explicatio_leaders[j]
-			if j < 0:
-				break
+		short[i] = _explicatio_following[i]
 	return short
 
 
@@ -7070,6 +7077,8 @@ func _end_explicatio_drill() -> void:
 	position = explicatio_grid_position(true, short)   # on the men who reached their places
 	explicatio_last_short = short.count(1)
 	_explicatio_men_held = PackedByteArray()
+	_explicatio_standing = PackedByteArray()
+	_explicatio_lanes = {}
 	_render_dirty = true
 
 
@@ -7664,8 +7673,15 @@ var _explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
 # tick whether that step made any way.
 var _explicatio_stepped_from: PackedVector2Array = PackedVector2Array()
 var _explicatio_stepped_vel: PackedVector2Array = PackedVector2Array()
-# 1 for each man held this tick (_explicatio_held_men), read afresh every tick.
+# 1 for each man held this tick (_explicatio_held_men), and for each man who stands this tick
+# (_explicatio_standing_men): written by each advance and read by nothing in the sim before the
+# next rewrites them, so a restore needs neither (the tests read them).
 var _explicatio_men_held: PackedByteArray = PackedByteArray()
+var _explicatio_standing: PackedByteArray = PackedByteArray()
+# This tick's lane of each man waiting on one, by index: the men of other files in his lane
+# (_refresh_explicatio_follow), or the men of the other part of the block on his way in the
+# reverse, read afresh each tick from where the men stand.
+var _explicatio_lanes: Dictionary = {}
 ## How many men stood short of their places when the last explicatio drill ended
 ## (_explicatio_short_men): held off them, or following a man who was. Read by the tests and the
 ## demo dump; 0 for a drill every man finished.
