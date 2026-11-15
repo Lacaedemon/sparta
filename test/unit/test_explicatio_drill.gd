@@ -748,9 +748,9 @@ func test_each_man_stops_following_once_he_has_taken_his_place() -> void:
 
 
 ## A man pressed by a man of another regiment can come no nearer his place, so once the man he
-## follows has taken his he stands where he is for the tick, still following; the tick the press
-## lifts he is going again. A man not pressed and off his place goes on following and does not
-## stand.
+## follows has taken his he stands where he is for the tick, still following. Once the press lifts
+## he stands only while his steps make no way (held), and the tick he makes way he is going again.
+## A man not pressed and off his place goes on following and does not stand.
 func test_a_man_pressed_by_another_regiment_stands_while_pressed() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
@@ -778,7 +778,11 @@ func test_a_man_pressed_by_another_regiment_stands_while_pressed() -> void:
 	assert_eq(u._explicatio_following[free], 1, "and goes on following")
 	u._sim_steer[pressed] = Vector2.ZERO
 	u._advance_explicatio_drill()
-	assert_eq(u._explicatio_standing[pressed], 0, "the press lifted, he no longer stands")
+	assert_eq(u._explicatio_standing[pressed], 1,
+		"the press lifted, but his last step made no way: he is held and still stands")
+	u._sim_soldier_pos[pressed] = u._sim_soldier_pos[pressed].move_toward(places[pressed], 0.5)
+	u._advance_explicatio_drill()
+	assert_eq(u._explicatio_standing[pressed], 0, "once he makes way again he no longer stands")
 	assert_eq(u._explicatio_following[pressed], 1, "and goes on following")
 
 
