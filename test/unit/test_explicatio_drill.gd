@@ -1070,6 +1070,28 @@ func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
 	u._explicatio_short = PackedByteArray()
 
 
+## The file-doubling clip's block (the default army's Spearmen on seed 12345, beside the other
+## units of the army), widened 100 or 110 ticks into a duplicatio: men still walking from the
+## duplicatio press on men of their own block who are still following, and none of them takes his
+## place short of it. Judged without that wait, one to three men were frozen where the press held
+## them, one of them 17 wu ahead of the line.
+func test_men_jostled_by_their_own_block_do_not_take_their_places_short() -> void:
+	for gap in [100, 110]:
+		Replay.forced_seed = 12345
+		_battle = load("res://scenes/Battle.tscn").instantiate()
+		_battle.drill_mode = true   # set before add_child so Battle._ready reads it
+		add_child(_battle)
+		await _run(40)
+		var u: Unit = _battle._unit_by_uid(0)
+		_battle.enqueue_file_double([u.uid], -1)
+		await _run(gap)
+		_battle.enqueue_file_double([u.uid], 1)
+		assert_true(u.explicatio_drill_active(), "precondition, gap %d: the widen is the drill" % gap)
+		var walk: Dictionary = await _walk(u, 500)
+		assert_eq(walk["held"], 0, "gap %d: nobody took his place short of it" % gap)
+		await _free_battle()
+
+
 ## A man can come no nearer when he stands no nearer his place than where he stepped from and is
 ## going toward it no faster; any way at all, a pace toward it that grows (a man shedding a way
 ## he carried off it), and a man who did not step for it, are not held.
