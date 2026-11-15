@@ -1,23 +1,104 @@
 {
-  "_comment": "A lone block of 140 Spearmen (9 files of 16, close order, 9 wu pitch) facing south at x 1075, its left flank 39 wu short of the field's hill (Battle.TERRAIN's block patch from x 1150), doubled to 18 files of 8 by a plain explicatio (B). The wing that opens toward the hill runs its outer files onto the rock: the men the rock holds off their places, whom no regiment presses, take their places where they stand once a step brings them no nearer and they are going toward them no faster, keep them, and the men behind them dress on them, so the drill ends by tick 660 (explicatio_following, the men still following: 124 at tick 32, null from tick 660). The front rank keeps its line at y 537.5 and the block stands at [1069.42, 505.96] at tick 900, nobody on the rock. On main the men the rock held kept following for ever and the drill never ended: 7 men were still following after 3000 ticks, and main's dump has no explicatio_following, so those expects fail there. Measured 2026-11-14 on FULL dumps every 60 ticks to tick 900, seed runs 0 to 4, which play out identically (no enemy, no roll). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "A lone block of 140 Spearmen (9 files of 16, close order, 9 wu pitch) facing south at x 1075, its left flank 39 wu short of the field's hill (Battle.TERRAIN's block patch from x 1150), doubled to 18 files of 8 by a plain explicatio (B). The wing that opens toward the hill runs its outer files onto the rock: the men the rock holds off their places, whom no regiment presses, stand while their steps make no way and go on whenever they make way again, the men behind them stand on them, and once every man has taken his place or stands the drill ends, between ticks 600 and 660 (explicatio_following, the men still following: 124 at tick 32, 11 at tick 600, null from tick 660). The front rank keeps its line at y 537.5 through the drill; once the grid is laid, the men still short press on for their slots and the block settles 5.2 wu back, its front at y 532.3 from tick 720, and then stands (the same walk back the x 1090 clip shows at full size, #1990). The block stands at [1069.47, 500.77] at tick 900, nobody on the rock. On main the men the rock held kept following for ever and the drill never ended: 7 men were still following after 3000 ticks, and main's dump has no explicatio_following, so those expects fail there. Measured 2026-11-15 on FULL dumps every 60 ticks to tick 900, seed runs 0 to 4, which play out identically (no enemy, no roll). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "19672",
   "drill": true,
   "scenario": [
-    {"team": 0, "type": "Spearmen", "x": 1075, "y": 470, "count": 140, "facing": [0, 1]}
+    {
+      "team": 0,
+      "type": "Spearmen",
+      "x": 1075,
+      "y": 470,
+      "count": 140,
+      "facing": [
+        0,
+        1
+      ]
+    }
   ],
   "camera": [
-    {"tick": 0, "x": 1100.0, "y": 470.0, "zoom": 1.8}
+    {
+      "tick": 0,
+      "x": 1100.0,
+      "y": 470.0,
+      "zoom": 1.8
+    }
   ],
   "steps": [
-    {"tick": 12, "click": [1075, 470]},
-    {"tick": 30, "key": "B"}
+    {
+      "tick": 12,
+      "click": [
+        1075,
+        470
+      ]
+    },
+    {
+      "tick": 30,
+      "key": "B"
+    }
   ],
-  "state": [8, 32, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900],
+  "state": [
+    8,
+    32,
+    60,
+    120,
+    180,
+    240,
+    300,
+    360,
+    420,
+    480,
+    540,
+    600,
+    660,
+    720,
+    780,
+    840,
+    900
+  ],
   "expect": [
-    {"tick": 32, "uid": 0, "field": "frontage", "value": 18},
-    {"tick": 32, "uid": 0, "field": "explicatio_following", "value": 124},
-    {"tick": 660, "uid": 0, "field": "explicatio_following", "value": null},
-    {"tick": 900, "uid": 0, "field": "front_rank_line", "value": [537.5, 537.5], "tol": 2.25},
-    {"tick": 900, "uid": 0, "field": "position", "value": [1069.42, 505.96], "tol": 2.25}
+    {
+      "tick": 32,
+      "uid": 0,
+      "field": "frontage",
+      "value": 18
+    },
+    {
+      "tick": 32,
+      "uid": 0,
+      "field": "explicatio_following",
+      "value": 124
+    },
+    {
+      "tick": 600,
+      "uid": 0,
+      "field": "explicatio_following",
+      "value": 11
+    },
+    {
+      "tick": 660,
+      "uid": 0,
+      "field": "explicatio_following",
+      "value": null
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "front_rank_line",
+      "value": [
+        532.27,
+        532.27
+      ],
+      "tol": 2.25
+    },
+    {
+      "tick": 900,
+      "uid": 0,
+      "field": "position",
+      "value": [
+        1069.47,
+        500.77
+      ],
+      "tol": 2.25
+    }
   ]
 }
