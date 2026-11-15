@@ -232,6 +232,7 @@ func test_the_front_rank_holds_its_ground() -> void:
 	assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 	assert_gte(walk["ended"], 0, "the drill ended")
 	assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
+	assert_eq(walk["held"], 0, "and nobody was held")
 	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
 		"the front went %.2f wu ahead of where it stood" % walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(),
@@ -348,6 +349,7 @@ func test_no_two_men_come_onto_each_other() -> void:
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
 		assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
+		assert_eq(walk["held"], 0, "and nobody was held")
 		assert_gte(walk["closest"], floor_wu,
 			"anchor %d: the nearest two men came within %.2f wu" % [anchor, walk["closest"]])
 		assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(),
@@ -667,6 +669,7 @@ func test_the_combo_widen_of_a_deep_block_is_the_drill() -> void:
 	var walk: Dictionary = await _walk(u, DRILL_TICKS)
 	assert_gte(walk["ended"], 0, "the drill ended")
 	assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
+	assert_eq(walk["held"], 0, "and nobody was held")
 	assert_lt(walk["ahead"], 0.25 * u.rank_pitch_wu(), "the front went %.2f wu ahead"
 			% walk["ahead"])
 	assert_gt(walk["behind"], -0.25 * u.rank_pitch_wu(), "the front fell %.2f wu back"
@@ -744,10 +747,11 @@ func test_each_man_stops_following_once_he_has_taken_his_place() -> void:
 	assert_gt(left, 1, "and it ran past its first tick")
 
 
-## A man pressed by a man of another regiment can come no nearer his place, so he takes it where
-## he stands once the man he follows has taken his; a man not pressed and off his place goes on
-## following.
-func test_a_man_pressed_by_another_regiment_takes_his_place_where_he_stands() -> void:
+## A man pressed by a man of another regiment can come no nearer his place, so once the man he
+## follows has taken his he stands where he is for the tick, still following; the tick the press
+## lifts he is going again. A man not pressed and off his place goes on following and does not
+## stand.
+func test_a_man_pressed_by_another_regiment_stands_while_pressed() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
 	_battle.enqueue_file_double([u.uid], 1)
@@ -768,8 +772,14 @@ func test_a_man_pressed_by_another_regiment_takes_his_place_where_he_stands() ->
 	u._sim_steer[pressed] = Vector2(5.0, 0.0)
 	u._sim_steer[free] = Vector2.ZERO
 	u._advance_explicatio_drill()
-	assert_eq(u._explicatio_following[pressed], 0, "the pressed man takes his place")
-	assert_eq(u._explicatio_following[free], 1, "the free man goes on following")
+	assert_eq(u._explicatio_standing[pressed], 1, "the pressed man stands")
+	assert_eq(u._explicatio_following[pressed], 1, "and still follows")
+	assert_eq(u._explicatio_standing[free], 0, "the free man does not stand")
+	assert_eq(u._explicatio_following[free], 1, "and goes on following")
+	u._sim_steer[pressed] = Vector2.ZERO
+	u._advance_explicatio_drill()
+	assert_eq(u._explicatio_standing[pressed], 0, "the press lifted, he no longer stands")
+	assert_eq(u._explicatio_following[pressed], 1, "and goes on following")
 
 
 ## A man of another file standing in a hemilochites' lane, a little ahead of him on his line,
@@ -1173,36 +1183,11 @@ func test_a_casualty_while_men_stand_keeps_the_drill_lined_up() -> void:
 	assert_gte(walk["ended"], 0, "the drill ended")
 
 
-## Whether a follower bars a man is read off the flags it is given, the following flags as the
-## tick's judging began, not off the unit's live ones: a man touching him ahead on his way bars
-## him, one behind or out of reach or not following does not.
-func test_a_follower_on_his_way_bars_a_man_by_the_flags_given() -> void:
-	var u: Unit = Unit.new()
-	u.max_soldiers = 2
-	add_child_autofree(u)
-	u.facing = Vector2.DOWN
-	u.seed_sim_soldiers()
-	u.soldiers = 2
-	var r: float = u.soldier_body_radius()
-	u._sim_soldier_pos = PackedVector2Array([Vector2.ZERO, Vector2(0, 1.5 * r)])
-	u._explicatio_following = PackedByteArray([1, 0])
-	var aim := Vector2(0, 50)
-	assert_true(u._explicatio_way_barred_by_a_follower(0, aim, PackedByteArray([1, 1])),
-		"a man touching him ahead, following by the given flags, bars him")
-	assert_false(u._explicatio_way_barred_by_a_follower(0, aim, PackedByteArray([1, 0])),
-		"not following by the given flags, he does not")
-	assert_false(u._explicatio_way_barred_by_a_follower(0, Vector2(0, -50), PackedByteArray([1, 1])),
-		"a man behind him on his way does not")
-	u._sim_soldier_pos[1] = Vector2(0, 2.5 * r)
-	assert_false(u._explicatio_way_barred_by_a_follower(0, aim, PackedByteArray([1, 1])),
-		"nor one out of his reach")
-
-
 ## The file-doubling clip's block (the default army's Spearmen on seed 12345, beside the other
 ## units of the army), widened 100 or 110 ticks into a duplicatio: men still walking from the
-## duplicatio press on men of their own block who are still following, and nobody ends the drill
-## short of his place. Judged without the follower on his way, one to three men were held where the
-## press held them, one of them 17 wu ahead of the line.
+## duplicatio jostle men of their own block who are still following, and nobody ends the drill
+## short of his place. A man held for a tick by the jostle stands only while it holds him, so it
+## does not keep him off his place.
 func test_men_jostled_by_their_own_block_do_not_take_their_places_short() -> void:
 	for gap in [100, 110]:
 		Replay.forced_seed = 12345
@@ -1403,6 +1388,7 @@ func test_the_alternate_rank_drill_keeps_its_columns() -> void:
 		var walk: Dictionary = await _walk(u, DRILL_TICKS)
 		assert_gte(walk["ended"], 0, "anchor %d: the drill ended" % anchor)
 		assert_eq(walk["short"], 0, "on open ground nobody ended short of his place")
+		assert_eq(walk["held"], 0, "and nobody was held")
 		assert_eq(UnitFormation.frontage(u), 18, "the explicatio doubled 9 files to 18")
 		assert_lt(walk["overtake"], 0.25 * u.rank_pitch_wu(), "anchor %d: the farthest any man "
 				% anchor + "got ahead of the man ahead of him is %.2f wu" % walk["overtake"])

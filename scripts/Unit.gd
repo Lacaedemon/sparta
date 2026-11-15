@@ -6979,9 +6979,10 @@ func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 
 
 ## Which of the men still following are held this tick (_advance_explicatio_drill): 1 for each
-## man whose last step toward the point he steers on left him no nearer it and no faster toward
-## it, with nothing of the drill holding him back and no follower of his block on his way. Read
-## from what each man did on the last step, with every man's following flag as the tick began.
+## man whose last step for his place left him no nearer it and no faster toward it, with nothing
+## of the drill holding him back (explicatio_step_made_no_way). Read from what each man did on the
+## last step. Judged against his place, not the point he steers on: no staging found where the two
+## differ in what the drill does.
 func _explicatio_held_men() -> PackedByteArray:
 	var held := PackedByteArray()
 	held.resize(soldiers)
@@ -6994,34 +6995,10 @@ func _explicatio_held_men() -> PackedByteArray:
 		var place: Vector2 = _explicatio_places[i]
 		if _duplicatio_steer.size() == soldiers and _duplicatio_steer[i] != place:
 			continue
-		var aim: Vector2 = SoldierFollowSteer.steer_point(_sim_soldier_pos[i], follow_front(i),
-				place, follow_line_width(), _explicatio_rooms[i])
 		if Unit.explicatio_step_made_no_way(_explicatio_stepped_from[i], _sim_soldier_pos[i],
-				_explicatio_stepped_vel[i], _sim_body_vel[i], aim) \
-				and not _explicatio_way_barred_by_a_follower(i, aim, _explicatio_following):
+				_explicatio_stepped_vel[i], _sim_body_vel[i], place):
 			held[i] = 1
 	return held
-
-
-## Whether a man of this block who is still following (`on_way` 1 for him) stands against man
-## `i` on his way to `aim`: ahead of him toward it, his body touching or overlapping `i`'s
-## (centres within two body radii along the way and across it). Such a man will move on, so `i`
-## is not held by him, as a man waits for his lane to open.
-func _explicatio_way_barred_by_a_follower(i: int, aim: Vector2, on_way: PackedByteArray) -> bool:
-	var to_aim: Vector2 = aim - _sim_soldier_pos[i]
-	if to_aim == Vector2.ZERO:
-		return false
-	var way: Vector2 = to_aim.normalized()
-	var side: Vector2 = way.orthogonal()
-	var touch: float = 2.0 * soldier_body_radius()
-	for j in range(mini(soldiers, on_way.size())):
-		if j == i or on_way[j] == 0:
-			continue
-		var d: Vector2 = _sim_soldier_pos[j] - _sim_soldier_pos[i]
-		var along: float = d.dot(way)
-		if along > 0.0 and along <= touch and absf(d.dot(side)) < touch:
-			return true
-	return false
 
 
 ## Which men stand short of their places as the drill ends of itself, every man done: every man
