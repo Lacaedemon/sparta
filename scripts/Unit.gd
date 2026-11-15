@@ -1855,8 +1855,10 @@ var _far_flee_pace: float = 0.0
 var _sim_flight_dir: PackedVector2Array = PackedVector2Array()
 # True from a rally until its grid is laid out where its men have pulled up
 # (_reform_where_men_stand): while it holds, each man still running slows on his own
-# (SoldierBodies.pull_up_rallied) and `position` reads the men, as for a router. Set by _rally,
-# cleared by the deal and by _rout.
+# (SoldierBodies.pull_up_rallied) and `position` reads the men, as for a router. Set by _rally
+# for a close-tier unit, and by SoldierBodies.step when a chase ends with the unit left IDLE;
+# cleared when the grid is laid out (_reform_where_men_stand: once the men have pulled up, or at
+# once on a fresh order) and by _rout.
 var _rally_pending: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().

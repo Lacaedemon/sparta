@@ -154,6 +154,9 @@ func test_a_cornered_man_cuts_his_way_out_where_the_foes_stand_thinnest() -> voi
 			Vector2(30, 30))]
 	var round_rock := SoldierBreakOut.way_out(lone, 0, Vector2.LEFT, rock)
 	assert_lt(round_rock.dot(Vector2.LEFT), 0.9, "he does not make for a way the rock shuts")
+	var walled: Array[Rect2] = [Rect2(at - Vector2(100, 100), Vector2(200, 200))]
+	assert_eq(SoldierBreakOut.way_out(lone, 0, Vector2.LEFT, walled), Vector2.ZERO,
+		"with rock every way he has no way out, and stands")
 
 
 func test_a_man_cutting_out_strikes_only_the_foe_in_his_way() -> void:

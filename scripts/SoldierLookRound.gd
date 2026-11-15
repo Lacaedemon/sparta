@@ -17,13 +17,14 @@ static func look(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
 	var own: Vector2 = SoldierFlightWay.choose(unit, i, seen["threat"], grown)
 	var foe: Unit = seen["nearest_unit"]
 	if foe != null and SoldierCornered.is_cornered(unit, i, own, seen, grown):
+		var way: Vector2 = Vector2.ZERO
 		if unit.cornered == SoldierBreakOut.Mode.CUT:
-			own = SoldierBreakOut.way_out(unit, i, own, grown)   # he forces his way out
-		else:
+			way = SoldierBreakOut.way_out(unit, i, own, grown)   # he forces his way out
+		own = way
+		if own == Vector2.ZERO:   # he stands
 			var to_foe: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
 			if to_foe.length_squared() > 0.0:
 				unit._sim_soldier_facing[i] = to_foe.normalized()
-			own = Vector2.ZERO
 	else:
 		own = way_round_rock(unit, i, own, grown)
 	unit._sim_flight_dir[i] = own

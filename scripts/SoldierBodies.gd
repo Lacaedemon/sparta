@@ -109,19 +109,20 @@ const STANDOFF_MAX_SPEED: float = 2.0 * WorldScaleRef.WU_PER_M
 # within 1.7 wu, against 9 wu for two bodies, with the pass running; a foot block coming out of
 # a press after a rout, 1.60 wu against 2.25). The rule is the pair's own, in a REFORM hold as
 # anywhere: a closing pair takes it when one of the two is walking back to his place, more than
-# Unit.standoff_off_slot_pitches file pitches off it with no foe of his block's fight (one it
-# is fighting or that is fighting it, not routing) within twice his reach, and its stopping
-# reaches the speed the block's men may move at, so a man coming back from far off at a jog or
-# a gallop cannot walk through another. A pair near its places, or in the press of a fight,
-# takes the overlap push alone, so the pushes a march or a fight carries are left as they were:
-# the march moves both men alike, a man held off his place by the press is not walking back
-# (with the band on such pairs a fight broke at another tick: last-unit-rally seed 0 at 1192
-# against 976), and an engaged man taking knockback is outside the pass. A routing foe holds no
-# one in the press, so men walking back near a rout keep the band, and nor does a foe in
-# another block's fight: a reserve marching up past a melee keeps it (with any foe near
-# counting, general-doctrine-reserves had two of its men come within 1.34 wu). (Dropping the
-# band a hold once gave every closing pair changed no verdict on 16 re-slot and reform clips
-# over seeds 0 to 4.)
+# Unit.standoff_off_slot_pitches file pitches off it with no fighting foe man within twice his
+# reach (SoldierPress: an engaged man, or one standing within his reach of a man of this block;
+# a running man fights no one), and its stopping reaches the speed the block's men may move at,
+# so a man coming back from far off at a jog or a gallop cannot walk through another. A pair
+# near its places, or in the press of a fight, takes the overlap push alone, so the pushes a
+# march or a fight carries are left as they were: the march moves both men alike, a man held
+# off his place by the press is not walking back (with the band on such pairs a fight broke at
+# another tick: last-unit-rally seed 0 at 1192 against 976), and an engaged man taking
+# knockback is outside the pass. A routed man running holds no one in the press, so men
+# walking back near a rout keep the band, and nor does a foe man of another block's fight away
+# from this one: a reserve marching up past a melee keeps it (with every man of a fighting
+# block counting, general-doctrine-reserves had two of its men come within 1.34 wu). (Dropping
+# the band a hold once gave every closing pair changed no verdict on 16 re-slot and reform
+# clips over seeds 0 to 4.)
 const STANDOFF_CONTACT_SEP_FRAC: float = 0.5
 # Floor below which same-unit standoff separation is disabled (tuned in wu):
 const STANDOFF_MIN_SEP_FLOOR: float = 0.01
@@ -1104,31 +1105,27 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 	var max_sep_speed: float = minf(STANDOFF_MAX_SPEED, speed_cap)
 	# A pair still closing inside the contact band has its closing stopped as well (see
 	# STANDOFF_CONTACT_SEP_FRAC) when one of the two is walking back to his place: farther off it
-	# than the distance that marks a block out of good order above, with no foe of his block's
-	# fight within twice his reach: a man in the press of a fight is held there by the fight,
-	# not walking back. Its stopping reaches the speed the block's men may move at.
+	# than the distance that marks a block out of good order above, and not in the press of a
+	# fight, with no fighting foe man within twice his reach (SoldierPress): a man held there by
+	# the fight is not walking back. Its stopping reaches the speed the block's men may move at.
 	var off_place := PackedByteArray()
 	off_place.resize(n)
 	var off_sq: float = pow(unit.standoff_off_slot_pitches * unit.file_pitch_wu(), 2.0)
-	var press: float = 2.0 * unit.soldier_reach()
+	var any_off := false
 	for i in range(mini(n, target_slots.size())):
-		var p: Vector2 = unit._sim_soldier_pos[i]
-		if p.distance_squared_to(target_slots[i]) > off_sq and not _foe_within(unit, p, press):
+		if (i < unit._sim_soldier_hp.size() and unit._sim_soldier_hp[i] <= 0.0) \
+				or unit.is_soldier_broken(i):
+			continue
+		if unit._sim_soldier_pos[i].distance_squared_to(target_slots[i]) > off_sq:
 			off_place[i] = 1
+			any_off = true
+	if any_off:
+		var pressed: PackedByteArray = SoldierPress.mask(unit, off_place, 2.0 * unit.soldier_reach())
+		for i in range(n):
+			if pressed[i] == 1:
+				off_place[i] = 0
 	return _standoff_pairs(unit, n, is_engaged, is_settled, off_place, min_sep, max_sep_speed,
 			speed_cap)
-
-
-## Whether a body of an enemy unit in `unit`'s fight (one `unit` is fighting or that is fighting
-## it, not routing) stands within `dist` of `pos`.
-static func _foe_within(unit: Unit, pos: Vector2, dist: float) -> bool:
-	for foe in SoldierCornered.foes_near(unit, pos, dist):
-		if foe.state == Unit.State.ROUTING or (foe.target_enemy != unit and unit.target_enemy != foe):
-			continue
-		for q in foe._sim_soldier_pos:
-			if q.distance_squared_to(pos) <= dist * dist:
-				return true
-	return false
 
 
 ## Body contact for men who run free of any slot: a pursuing rider (SoldierPursuitStep) and a

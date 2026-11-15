@@ -163,3 +163,32 @@ func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:
 	p.step_sim_soldiers(DT)
 	assert_true(p._rally_pending, "its riders pull up from the gallop before it forms up")
 	assert_true(p._sim_flight_dir.is_empty(), "with no chase left to remember")
+
+
+func test_a_unit_given_somewhere_to_go_when_its_chase_ends_forms_up_at_once() -> void:
+	var p: Unit = _rider_after(AT + Vector2(0, -1000), 2)
+	SoldierPursuitStep.step(p, 2, {}, DT)
+	assert_false(p._sim_flight_dir.is_empty(), "setup: the riders chase")
+	p.target_enemy = null   # its quarry is gone, and it still has a march to make
+	p.step_sim_soldiers(DT)
+	assert_false(p._rally_pending, "it does not wait for its riders to pull up")
+	assert_true(p._sim_flight_dir.is_empty(), "it forms up where they stand")
+	assert_eq(p._last_redeal_tick, Engine.get_physics_frames(), "with its grid dealt this tick")
+
+
+func test_rallied_men_pull_up_at_their_braking_rate() -> void:
+	var u := _unit(2)
+	var fast: float = 4.0 * u.jog_speed
+	u._sim_body_vel[0] = Vector2(fast, 0)
+	u._sim_body_vel[1] = Vector2(0, 0.5 * u.jog_speed)
+	u._sim_soldier_pos[1] = AT + Vector2(0, 500)
+	var rate: float = 100.0
+	var x0: float = u._sim_soldier_pos[0].x
+	assert_true(SoldierBodies.pull_up_rallied(u, 2, rate, DT), "a man faster than a jog still pulls up")
+	assert_almost_eq(u._sim_body_vel[0].x, fast - rate * DT, 0.001, "he slows at the braking rate")
+	assert_almost_eq(u._sim_soldier_pos[0].x, x0 + (fast - rate * DT) * DT, 0.001,
+		"and runs on at what he kept")
+	u._sim_body_vel[0] = Vector2(0.5 * u.jog_speed, 0)
+	var at: Vector2 = u._sim_soldier_pos[0]
+	assert_false(SoldierBodies.pull_up_rallied(u, 2, rate, DT), "once none is faster than a jog, done")
+	assert_eq(u._sim_soldier_pos[0], at, "touching nobody")

@@ -11,13 +11,16 @@ enum Mode { CUT, STAND }
 
 ## How many ways round him a cornered man weighs, evenly spaced.
 const WAYS: int = 16
+## The count a way shut by rock takes: more foes than any way can hold, so no way through.
+const ROCK: int = 1 << 30
 
 
 ## The way man `i` of `unit` forces out, from the foes he sees within twice his reach: of WAYS
 ## directions round him, the one with the fewest foe bodies in its sector (a half-width of half a
 ## way apart either side), and among those the nearest to `own`, the way he wants to run. A way
 ## shut within his reach by `grown` (impassable rects grown by a body radius) counts as no way at
-## all, as rock shuts a way for SoldierCornered.
+## all, as rock shuts a way for SoldierCornered. With every way shut by rock there is no way out:
+## ZERO, and he stands as STAND does.
 static func way_out(unit: Unit, i: int, own: Vector2, grown: Array[Rect2]) -> Vector2:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
 	var look: float = 2.0 * unit.soldier_reach()
@@ -27,7 +30,7 @@ static func way_out(unit: Unit, i: int, own: Vector2, grown: Array[Rect2]) -> Ve
 	for k in range(WAYS):
 		if PathField.inside_any_rect(pos + Vector2.RIGHT.rotated(TAU * k / WAYS) * unit.soldier_reach(),
 				grown):
-			counts[k] = 1 << 30   # rock: no way through
+			counts[k] = ROCK
 	for foe in SoldierCornered.foes_near(unit, pos, look):
 		for p in foe._sim_soldier_pos:
 			var to: Vector2 = p - pos
@@ -38,13 +41,15 @@ static func way_out(unit: Unit, i: int, own: Vector2, grown: Array[Rect2]) -> Ve
 				if to.dot(Vector2.RIGHT.rotated(TAU * k / WAYS)) >= cos_half * d:
 					counts[k] += 1
 	var best: int = 0
+	var open: bool = counts[0] < ROCK
 	for k in range(1, WAYS):
+		open = open or counts[k] < ROCK
 		var better: bool = counts[k] < counts[best] or (counts[k] == counts[best] \
 				and Vector2.RIGHT.rotated(TAU * k / WAYS).dot(own) \
 				> Vector2.RIGHT.rotated(TAU * best / WAYS).dot(own))
 		if better:
 			best = k
-	return Vector2.RIGHT.rotated(TAU * best / WAYS)
+	return Vector2.RIGHT.rotated(TAU * best / WAYS) if open else Vector2.ZERO
 
 
 ## Whether man `i` of `unit`, running along `way` (ZERO: standing), has a foe to strike: within
