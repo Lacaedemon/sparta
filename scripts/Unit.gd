@@ -6070,11 +6070,14 @@ func _reset_shield_hold_angles() -> void:
 ## move. It keeps the ground the explicatio kept (_explicatio_ground), not
 ## `explicatio_ground`: an explicatio on the same ground is undone by opening the block one order
 ## (sparser_formation_mode), where there is a looser line order to take; else the files close up.
+## `duplicatio_march` (DuplicatioMarch.Reading) is how the men who went up march back: walking,
+## or facing about; any other change of width ignores it.
 func set_frontage(files: int, anchor_offset: float = 0.0,
 		explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE,
 		held_flank: int = UnitFormation.Anchor.CENTRE,
 		explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD,
-		explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN) -> void:
+		explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN,
+		duplicatio_march: int = DuplicatioMarch.Reading.WALK) -> void:
 	var old_files: int = UnitFormation.frontage(self)
 	var target_files: int = clampi(files, 1, maxi(1, max_soldiers))
 	var denser: int = -1
@@ -6134,7 +6137,7 @@ func set_frontage(files: int, anchor_offset: float = 0.0,
 		_explicatio_ground = explicatio_ground
 		_explicatio_held = held_flank
 	if not back.is_empty():
-		_begin_duplicatio(back, target_files, _explicatio_held)
+		_begin_duplicatio(back, target_files, _explicatio_held, duplicatio_march)
 	note_front_depth()   # a narrower frontage deepens the block
 
 
@@ -6213,8 +6216,11 @@ func explicatio_undo_drill() -> int:
 ## man's old file and rank, with no roles, and choose the file that stands
 ## (UnitFormation.explicatio_stand_old_file), or the nearest file with a leader. Its leader holds
 ## his ground and every other man follows a man he can see (_refresh_duplicatio_follow) until
-## every man has taken his place, as in the explicatio (_advance_explicatio_drill).
-func _begin_duplicatio(back: Dictionary, new_files: int, held_flank: int) -> void:
+## every man has taken his place, as in the explicatio (_advance_explicatio_drill). When `march`
+## (DuplicatioMarch.Reading) is FACE_ABOUT the men take their own facings, so the men who went up
+## can face about (_turn_men_to_their_fronts).
+func _begin_duplicatio(back: Dictionary, new_files: int, held_flank: int,
+		march: int = DuplicatioMarch.Reading.WALK) -> void:
 	var files_out: PackedInt32Array = back["files"]
 	var ranks_out: PackedInt32Array = back["ranks"]
 	var led: Dictionary = {}
@@ -6237,6 +6243,12 @@ func _begin_duplicatio(back: Dictionary, new_files: int, held_flank: int) -> voi
 	_explicatio_following.fill(1)
 	_explicatio_drill = back["drill"]
 	_explicatio_follow_frame = -1
+	_duplicatio_march = march
+	if march == DuplicatioMarch.Reading.FACE_ABOUT:
+		# TODO(#1955): a unit-level hold on the men's facings, after the existing per-soldier
+		# facing ownership; facing that comes from the men retires it.
+		_per_soldier_facing = true
+		_duplicatio_facing_owned = true
 
 
 ## Whether a change from `old_files` to `new_files` can be done as an explicatio drill, from what
@@ -6338,6 +6350,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 	_explicatio_follow_frame = frame
 	_explicatio_follow_count = count
 	_duplicatio_steer = PackedVector2Array()
+	_duplicatio_fronts = PackedVector2Array()
 	if _explicatio_reverse and explicatio_drill_active():
 		return _refresh_duplicatio_follow(count)
 	if not explicatio_drill_active() or _sim_soldier_pos.size() < count \
@@ -6427,13 +6440,27 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 	points.resize(count)
 	points.fill(_explicatio_stand_point)
 	var bodies: PackedVector2Array = _sim_soldier_pos.slice(0, count)
-	var places: PackedVector2Array = SoldierFollow.places(bodies,
-			_sim_soldier_facing.slice(0, count), plan["leaders"], plan["offsets"], points,
-			plan["guides"])
+	# Each man's front for the drill: his own facing, or, for a man who went up an interval and
+	# faces about, his file leader's, since his own is turned about.
+	var fronts: PackedVector2Array = _sim_soldier_facing.slice(0, count)
+	if _duplicatio_march == DuplicatioMarch.Reading.FACE_ABOUT:
+		var heads := PackedInt32Array()
+		heads.resize(count)
+		for i in range(count):
+			heads[i] = int(led.get(_sim_soldier_file[i], -1))
+		fronts = DuplicatioMarch.drill_fronts(fronts, _duplicatio_returning, heads, facing)
+		_duplicatio_fronts = fronts
+		# Faced about, each column marches back with its rear man leading.
+		var march: Dictionary = DuplicatioMarch.march_plan(_sim_soldier_file, _sim_soldier_rank,
+				_duplicatio_returning, plan["leaders"], plan["offsets"], rank_pitch_wu())
+		plan["leaders"] = march["leaders"]
+		plan["offsets"] = march["offsets"]
+	var places: PackedVector2Array = SoldierFollow.places(bodies, fronts, plan["leaders"],
+			plan["offsets"], points, plan["guides"])
 	for i in range(count):
 		var head: int = int(led.get(_sim_soldier_file[i], -1))
 		if head >= 0 and head != i:
-			var right: Vector2 = SoldierFollow.right_of(_sim_soldier_facing[i].normalized())
+			var right: Vector2 = SoldierFollow.right_of(fronts[i].normalized())
 			places[i] += right * (bodies[head] - places[i]).dot(right)
 	_explicatio_leaders = plan["leaders"]
 	_explicatio_places = places
@@ -6446,7 +6473,7 @@ func _refresh_duplicatio_follow(count: int) -> bool:
 	var cells: Dictionary = _explicatio_cells(bodies, maxf(rank_pitch_wu(), clear))
 	var lined_up: bool = _explicatio_following.size() == count
 	for i in range(count):
-		var front: Vector2 = _sim_soldier_facing[i].normalized()
+		var front: Vector2 = fronts[i].normalized()
 		var right: Vector2 = SoldierFollow.right_of(front)
 		var across: float = (places[i] - bodies[i]).dot(right)
 		var blocked: bool = false
@@ -6557,6 +6584,15 @@ func follow_leader(i: int) -> int:
 	return _explicatio_leaders[i]
 
 
+## The front man `i` steers on for his place this tick (SoldierFollowSteer.steer_point): his own
+## facing, but a man who went up an interval and faces about on his way back steers by his file's
+## front (_refresh_duplicatio_follow), as he would facing it: his station lies behind it.
+func follow_front(i: int) -> Vector2:
+	if i >= 0 and i < _duplicatio_fronts.size() and _refresh_explicatio_follow(soldiers):
+		return _duplicatio_fronts[i]
+	return _sim_soldier_facing[i] if i >= 0 and i < _sim_soldier_facing.size() else facing
+
+
 ## Whether man `i` may come up along his front this tick (SoldierFollowSteer.steer_point's
 ## `room`): 0 while another file's man stands in his lane, else 1, as for a man in no interval.
 func follow_room(i: int) -> float:
@@ -6623,6 +6659,8 @@ func _end_explicatio_drill() -> void:
 	_explicatio_reverse = false
 	_duplicatio_returning = PackedByteArray()
 	_duplicatio_steer = PackedVector2Array()
+	_duplicatio_fronts = PackedVector2Array()
+	_duplicatio_march = DuplicatioMarch.Reading.WALK   # a man still turned turns on to his front
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_places = PackedVector2Array()
 	_explicatio_rooms = PackedFloat32Array()
@@ -7180,6 +7218,12 @@ var _explicatio_drill: int = UnitFormation.ExplicatioDrill.NONE
 var _explicatio_reverse: bool = false
 var _duplicatio_returning: PackedByteArray = PackedByteArray()
 var _duplicatio_steer: PackedVector2Array = PackedVector2Array()
+# This tick's front each man steers by under FACE_ABOUT (follow_front); empty otherwise.
+var _duplicatio_fronts: PackedVector2Array = PackedVector2Array()
+# How the men who went up march back (DuplicatioMarch.Reading), and whether the countermarch holds
+# the men's facings until every man faces the front again (_turn_men_to_their_fronts).
+var _duplicatio_march: int = DuplicatioMarch.Reading.WALK
+var _duplicatio_facing_owned: bool = false
 var _explicatio_lane_split: int = 0
 # Whether its wings' intervals open toward the middle (UnitFormation.explicatio_inward).
 var _explicatio_inward: bool = false
@@ -9821,7 +9865,34 @@ func seed_sim_soldiers() -> void:
 ## bounded force and hold displacement; the unengaged bulk tracks its moving slots).
 func step_sim_soldiers(delta: float) -> void:
 	_advance_explicatio_drill()
+	_turn_men_to_their_fronts(delta)
 	SoldierBodies.step(self, delta)
+
+
+## While a duplicatio whose men face about holds their facings (_duplicatio_facing_owned), each
+## man turns at CONVERSIO_TURN_RATE toward the way he faces: about, if he went up an interval and
+## has not yet taken his station (DuplicatioMarch.faces_about), else the block's front. Once every
+## man faces the front again the facings go back to the block's heading (release_soldier_facing),
+## the drill over or not.
+func _turn_men_to_their_fronts(delta: float) -> void:
+	if not _duplicatio_facing_owned:
+		return
+	if not _per_soldier_facing:
+		_duplicatio_facing_owned = false   # another hand took the facings back
+		return
+	var n: int = _sim_soldier_facing.size()
+	var all_front: bool = true
+	for i in range(n):
+		var about: bool = i < _duplicatio_returning.size() and i < _explicatio_following.size() \
+				and DuplicatioMarch.faces_about(_duplicatio_march, _duplicatio_returning[i] == 1,
+				_explicatio_following[i] == 1)
+		var wanted: Vector2 = -facing if about else facing
+		_sim_soldier_facing[i] = DuplicatioMarch.turn_toward(_sim_soldier_facing[i], wanted,
+				CONVERSIO_TURN_RATE * delta)
+		all_front = all_front and _sim_soldier_facing[i].dot(facing) > 1.0 - 1e-6
+	if all_front:
+		_duplicatio_facing_owned = false
+		release_soldier_facing()
 
 
 # --- Individual-soldier simulation: engaged tier --------------------------
@@ -12405,6 +12476,8 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_held": _explicatio_held,
 		"explicatio_reverse": _explicatio_reverse,
 		"duplicatio_returning": _duplicatio_returning.duplicate(),
+		"duplicatio_march": _duplicatio_march,
+		"duplicatio_facing_owned": _duplicatio_facing_owned,
 		"explicatio_following": _explicatio_following.duplicate(),
 		"explicatio_stand_file": _explicatio_stand_file,
 		"explicatio_stand_point": _explicatio_stand_point,
@@ -12793,6 +12866,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_explicatio_reverse = bool(d.get("explicatio_reverse", false))
 	_duplicatio_returning = (d.get("duplicatio_returning", PackedByteArray()) as PackedByteArray) \
 			.duplicate()
+	_duplicatio_march = int(d.get("duplicatio_march", DuplicatioMarch.Reading.WALK))
+	_duplicatio_facing_owned = bool(d.get("duplicatio_facing_owned", false))
 	_explicatio_following = (d.get("explicatio_following", PackedByteArray()) as PackedByteArray) \
 			.duplicate()
 	_explicatio_stand_file = int(d.get("explicatio_stand_file", -1))

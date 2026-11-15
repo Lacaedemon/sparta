@@ -1311,6 +1311,18 @@ func test_derived_front_rank_line_reads_the_front_ranks_bodies_along_the_facing(
 	assert_true(check[0]["pass"], "an expectation reads it, with a tol on each end")
 
 
+func test_derived_men_facing_about_counts_the_men_turned_off_the_heading() -> void:
+	# Facing +y (_derived_record). The first man faces the heading, the second faces straight away,
+	# the third a little past a right angle off it; a man exactly square to it does not count.
+	var u: Dictionary = _derived_record([[0.0, 0.0], [10.0, 0.0], [20.0, 0.0], [30.0, 0.0]],
+			[[0.0, 0.0], [10.0, 0.0], [20.0, 0.0], [30.0, 0.0]])
+	assert_null(DemoDefects.derived_field(u, "men_facing_about"), "no facings is uncheckable")
+	u["soldiers_full"]["facing"] = [[0.0, 1.0], [0.0, -1.0], [1.0, -0.1], [1.0, 0.0]]
+	assert_eq(DemoDefects.derived_field(u, "men_facing_about"), 2)
+	u["facing"] = [0.0, -1.0]
+	assert_eq(DemoDefects.derived_field(u, "men_facing_about"), 1, "against the other heading")
+
+
 func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:
 	# A narrowing: the man at x 40 stands outside the new block (half-width 10), so his walk in
 	# to its near edge is not excess; the man at the centre stepping out to -10 is.

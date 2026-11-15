@@ -9,7 +9,7 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		file_major_reform_mode_toggle: int = -1,
 		line_index: int = -1, reinforce: int = 0, explicatio: int = 0,
 		explicatio_held: int = 0, explicatio_side: int = 0,
-		explicatio_ground: int = 0) -> Dictionary:
+		explicatio_ground: int = 0, duplicatio_march: int = 0) -> Dictionary:
 	var entry := {
 		"tick": tick,
 		"units": uids.duplicate(),
@@ -74,4 +74,8 @@ static func build(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		entry["explicatio_side"] = explicatio_side
 	if explicatio_ground != 0:
 		entry["explicatio_ground"] = explicatio_ground
+	# How the men march back when a narrowing undoes an explicatio (DuplicatioMarch.Reading);
+	# omitted when 0, the walk, so a replay of the default stays byte-identical on re-save.
+	if duplicatio_march != 0:
+		entry["duplicatio_march"] = duplicatio_march
 	return entry

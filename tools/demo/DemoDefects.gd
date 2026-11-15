@@ -955,7 +955,7 @@ static func _is_numeric_value(v) -> bool:
 ## The expectation fields derived_field supplies.
 const DERIVED_FIELDS: Array[String] = [
 	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
-	"slot_distance_max", "pairs_within_body_radius", "front_rank_line",
+	"slot_distance_max", "pairs_within_body_radius", "front_rank_line", "men_facing_about",
 ]
 
 
@@ -1000,6 +1000,9 @@ const DERIVED_FIELDS: Array[String] = [
 ##   units to 0.01: the men whose slot lies within half a rank pitch (motion_ref.rank_pitch) of
 ##   the front-most slot, read off their bodies. A front rank standing on one line reads one
 ##   value twice; pin it with that value and a `tol` stated in rank pitches.
+## - men_facing_about: how many of the unit's men face more than a right angle off its heading,
+##   read off each man's own facing (soldiers_full.facing): the men of a countermarch on their way
+##   back (DuplicatioMarch). An exact count.
 ##
 ## Sampled the tick after a reshape, before the men have walked, the first five measure the deal
 ## itself.
@@ -1030,6 +1033,9 @@ static func derived_field(u: Dictionary, field: String):
 	var facing_pair: Array = u.get("facing", [])
 	if centre_pair.size() != 2 or facing_pair.size() != 2:
 		return null
+	if field == "men_facing_about":
+		return _men_facing_about(full.get("facing", []), Vector2(float(facing_pair[0]),
+				float(facing_pair[1])), pos.size())
 	if field == "front_rank_line":
 		return _front_rank_line(pos, slots, Vector2(float(facing_pair[0]), float(facing_pair[1])),
 				ref)
@@ -1053,6 +1059,18 @@ static func derived_field(u: Dictionary, field: String):
 	if field == "slots_across_centreline":
 		return crossed
 	return snappedf(excess, 0.1)
+
+
+## men_facing_about (see derived_field): how many of the men's own `facings` point more than a
+## right angle off the unit's `heading`. Null when the facings do not line up with the `n` bodies.
+static func _men_facing_about(facings: Array, heading: Vector2, n: int):
+	if facings.size() != n:
+		return null
+	var about: int = 0
+	for f in facings:
+		if Vector2(float(f[0]), float(f[1])).dot(heading) < 0.0:
+			about += 1
+	return about
 
 
 ## pairs_within_body_radius (see derived_field): how many pairs of the men at `pos` stand with

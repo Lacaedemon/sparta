@@ -78,6 +78,8 @@ var forced_seed: int = -1
 #                   UnitFormation.ExplicatioSide; omitted when 0 = OUTWARD),
 #               "explicatio_ground"?: int (whether that drill keeps its pitch or its ground,
 #                   UnitFormation.ExplicatioGround; omitted when 0 = LENGTHEN),
+#               "duplicatio_march"?: int (how the men march back when a narrowing undoes an
+#                   explicatio, DuplicatioMarch.Reading; omitted when 0 = WALK),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
 #               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED),
 #               "form_up_group"?: int (the shared id every per-unit order from the same
@@ -347,7 +349,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		form_up_group: int = -1, walk_advance_toggle: int = 0, reform_toggle: int = 0,
 		file_major_reform_mode_toggle: int = -1,
 		line_index: int = -1, reinforce: int = 0, explicatio: int = 0,
-		explicatio_held: int = 0, explicatio_side: int = 0, explicatio_ground: int = 0) -> void:
+		explicatio_held: int = 0, explicatio_side: int = 0, explicatio_ground: int = 0,
+		duplicatio_march: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	_order_stream.append(ReplayOrderEntryRef.build(tick, uids, pos, target_uid,
@@ -356,7 +359,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 			form_up_group, walk_advance_toggle, reform_toggle,
 			file_major_reform_mode_toggle,
 			line_index, reinforce, explicatio, explicatio_held, explicatio_side,
-			explicatio_ground))
+			explicatio_ground, duplicatio_march))
 
 
 ## PLAYBACK: reposition the order-read cursor (via ReplayOrders.rewind_cursor_to_tick)
