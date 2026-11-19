@@ -6923,7 +6923,8 @@ func _advance_explicatio_drill() -> void:
 		free = free and (_duplicatio_steer.size() != soldiers or _duplicatio_steer[i] == place)
 		var led_in: bool = a < 0 or _explicatio_following[a] == 0
 		if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
-			still = true   # his old file has not opened yet
+			if _explicatio_standing[i] == 0:
+				still = true   # his old file has not opened yet, and is still opening
 			continue
 		if led_in and (placed or shut):
 			_explicatio_following[i] = 0
@@ -6943,10 +6944,10 @@ func _advance_explicatio_drill() -> void:
 ## Which of the men still following stand this tick (_advance_explicatio_drill): 1 for each man
 ## whose leader has stopped following or stands, and who stands on his place, is pressed by a
 ## man of another regiment with room where he is, `held` (_explicatio_held_men), or waiting on a
-## lane (`_explicatio_lanes`) every man of which has stopped following or stands. Read down each
-## follow chain from the
-## front, so a man stands only once the man he dresses on does. Each man's lane and press are
-## this tick's, read from where the men stand.
+## lane (`_explicatio_lanes`) every man of which has stopped following or stands. A man whose old
+## file has not opened yet (files first) stands once the man ahead of him in it stands. Read down
+## each follow chain from the front, so a man stands only once the man he dresses on does. Each
+## man's lane and press are this tick's, read from where the men stand.
 func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 	var stand := PackedByteArray()
 	stand.resize(soldiers)
@@ -6956,9 +6957,12 @@ func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 		for i in range(soldiers):
 			if stand[i] == 1 or _explicatio_following[i] == 0:
 				continue
-			if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
-				continue
 			var a: int = _explicatio_leaders[i]
+			if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
+				if a >= 0 and stand[a] == 1:   # his old file stands, its head held short
+					stand[i] = 1
+					changed = true
+				continue
 			if not (a < 0 or _explicatio_following[a] == 0 or stand[a] == 1):
 				continue
 			var free: bool = _explicatio_rooms[i] >= 1.0
@@ -7659,9 +7663,9 @@ var _explicatio_standing: PackedByteArray = PackedByteArray()
 # (_refresh_explicatio_follow), or the men of the other part of the block on his way in the
 # reverse, read afresh each tick from where the men stand.
 var _explicatio_lanes: Dictionary = {}
-## How many men stood short of their places when the last explicatio drill ended
-## (_explicatio_short_men): held off them, or following a man who was. Read by the tests and the
-## demo dump; 0 for a drill every man finished.
+## How many men stood short of their places when the last explicatio drill ended of itself
+## (_explicatio_short_men): every man still following then, each standing that tick. Read by the
+## tests; 0 for a drill every man finished, or one ended by an order, a fight or a change of width.
 var explicatio_last_short: int = 0
 var _explicatio_follow_frame: int = -1
 var _explicatio_follow_count: int = -1

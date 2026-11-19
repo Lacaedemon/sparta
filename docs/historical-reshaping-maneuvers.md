@@ -249,9 +249,10 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   While the man he follows has stopped or stands, he stands too, for that tick,
   when he is on his place,
   when a man of another regiment presses on him (a man in an interval, only once his lane has room for him),
-  when he is held: the step he took toward the point he steers on brought him no nearer it and he is going toward it no faster,
+  when he is held: the step he took toward his place brought him no nearer it and he is going toward it no faster,
   so something he cannot pass, a face of rock or a friend's body, holds him off his place,
   or when every man of the lane he waits on has stopped or stands.
+  In the files-first reading a man whose old file has not opened yet stands once the man ahead of him in it stands.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held.
   A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
   A friendly block that presses men and then marches off leaves them to go on to their places.
