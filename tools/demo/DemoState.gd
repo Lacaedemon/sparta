@@ -439,8 +439,8 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 				if u.countermarch_variant() >= 0 else null,
 		# How many men of an explicatio or duplicatio drill under way are still following the
 		# man they follow (Unit._advance_explicatio_drill), null when no drill is under way: a
-		# drill ends when the last man has taken his place, so a count that never reaches
-		# null is a drill that never ends.
+		# drill ends once every man has taken his place or stands, some maybe short of it,
+		# so a count that never reaches null is a drill that never ends.
 		"explicatio_following": explicatio_following(u),
 		# The formation's simulation tier (docs/large-scale-simulation-design.md): CLOSE runs
 		# the full per-soldier arrays, FAR is the aggregate record with no individual bodies.

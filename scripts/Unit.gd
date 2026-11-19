@@ -6619,8 +6619,8 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		return false
 	if _explicatio_opening == ExplicatioOpening.Reading.FILES_FIRST:
 		plan = ExplicatioOpening.hold_unopened(plan, _sim_soldier_file, _sim_soldier_rank,
-				_explicatio_lane_split, _explicatio_inward, _explicatio_drill, _explicatio_following,
-				rank_pitch_wu())
+				_sim_soldier_pos.slice(0, count), facing.normalized(), _explicatio_lane_split,
+				_explicatio_inward, _explicatio_following, rank_pitch_wu())
 		leaders = plan["leaders"]
 		_explicatio_waiting = plan["waiting"]
 	var points := PackedVector2Array()
@@ -6892,7 +6892,7 @@ func follow_line_width() -> float:
 ## ends when every man is done, and at once when the block marches, fights, routs, squares,
 ## changes width, loses its file-major grid, or its men no longer line up with the roles the drill
 ## dealt them (a reinforcement re-deals the block). Either way the slot grid takes over from where
-## the men stand (_end_explicatio_drill), laid on the men who took their places.
+## the men stand (_end_explicatio_drill), laid on every man as he stands.
 func _advance_explicatio_drill() -> void:
 	if not explicatio_drill_active():
 		return
@@ -6938,7 +6938,7 @@ func _advance_explicatio_drill() -> void:
 	_explicatio_stepped_from = stepped
 	_explicatio_stepped_vel = stepped_vel
 	if not still:
-		_end_explicatio_drill(_explicatio_short_men())   # every man is done: some stand short
+		_end_explicatio_drill(_explicatio_short_men())   # every man is done: some may stand short
 
 
 ## Which of the men still following stand this tick (_advance_explicatio_drill): 1 for each man
@@ -7007,9 +7007,8 @@ func _explicatio_held_men() -> PackedByteArray:
 
 ## Which men stand short of their places as the drill ends of itself, every man done: every man
 ## still following, who stood that tick (_explicatio_standing_men: pressed, held, waiting on a
-## lane that stood, or dressing on a man who did) rather than having taken his place. The grid
-## laid when the drill ends is not laid on them (explicatio_grid_position). A drill ended by an
-## order, a fight or a change of width lays the grid on every man, as it always has.
+## lane that stood, or dressing on a man who did) rather than having taken his place. Counted in
+## explicatio_last_short; the grid is laid on every man either way (explicatio_grid_position).
 func _explicatio_short_men() -> PackedByteArray:
 	var short := PackedByteArray()
 	short.resize(soldiers)
@@ -7036,7 +7035,8 @@ static func explicatio_step_made_no_way(from: Vector2, now: Vector2, vel_from: V
 
 
 ## End an explicatio drill under way: the slot grid takes over, laid on the men where they stand
-## (explicatio_grid_position).
+## (explicatio_grid_position). `short` marks the men short of their places when it ends of itself,
+## counted in explicatio_last_short.
 func _end_explicatio_drill(short: PackedByteArray = PackedByteArray()) -> void:
 	if not explicatio_drill_active():
 		return
@@ -7055,7 +7055,7 @@ func _end_explicatio_drill(short: PackedByteArray = PackedByteArray()) -> void:
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_following = PackedByteArray()
 	_explicatio_follow_frame = -1
-	position = explicatio_grid_position(true, short)   # on the men who reached their places
+	position = explicatio_grid_position()
 	explicatio_last_short = short.count(1)
 	_explicatio_men_held = PackedByteArray()
 	_explicatio_standing = PackedByteArray()
@@ -7064,12 +7064,9 @@ func _end_explicatio_drill(short: PackedByteArray = PackedByteArray()) -> void:
 
 
 ## Where `position` puts the slot grid on the men as they stand: the grid's centroid on theirs.
-## While an explicatio is under way the block's position is this reading of all its men, taken
-## each tick (SoldierBodies.couple). When the drill ends the grid is laid by the same reading with
-## `leave_short`: leaving out each man `short` marks (_explicatio_short_men: held off his place,
-## or following a man who is), unless every man is, so they do not drag it back.
-func explicatio_grid_position(leave_short: bool = false,
-		short: PackedByteArray = PackedByteArray()) -> Vector2:
+## While an explicatio is under way the block's position is this reading of its men, taken each
+## tick (SoldierBodies.couple), and the grid is laid there when the drill ends.
+func explicatio_grid_position() -> Vector2:
 	var n: int = mini(soldiers, _sim_soldier_pos.size())
 	if n <= 0:
 		return position
@@ -7077,20 +7074,15 @@ func explicatio_grid_position(leave_short: bool = false,
 	if local.size() != n:
 		return position
 	var ang: float = soldier_block_world_angle()
-	var skip: bool = leave_short and short.size() == n and short.count(1) < n
 	var body_sum := Vector2.ZERO
 	var slot_sum := Vector2.ZERO
-	var counted: int = 0
 	for i in range(n):
-		if skip and short[i] == 1:
-			continue
 		var slot: Vector2 = local[i]
 		if _formation_mirror_x:
 			slot.x = -slot.x
 		slot_sum += slot.rotated(ang)
 		body_sum += _sim_soldier_pos[i]
-		counted += 1
-	return (body_sum - slot_sum) / float(counted)
+	return (body_sum - slot_sum) / float(n)
 
 
 ## `slots` (slot frame) with each man's slot set to his place in the explicatio under way, so
@@ -7644,8 +7636,8 @@ var _explicatio_rooms: PackedFloat32Array = PackedFloat32Array()
 # 1 for a man in an interval whose lane is held by men who have all stopped following, so it
 # will open no further.
 var _explicatio_shut: PackedByteArray = PackedByteArray()
-# 1 for a man whose old file has not yet opened, in the files-first reading
-# (ExplicatioOpening.hold_unopened): he keeps his place in it and cannot yet take his own.
+# 1 for a man of an old file not yet opened past him, in the files-first reading
+# (ExplicatioOpening.hold_unopened): the man ahead of him in it has not moved off yet.
 var _explicatio_waiting: PackedByteArray = PackedByteArray()
 # When the files open, against when the men step in (ExplicatioOpening.Reading).
 var _explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER

@@ -100,48 +100,39 @@ func _walk(u: Unit, drill: int, anchor: int, opening: int) -> Dictionary:
 	return out
 
 
-# --- The man who stood ahead of him, and the hold ---------------------------------
+# --- The man ahead of him in his old file, and the hold ----------------------------
 
 
-## In the alternate-rank deal the man at rank 2m of the old file stays at rank m and the man at
-## 2m + 1 goes to rank m of the interval, so the man ahead of a man who stayed is the interval man
-## a rank up, and the man ahead of an interval man is the man of the file who stayed beside him.
-## In the half-file deal the rear half follows the front half, the hemilochites the last man of it.
-func test_old_ahead_reads_each_deal_back() -> void:
-	var none := Vector2i(-1, -1)
-	assert_eq(ExplicatioOpening.old_ahead(4, 0, true, 5, 8, ALTERNATE_RANK), none,
-		"a file leader has nobody ahead")
-	assert_eq(ExplicatioOpening.old_ahead(4, 2, true, 5, 8, ALTERNATE_RANK), Vector2i(5, 1),
-		"old rank 4 stood behind old rank 3, the interval's rank 1")
-	assert_eq(ExplicatioOpening.old_ahead(5, 1, false, 4, 8, ALTERNATE_RANK), Vector2i(4, 1),
-		"old rank 3 stood behind old rank 2, the file's rank 1")
-	assert_eq(ExplicatioOpening.old_ahead(4, 3, true, 5, 8, HALF_FILE), Vector2i(4, 2),
-		"the front half keeps its order")
-	assert_eq(ExplicatioOpening.old_ahead(5, 0, false, 4, 8, HALF_FILE), Vector2i(4, 7),
-		"the hemilochites stood behind the last man of the front half")
-	assert_eq(ExplicatioOpening.old_ahead(5, 3, false, 4, 8, HALF_FILE), Vector2i(5, 2),
-		"the rear half keeps its order")
-
-
-## While the leader of an old file is still following, every other man of it follows the man who
-## stood ahead of him in it, a rank pitch behind, held from the drill; the leader keeps his own
-## plan, and so does every man of a file whose leader has taken his place.
-func test_the_men_of_a_file_not_yet_opened_keep_their_places_in_it() -> void:
-	# Two old files of four, alternate rank, every interval on the right (lane split 0):
-	# old file 0 is new files 0 (stays) and 1, old file 1 new files 2 and 3.
+## Two old files of four men, standing in their columns 9 wu apart and facing south (+y), dealt
+## alternate rank with every interval on the right: old file 0 is new files 0 (stays) and 1, old
+## file 1 new files 2 and 3. Rank by rank down each column: file 0 r0, file 1 r0, file 0 r1,
+## file 1 r1.
+func _two_old_files() -> Dictionary:
 	var files := PackedInt32Array([0, 1, 0, 1, 2, 3, 2, 3])
 	var ranks := PackedInt32Array([0, 0, 1, 1, 0, 0, 1, 1])
 	var roles := PackedByteArray([0, 2, 0, 0, 0, 2, 0, 0])
+	var bodies := PackedVector2Array()
+	for i in range(8):
+		bodies.append(Vector2(9.0 * float(i >> 2), -9.0 * float(i & 3)))
 	var plan: Dictionary = UnitFormation.explicatio_follow_plan(files, ranks, roles, 0, 0, 9.0,
 			9.0)
-	var drill_leaders: PackedInt32Array = (plan["leaders"] as PackedInt32Array).duplicate()
-	var following := PackedByteArray([0, 1, 1, 1, 1, 1, 1, 1])   # old file 0 has opened
-	var held: Dictionary = ExplicatioOpening.hold_unopened(plan, files, ranks, 0, false,
-			ALTERNATE_RANK, following, 9.0)
+	return {"files": files, "ranks": ranks, "bodies": bodies, "plan": plan}
+
+
+## While the front man of an old file is still following, each man behind him follows the man
+## ahead of him in the column, a rank pitch behind, held from the drill; the front man keeps his
+## own plan. Once he has taken his place the man behind him moves off, and so does each man behind
+## him once the man ahead of him has, read down the column on the same tick.
+func test_the_men_of_a_file_not_yet_opened_keep_their_places_in_it() -> void:
+	var f: Dictionary = _two_old_files()
+	var drill_leaders: PackedInt32Array = (f["plan"]["leaders"] as PackedInt32Array).duplicate()
+	var following := PackedByteArray([0, 1, 1, 1, 1, 1, 1, 1])   # old file 0's front man is placed
+	var held: Dictionary = ExplicatioOpening.hold_unopened(f["plan"], f["files"], f["ranks"],
+			f["bodies"], Vector2(0, 1), 0, false, following, 9.0)
 	var leaders: PackedInt32Array = held["leaders"]
 	assert_eq(held["waiting"], PackedByteArray([0, 0, 0, 0, 0, 1, 1, 1]),
-		"the men behind the leader of the file not yet opened wait")
-	assert_eq(leaders[4], drill_leaders[4], "that file's leader keeps his plan")
+		"the men behind the front man of the file not yet opened wait")
+	assert_eq(leaders[4], drill_leaders[4], "that file's front man keeps his plan")
 	assert_eq(leaders[5], 4, "the epistates stays behind his file leader")
 	assert_eq(leaders[6], 5, "the next man behind the epistates")
 	assert_eq(leaders[7], 6, "and the last behind him")
@@ -152,21 +143,33 @@ func test_the_men_of_a_file_not_yet_opened_keep_their_places_in_it() -> void:
 		assert_eq(leaders[i], drill_leaders[i], "man %d of the opened file has the drill's plan" % i)
 
 
-## A man whose man ahead in the old file has fallen keeps the drill's plan rather than wait on a
-## man who is not there; a plan whose flags do not line up holds nobody.
-func test_a_man_with_nobody_ahead_left_is_not_held() -> void:
-	var files := PackedInt32Array([0, 0, 1])
-	var ranks := PackedInt32Array([0, 1, 1])   # the epistates of old file 0 has fallen
-	var roles := PackedByteArray([0, 0, 0])
+## A casualty closes up each file's ranks (SoldierMelee.reap, UnitFormation.drop_rank_assignment),
+## so a man's rank in his new file no longer says who stood ahead of him. The man ahead is read
+## from where the men stand: with the epistates of old file 0 fallen and the ranks closed up, the
+## man behind him follows the file leader, and the interval man behind that man follows him; a
+## plan whose flags do not line up holds nobody.
+func test_a_man_whose_man_ahead_fell_follows_the_next_man_ahead() -> void:
+	# Old file 0 of six, alternate rank: A0 A2 A4 stay (file 0), A1 A3 A5 go (file 1). A1 has
+	# fallen: file 1's ranks closed up, so A3 is its rank 0 and A5 its rank 1.
+	var files := PackedInt32Array([0, 0, 0, 1, 1])        # A0 A2 A4 A3 A5
+	var ranks := PackedInt32Array([0, 1, 2, 0, 1])
+	var roles := PackedByteArray([0, 0, 0, 2, 0])
+	var bodies := PackedVector2Array([Vector2(0, 0), Vector2(0, -18), Vector2(0, -36),
+			Vector2(0, -27), Vector2(0, -45)])
 	var plan: Dictionary = UnitFormation.explicatio_follow_plan(files, ranks, roles, 0, 0, 9.0,
 			9.0)
-	var held: Dictionary = ExplicatioOpening.hold_unopened(plan.duplicate(true), files, ranks, 0,
-			false, ALTERNATE_RANK, PackedByteArray([1, 1, 1]), 9.0)
-	assert_eq(held["waiting"], PackedByteArray([0, 0, 1]),
-		"the man behind the fallen epistates keeps the drill's plan; the interval man behind him waits")
+	var held: Dictionary = ExplicatioOpening.hold_unopened(plan.duplicate(true), files, ranks,
+			bodies, Vector2(0, 1), 0, false, PackedByteArray([1, 1, 1, 1, 1]), 9.0)
+	var leaders: PackedInt32Array = held["leaders"]
+	assert_eq(held["waiting"], PackedByteArray([0, 1, 1, 1, 1]), "every man behind A0 waits")
+	assert_eq(leaders[1], 0, "A2 follows A0, the man now ahead of him")
+	assert_eq(leaders[3], 1, "A3 follows A2, not the other way round")
+	assert_eq(leaders[2], 3, "A4 follows A3")
+	assert_eq(leaders[4], 2, "and A5 follows A4")
 	var unlined: Dictionary = ExplicatioOpening.hold_unopened(plan.duplicate(true), files, ranks,
-			0, false, ALTERNATE_RANK, PackedByteArray([1]), 9.0)
-	assert_eq(unlined["waiting"], PackedByteArray([0, 0, 0]), "flags that do not line up hold nobody")
+			bodies, Vector2(0, 1), 0, false, PackedByteArray([1]), 9.0)
+	assert_eq(unlined["waiting"], PackedByteArray([0, 0, 0, 0, 0]),
+		"flags that do not line up hold nobody")
 
 
 # --- The reading rides the order, the replay, the snapshot and the demo ----------
@@ -213,12 +216,12 @@ func test_the_reading_rides_the_live_order_and_a_snapshot() -> void:
 ## Together, the alternate-rank drill's file leaders run ahead of the line they stood on: each
 ## epistates steps out from right behind his file leader while the leader is still opening out, and
 ## comes up inside a body's width of his back, pressing him forward, 1.07 wu (an eighth of the 9 wu
-## rank pitch) for 140 Spearmen 9 files by 16 centred and 1.24 wu held on the right, measured on
-## this build. Files first, each file opens out with its men still in it and only then does its
+## rank pitch) for 140 Spearmen 9 files by 16 centred and 1.24 wu held on the right, measured
+## 2026-11-19. Files first, each file opens out with its men still in it and only then does its
 ## epistates step in beside the leader, so no file leader gets a fortieth of a rank pitch ahead.
-## The column leaders still come up into line a little past it before they settle, as they do
-## together, so the front as a whole runs no further ahead files first than a quarter of a rank
-## pitch, the bound every other reading keeps (TODO(#1989): a man coming up into line with way on
+## The column leaders still come up into line past it before they settle, 1.27 wu centred and
+## 1.24 wu held on the right, so the front as a whole runs as far ahead files first as together or
+## a little further, within a quarter of a rank pitch, the bound every other reading keeps (TODO(#1989): a man coming up into line with way on
 ## across his front still overshoots it). The men wait in their files on the way, and the drill
 ## ends with the files doubled and nobody closer than a body radius to another man.
 func test_files_first_keeps_the_alternate_rank_file_leaders_on_their_line() -> void:
@@ -243,6 +246,49 @@ func test_files_first_keeps_the_alternate_rank_file_leaders_on_their_line() -> v
 		assert_gte(walk["closest"], u.soldier_body_radius(),
 			"anchor %d: the nearest two men came within %.2f wu" % [anchor, walk["closest"]])
 		await _free_battle()
+
+
+## A man killed mid-drill files first, the epistates of an old file still waiting to open: the
+## ranks close up behind him, and every man still waiting goes on following the man actually
+## ahead of him in his old file, never a man behind him, so nobody has to pass through his file.
+## The drill ends with nobody closer than a body radius to another man.
+func test_files_first_with_a_man_killed_mid_drill_follows_the_man_actually_ahead() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.CENTRE, ALTERNATE_RANK,
+			OUTWARD, LENGTHEN, DuplicatioMarch.Reading.WALK, FILES_FIRST)
+	await get_tree().physics_frame
+	var victim: int = -1
+	for i in range(u.soldiers):
+		if u._explicatio_waiting.size() == u.soldiers and u._explicatio_waiting[i] == 1 \
+				and u._sim_soldier_rank[i] == 0:
+			victim = i   # an interval's first man, still in his old file behind its leader
+			break
+	assert_gte(victim, 0, "precondition: an epistates waits in his old file")
+	u._sim_soldier_hp[victim] = 0.0
+	SoldierMelee.reap(u, null)
+	var forward: Vector2 = u.facing
+	var checked: int = 0
+	var behind: int = 0
+	var closest: float = INF
+	var ended: int = -1
+	for t in range(DRILL_TICKS):
+		await get_tree().physics_frame
+		if not u.explicatio_drill_active():
+			ended = t
+			break
+		for i in range(u.soldiers):
+			if u._explicatio_waiting.size() != u.soldiers or u._explicatio_waiting[i] == 0:
+				continue
+			checked += 1
+			var j: int = u._explicatio_leaders[i]
+			if u._sim_soldier_pos[j].dot(forward) <= u._sim_soldier_pos[i].dot(forward):
+				behind += 1
+		if t % 4 == 0:
+			closest = minf(closest, _nearest_pair(u._sim_soldier_pos))
+	assert_gt(checked, 0, "precondition: men waited after the casualty")
+	assert_eq(behind, 0, "no waiting man followed a man behind him")
+	assert_gte(ended, 0, "the drill ended")
+	assert_gte(closest, u.soldier_body_radius(), "the nearest two men came within %.2f wu" % closest)
 
 
 ## Together, the default, nobody waits in his old file.

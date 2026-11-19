@@ -200,9 +200,12 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
   The files open one after another, the files next to the one that stands first and the flank files last, since each file leader dresses on the next one in toward it.
   In the alternate-rank drill this keeps every file leader on the line he stood on.
   Together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead:
-  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, measured 2026-11-14.
+  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, and 1.24 wu held on the right, measured 2026-11-19.
+  Files first, the file leaders stay within 0.06 wu of it.
   But files first does not keep the front as a whole on its line.
-  The epistates coming up into line beside his file leader runs past it before he settles, 1.24 to 1.27 wu, measured the same day, which is further than the file leaders run ahead together
+  The epistates coming up into line beside his file leader runs past it before he settles,
+  1.27 wu widened about the middle and 1.24 wu held on the right, measured the same day:
+  further than the file leaders run ahead together about the middle, and as far held on the right
   ([#1989](https://github.com/Lacaedemon/sparta/issues/1989)).
   So the front's run ahead in the alternate-rank drill moves from the file leaders to the column leaders and is not removed.
 
@@ -257,8 +260,8 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
   A friendly block that presses men and then marches off leaves them to go on to their places.
   Only taking one's place is for good.
-  When the drill ends the grid is laid on the men who reached their places,
-  and a held man's slot is then the place he could not reach.
+  When the drill ends the grid is laid on every man where he stands, as before,
+  and a held man's slot then lies near the place he could not reach.
   The men whose slots lie on the rock press on for them, and the block walks back after them:
   that is a regression of the drill now ending, which waits on relational formation keeping
   ([#1954](https://github.com/Lacaedemon/sparta/issues/1954), [#1990](https://github.com/Lacaedemon/sparta/issues/1990)).

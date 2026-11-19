@@ -49,7 +49,7 @@ const EXCLUDED := {
 	"_explicatio_men_held": "this tick's whether each man is held, written by each advance from the restored stepped positions and velocities (_explicatio_held_men) and read by nothing in the sim before the next rewrites it",
 	"_explicatio_standing": "this tick's whether each man stands, written by each advance (_explicatio_standing_men) from that tick's men and read by nothing in the sim before the next rewrites it",
 	"_explicatio_lanes": "this tick's lane of each man waiting on one, read afresh each tick from where the men stand (_refresh_explicatio_follow, which a restore makes run afresh)",
-	"explicatio_last_short": "a count of the men short of their places when the last drill ended, kept for the tests and the demo dump; nothing in the sim reads it",
+	"explicatio_last_short": "a count of the men short of their places when the last drill ended of itself, kept for the tests; nothing in the sim or the demo tools reads it",
 	"_explicatio_waiting":"this tick's whether each man's old file has yet to open in the files-first reading, read afresh each tick from the restored follow flags (_refresh_explicatio_follow, ExplicatioOpening.hold_unopened)",
 	"_explicatio_follow_count": "the man count _explicatio_leaders and _explicatio_places were read for, keyed with _explicatio_follow_frame, which the restore clears",
 	"_live_rank_count_gen": CACHE,

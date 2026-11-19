@@ -24,12 +24,12 @@ const FRIEND_STANDS := 240
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
 ## The x 1090 terrain drill after it ends, measured on this build (seed 1948): the front walks back
-## 26.00 wu in the 240 ticks after, and the nearest two men come 1.02 wu apart; widened files
-## first, 25.52 wu and 1.01 wu.
+## 26.47 wu in the 240 ticks after, and the nearest two men come 1.02 wu apart; widened files
+## first, 25.66 wu and 1.01 wu.
 # TODO(#1990): the block should keep the shape its men took, not walk to slots on the rock.
-const TERRAIN_FELL := 26.00
+const TERRAIN_FELL := 26.47
 const TERRAIN_CLOSEST := 1.02
-const TERRAIN_FELL_FILES_FIRST := 25.52
+const TERRAIN_FELL_FILES_FIRST := 25.66
 const TERRAIN_CLOSEST_FILES_FIRST := 1.01
 const HALF_FILE := UnitFormation.ExplicatioDrill.HALF_FILE
 const ALTERNATE_RANK := UnitFormation.ExplicatioDrill.ALTERNATE_RANK
@@ -166,14 +166,16 @@ func _worst_off_slot(u: Unit) -> float:
 ## Unit._explicatio_standing); how many men stood on one tick and on a later tick went on, still
 ## following ("resumed"), and how many of those had stood pressed by a man of another regiment
 ## ("press_resumed"); how many stood short of their places when it ended ("short",
-## Unit.explicatio_last_short); and the tick it ended ("ended", -1 if it did not).
+## Unit.explicatio_last_short); how many men still waited in their old files on the last tick
+## of the drill ("last_waiting", Unit._explicatio_waiting); and the tick it ended ("ended", -1
+## if it did not).
 ## `kill_tick` >= 0 kills man `kill_index` on that tick through SoldierMelee.reap.
 func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
 	var out := {"ahead": -INF, "behind": INF, "line": 0.0, "end_line": INF, "closest": INF,
 			"overtake": -INF, "ended": -1, "held": 0, "stood": 0, "resumed": 0,
-			"press_resumed": 0, "short": -1}
+			"press_resumed": 0, "short": -1, "last_waiting": 0}
 	var stood_before := PackedByteArray()
 	var stood_pressed := {}
 	for t in range(ticks):
@@ -187,6 +189,8 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		out["closest"] = minf(out["closest"], _nearest_pair(u._sim_soldier_pos))
 		out["held"] = maxi(out["held"], u._explicatio_men_held.count(1))
 		var standing: PackedByteArray = u._explicatio_standing
+		if u.explicatio_drill_active():
+			out["last_waiting"] = u._explicatio_waiting.count(1)
 		out["stood"] = maxi(out["stood"], standing.count(1))
 		if stood_before.size() == u.soldiers and standing.size() == u.soldiers:
 			for i in range(u.soldiers):
@@ -1080,6 +1084,9 @@ func _held_by_terrain(opening: int) -> Dictionary:
 	assert_gt(walk["held"], 0, "precondition: the rock held a man off his place")
 	assert_gte(walk["ended"], 0, "the drill ended")
 	assert_gt(walk["short"], 0, "with men short of their places")
+	if opening == ExplicatioOpening.Reading.FILES_FIRST:
+		assert_gt(walk["last_waiting"], 0,
+			"precondition: men still waited in a file the rock held on the last tick of the drill")
 	assert_null(DemoState.explicatio_following(u), "and the dump says no drill is under way")
 	var front_at_end: float = _front(u, u.facing)
 	var front_low: float = front_at_end
@@ -1097,35 +1104,10 @@ func _held_by_terrain(opening: int) -> Dictionary:
 	return {"fell": front_at_end - front_low, "closest": closest}
 
 
-## When the drill ends the grid is laid on the men who reached their places: a man held short and
-## the men who follow him do not drag it back (Unit._explicatio_short_men); while it runs the
-## position reads every man; if every man is short, the grid is laid on them all.
-func test_the_grid_is_laid_on_the_men_who_reached_their_places() -> void:
-	var units: Array = await _stage([_spearmen()])
-	var u: Unit = units[0]
-	var laid: Vector2 = u.explicatio_grid_position()
-	for i in range(5):
-		u._sim_soldier_pos[i] -= u.facing * 40.0
-	var dragged: Vector2 = u.explicatio_grid_position()
-	assert_gt(dragged.distance_to(laid), 1.0, "precondition: five men 40 wu back drag the fit")
-	var short := PackedByteArray()
-	short.resize(u.soldiers)
-	for i in range(5):
-		short[i] = 1
-	assert_almost_eq(u.explicatio_grid_position(true, short), laid, Vector2(0.05, 0.05),
-		"the men short of their places are left out when the grid is laid")
-	assert_almost_eq(u.explicatio_grid_position(false, short), dragged, Vector2(0.05, 0.05),
-		"while the drill runs the position reads every man")
-	short.fill(1)
-	assert_almost_eq(u.explicatio_grid_position(true, short), dragged, Vector2(0.05, 0.05),
-		"every man short: laid on them all")
-
-
-## A drill that ends of itself lays the grid on the men who took their places: with one file's
-## men still following when every man is done (standing short of their places, 40 wu back), the
-## position the drill leaves is the fit without them. A drill ended by anything else (an order,
-## a fight, a change of width) lays the grid on every man, as it always has.
-func test_the_drill_ends_with_the_grid_off_the_men_held_short() -> void:
+## A drill that ends of itself with men short of their places (one file's men still following
+## when every man is done, 40 wu back) lays the grid on every man where he stands, as main does
+## (explicatio_grid_position): no rule picks the men it sits on. The men short are counted.
+func test_the_drill_ends_with_the_grid_on_every_man_and_counts_the_men_short() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
 	_battle.enqueue_file_double([u.uid], 1)
@@ -1139,11 +1121,9 @@ func test_the_drill_ends_with_the_grid_off_the_men_held_short() -> void:
 			u._explicatio_following[i] = 0   # every other man has taken his place
 	var short: PackedByteArray = u._explicatio_short_men()
 	assert_gt(short.count(1), 1, "precondition: the file's men stand short")
-	var expected: Vector2 = u.explicatio_grid_position(true, short)
 	var on_all: Vector2 = u.explicatio_grid_position()
-	assert_gt(expected.distance_to(on_all), 1.0, "precondition: leaving them out moves the fit")
 	u._end_explicatio_drill(short)
-	assert_almost_eq(u.position, expected, Vector2(0.01, 0.01), "the grid is laid without them")
+	assert_almost_eq(u.position, on_all, Vector2(0.01, 0.01), "the grid is laid on every man")
 	assert_eq(u.explicatio_last_short, short.count(1), "and the count of men short is kept")
 
 
