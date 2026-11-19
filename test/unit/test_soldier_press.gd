@@ -41,6 +41,9 @@ func test_an_engaged_foe_man_presses_whichever_block_is_near_him() -> void:
 	foe.state = Unit.State.FIGHTING
 	foe.engaged_soldier_indices(1)   # as its melee picks them, each tick it fights
 	assert_true(_pressed(ours), "a man of a fight with another block still fights, near this one")
+	foe._engaged_indices_cache_frame -= 1   # a pick from an earlier tick, as a redraw can leave
+	assert_false(_pressed(ours), "only this tick's pick of the engaged men counts")
+	foe.engaged_soldier_indices(1)
 	foe._sim_soldier_pos[0] = AT + Vector2(2.0 * ours.soldier_reach() + 5.0, 0)
 	assert_false(_pressed(ours), "past twice the reach he presses no one")
 	foe._sim_soldier_pos[0] = AT + Vector2(1.5 * ours.soldier_reach(), 0)

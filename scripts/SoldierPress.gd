@@ -31,8 +31,10 @@ static func reset() -> void:
 
 
 ## File this frame's fighting close-tier men, once, by team and cell: the engaged men as each
-## block's melee last picked them (its cache, this frame's or the frame before's, read and never
-## computed here), and the men touching a foe who are not running.
+## block's melee picked them this tick (its cache, which SoldierMeleeStandoff fills before the
+## bodies step; read, never computed here), and the men touching a foe who are not running. Only
+## this tick's pick counts: a pick stamped with an earlier tick may have come from a redraw, whose
+## timing is the wall clock's, and reading it made replays diverge (knockback-focus).
 static func _build(unit: Unit) -> void:
 	var frame: int = Engine.get_physics_frames()
 	if frame == _frame or not unit.is_inside_tree():
@@ -48,7 +50,7 @@ static func _build(unit: Unit) -> void:
 	for u: Unit in units:
 		if u.tier == FormationTier.FAR:
 			continue
-		if u._engaged_indices_cache_frame >= frame - 1 and u._engaged_indices_cache_engaged:
+		if u._engaged_indices_cache_frame == frame and u._engaged_indices_cache_engaged:
 			for j in u._engaged_indices_cache:
 				_file(u, j)
 		for j in range(u._sim_touching_foe.size()):
