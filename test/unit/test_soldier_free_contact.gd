@@ -162,17 +162,17 @@ func test_a_unit_left_standing_when_its_chase_ends_pulls_up_first() -> void:
 	p.state = Unit.State.IDLE   # its quarry is gone and it has nowhere to go
 	p.step_sim_soldiers(DT)
 	assert_true(p._rally_pending, "its riders pull up from the gallop before it forms up")
-	assert_true(p._sim_flight_dir.is_empty(), "with no chase left to remember")
+	assert_true(p._sim_chase_dir.is_empty(), "with no chase left to remember")
 
 
 func test_a_unit_given_somewhere_to_go_when_its_chase_ends_forms_up_at_once() -> void:
 	var p: Unit = _rider_after(AT + Vector2(0, -1000), 2)
 	SoldierPursuitStep.step(p, 2, {}, DT)
-	assert_false(p._sim_flight_dir.is_empty(), "setup: the riders chase")
+	assert_false(p._sim_chase_dir.is_empty(), "setup: the riders chase")
 	p.target_enemy = null   # its quarry is gone, and it still has a march to make
 	p.step_sim_soldiers(DT)
 	assert_false(p._rally_pending, "it does not wait for its riders to pull up")
-	assert_true(p._sim_flight_dir.is_empty(), "it forms up where they stand")
+	assert_true(p._sim_chase_dir.is_empty(), "it forms up where they stand")
 	assert_eq(p._last_redeal_tick, Engine.get_physics_frames(), "with its grid dealt this tick")
 
 

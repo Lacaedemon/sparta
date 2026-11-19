@@ -409,6 +409,7 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 	var count_before: int = unit._sim_soldier_pos.size()
 	var trim_flight: bool = unit._sim_flight_dir.size() == count_before
 	var trim_touch: bool = unit._sim_touching_foe.size() == count_before
+	var trim_chase: bool = unit._sim_chase_dir.size() == count_before
 	for i in range(unit._sim_soldier_hp.size() - 1, -1, -1):
 		if unit._sim_soldier_hp[i] <= 0.0:
 			dead_indices.push_back(i)
@@ -419,6 +420,8 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._sim_flight_dir.remove_at(i)   # each survivor keeps his own chosen way
 			if trim_touch:
 				unit._sim_touching_foe.remove_at(i)   # and whether he touched a foe this tick
+			if trim_chase:
+				unit._sim_chase_dir.remove_at(i)   # and each rider's way
 			unit._sim_soldier_hp.remove_at(i)
 			if i < unit._sim_steer.size():
 				unit._sim_steer.remove_at(i)   # keep the steering array index-aligned

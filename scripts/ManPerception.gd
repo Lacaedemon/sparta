@@ -27,6 +27,7 @@ var sight_radius: float = -1.0:
 			return
 		sight_radius = value
 		_results.clear()
+		_routed_results.clear()
 ## Half-angle of the visual field, radians. Must lie in [0, PI]; else reported and refused.
 var visual_field_half_angle: float = Weights.VISUAL_FIELD_HALF_ANGLE:
 	set(value):
@@ -35,6 +36,7 @@ var visual_field_half_angle: float = Weights.VISUAL_FIELD_HALF_ANGLE:
 			return
 		visual_field_half_angle = value
 		_results.clear()
+		_routed_results.clear()
 ## Weight of a foe directly behind a man. Must lie in (0, 1]; else reported and refused.
 var rear_weight: float = Weights.REAR_WEIGHT:
 	set(value):
@@ -43,6 +45,7 @@ var rear_weight: float = Weights.REAR_WEIGHT:
 			return
 		rear_weight = value
 		_results.clear()
+		_routed_results.clear()
 
 var _frame: int = -1
 var _units: Array = []
@@ -52,6 +55,7 @@ var _sight: Dictionary = {}
 var _foes := Foes.new()
 # unit -> {index -> result}; Scan.still_valid says whether a result still holds.
 var _results: Dictionary = {}
+var _routed_results: Dictionary = {}   # the same, counting only routed foes (perceive's routed_only)
 
 
 ## Bind this frame's inputs: the physics-frame counter SpatialHash is built with, every unit
@@ -67,6 +71,7 @@ func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> vo
 	_sight = Sight.compile(terrain, path_field)
 	_foes.bind(frame, units)
 	_results.clear()
+	_routed_results.clear()
 
 
 ## What man `index` of `unit` perceives this frame. Returns:
@@ -77,18 +82,21 @@ func prepare(frame: int, units: Array, terrain: Array, path_field: Object) -> vo
 ##   perceived        how many foe bodies he perceives
 ## A man with no body (an out-of-range index, or a far-tier unit) perceives nothing.
 ## `frame` must be the frame prepare() was last called with, else an error is reported and
-## nothing is perceived: a missed prepare() would answer from last frame's cache.
-func perceive(unit: Unit, index: int, frame: int) -> Dictionary:
+## nothing is perceived: a missed prepare() would answer from last frame's cache. With
+## `routed_only` he counts only the bodies of routed foes, as a rider riding a rout down looks for
+## runners.
+func perceive(unit: Unit, index: int, frame: int, routed_only: bool = false) -> Dictionary:
 	if frame != _frame:
 		push_error("ManPerception: perceive() for frame %d, prepared for %d" % [frame, _frame])
 		return _public(Scan.none())
-	var by_index: Dictionary = _results.get(unit, {})
-	_results[unit] = by_index
+	var cache: Dictionary = _routed_results if routed_only else _results
+	var by_index: Dictionary = cache.get(unit, {})
+	cache[unit] = by_index
 	if by_index.has(index) and Scan.still_valid(unit, index, by_index[index]):
 		return _public(by_index[index])
 	var radius: float = sight_radius if sight_radius > 0.0 else unit.sight_range
 	var result: Dictionary = Scan.scan(unit, index, radius, _sight, _foes,
-		visual_field_half_angle, rear_weight)
+		visual_field_half_angle, rear_weight, routed_only)
 	by_index[index] = result
 	return _public(result)
 

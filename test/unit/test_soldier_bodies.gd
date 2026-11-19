@@ -935,8 +935,8 @@ func test_a_man_near_a_fighting_foe_man_is_in_the_press() -> void:
 	var probe := _make_unit(42, 2)
 	var reach: float = probe.soldier_reach()
 	var touching: float = probe.soldier_body_radius()   # nearer than the two bodies' radii
-	assert_almost_eq(_band_cut(Unit.State.FIGHTING, 1.5 * reach), 0.0, 0.001,
-		"an engaged foe man within twice the reach holds the pair in the press")
+	assert_almost_eq(_band_cut(Unit.State.FIGHTING, 1.5 * reach), -5.0, 0.001,
+		"a fighting block's man touching no one, within twice the reach, holds no one in the press")
 	assert_almost_eq(_band_cut(Unit.State.IDLE, touching), 0.0, 0.001,
 		"so does one standing body to body with a man of the block")
 	assert_almost_eq(_band_cut(Unit.State.ROUTING, touching), 0.0, 0.001,

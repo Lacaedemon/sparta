@@ -31,6 +31,10 @@ static var _frame: int = -1
 ## pursuing and pulling-up men, and in their blows and the blows struck at them.
 static var looks: int = 0
 static var work_usec: int = 0
+## The battle tick the bodies step on (Battle._tick, which a replay seek rewinds; the physics
+## frame counter does not). Battle sets it before the bodies step; each routed man and each rider
+## looks round on a tick of his own phased on it (SoldierFlightStep, SoldierPursuitStep).
+static var tick: int = 0
 
 
 ## Bind this frame's perception inputs, as ManPerception.prepare. Battle calls it once a tick
@@ -46,12 +50,13 @@ static func prepare(frame: int, units: Array, terrain: Array, path_field: Object
 ## What man `i` of `unit` perceives (ManPerception.perceive's answer), out to his unit's whole
 ## sight_range: a man running from foes still sees the ones ahead of him, so the fog's routing cut
 ## does not apply. Nothing when perception is off or nothing prepared it this frame.
-static func perceived(unit: Unit, i: int, frame: int) -> Dictionary:
+## With `routed_only`, only routed foes count (a rider riding a rout down).
+static func perceived(unit: Unit, i: int, frame: int, routed_only: bool = false) -> Dictionary:
 	looks += 1
 	if not perceive_threats or frame != _frame:
 		return {"threat": Vector2.ZERO, "nearest_unit": null, "nearest_index": -1,
 				"nearest_distance": INF}
-	return _perception.perceive(unit, i, frame)
+	return _perception.perceive(unit, i, frame, routed_only)
 
 
 ## The unit direction from `pos` toward the refuge `unit`'s men know.

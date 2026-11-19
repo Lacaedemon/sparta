@@ -155,11 +155,11 @@ func test_a_routed_man_looks_round_once_a_reaction_time_on_a_tick_of_his_own() -
 			"his reaction time at the physics rate")
 	u._sim_flight_dir.resize(12)
 	u._sim_flight_dir.fill(Vector2.RIGHT)   # each man still runs the way he last chose
+	SoldierFlight.tick = 7   # the battle tick the bodies step on
 	SoldierFlightStep.step(u, 12, {}, TICK)
-	var frame: int = Engine.get_physics_frames()
 	var looked: int = 0
 	for i in range(12):
-		if (frame + i) % period == 0:
+		if (7 + i) % period == 0:
 			looked += 1
 			assert_eq(u._sim_flight_dir[i], Vector2.UP, "man %d looked round: his refuge" % i)
 		else:

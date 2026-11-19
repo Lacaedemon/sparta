@@ -1,21 +1,19 @@
 class_name SoldierPursuitStep
 extends RefCounted
-## Horse riding a router down: each rider chases the runner nearest him, not the routed unit's
-## centre, which can lie where no runner is once the rout scatters. He looks round once a
-## reaction time (Unit.rout_reaction_ticks), on a tick of his own, and rides at that runner until
-## he next looks (Unit._sim_flight_dir); he strikes the runners in his reach at his unit's cadence
-## (strike): at Cannae the Numidian horse pursued the fleeing Roman cavalry and cut most of them
-## down (Polybius 3.116); riding at the nearest runner is the sim's choice. Foot follow a rout in
-## their ranks, as far as SoldierFootPursuit says. SoldierBodies.step calls step in place of the
-## slot arrival, and SoldierBodies.couple reads the unit's `position` off its men while it pursues.
+## Horse riding a router down: each rider chases the nearest routed man he sees (ManPerception, the
+## men of every routed foe), not the routed unit's centre. He looks round once a reaction time
+## (Unit.rout_reaction_ticks), on a battle tick of his own (SoldierFlight.tick), and rides at that
+## man until he next looks (Unit._sim_chase_dir), riding on while he sees none; he strikes the
+## routed men in his reach at his unit's cadence (strike): at Cannae the Numidian horse cut most of
+## the fleeing Roman cavalry down (Polybius 3.116); riding at the nearest is the sim's choice. Foot
+## follow a rout in their ranks (SoldierFootPursuit). SoldierBodies.step calls step in place of the
+## slot arrival, and couple reads the unit's `position` off its men while it pursues.
 
 
-## Whether `unit` is riding a routed enemy down: a mounted unit after a routing target with men,
-## on the move or already among its runners (FIGHTING).
+## Whether `unit` is riding a routed enemy down: a mounted unit ordered at a routing foe with men,
+## moving or among its runners (FIGHTING). The order sends it; each rider picks his man (step).
 static func is_pursuing(unit: Unit) -> bool:
-	if not unit.is_cavalry:
-		return false
-	if unit.state != Unit.State.MOVING and unit.state != Unit.State.FIGHTING:
+	if not unit.is_cavalry or (unit.state != Unit.State.MOVING and unit.state != Unit.State.FIGHTING):
 		return false
 	var quarry: Unit = unit.target_enemy
 	return is_instance_valid(quarry) and quarry.state == Unit.State.ROUTING \
@@ -24,7 +22,6 @@ static func is_pursuing(unit: Unit) -> bool:
 
 ## Step `unit`'s first `n` pursuing men by `delta`; `guard` as SoldierFlightStep.step's.
 static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
-	var quarry: Unit = unit.target_enemy
 	var frame: int = Engine.get_physics_frames()
 	var period: int = unit.rout_reaction_ticks()
 	var accel: float = maxf(unit.accel, SoldierBodies.BODY_ACCEL_FLOOR)
@@ -33,16 +30,17 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	var cap_floor: float = top * unit.superphysical_speed_frac
 	var field: PathField = PathField.active
 	var contact: PackedVector2Array = SoldierBodies.standoff_free(unit, n, cap_floor)
-	if unit._sim_flight_dir.size() != n:
-		unit._sim_flight_dir.resize(n)
-		for i in range(n):
-			unit._sim_flight_dir[i] = _toward_nearest(unit._sim_soldier_pos[i], quarry)
+	if unit._sim_chase_dir.size() != n:
+		var had: int = unit._sim_chase_dir.size()
+		unit._sim_chase_dir.resize(n)
+		for i in range(had, n):
+			unit._sim_chase_dir[i] = look(unit, i, frame, unit._sim_body_vel[i].normalized())
 	for i in range(n):
 		var pos: Vector2 = unit._sim_soldier_pos[i]
 		var vel: Vector2 = unit._sim_body_vel[i]
-		if (frame + i) % period == 0:
-			unit._sim_flight_dir[i] = _toward_nearest(pos, quarry)
-		var dir: Vector2 = unit._sim_flight_dir[i]
+		if (SoldierFlight.tick + i) % period == 0:
+			unit._sim_chase_dir[i] = look(unit, i, frame, unit._sim_chase_dir[i])
+		var dir: Vector2 = unit._sim_chase_dir[i]
 		var pace: float = top * (field.speed_at(pos) if field != null else 1.0)
 		var desired: Vector2 = (dir * pace + unit._sim_steer[i]).limit_length(pace)
 		if not guard.is_empty() and guard["inside"][i] == 0:
@@ -72,28 +70,30 @@ static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float, delt
 	return (vel / speed).rotated(swing) * move_toward(speed, desired.length(), accel * delta)
 
 
-## The unit direction from `pos` to the nearest body of `quarry` (ZERO on top of one).
-static func _toward_nearest(pos: Vector2, quarry: Unit) -> Vector2:
-	var best: Vector2 = quarry.position
-	var best_sq: float = INF
-	for p in quarry._sim_soldier_pos:
-		var d_sq: float = pos.distance_squared_to(p)
-		if d_sq < best_sq:
-			best_sq = d_sq
-			best = p
-	var to: Vector2 = best - pos
-	return to.normalized() if to.length_squared() > 0.0 else Vector2.ZERO
+## The way rider `i` of `unit` rides when he looks round: toward the nearest routed man he sees,
+## or on along `was` when he sees none.
+static func look(unit: Unit, i: int, frame: int, was: Vector2) -> Vector2:
+	var seen: Dictionary = SoldierFlight.perceived(unit, i, frame, true)
+	var foe: Unit = seen["nearest_unit"]
+	if foe == null:
+		return was
+	var to: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
+	return to.normalized() if to.length_squared() > 0.0 else was
 
 
-## `unit`'s pursuing men strike the runners of their quarry within their reach, as a fighting
-## rank does (SoldierMelee.resolve_men), while it is on the move; once FIGHTING, its own strike
-## (UnitCombat.strike) does. Returns whether it struck, so the caller arms the next cooldown.
+## `unit`'s pursuing men strike the routed men of any routed foe within their reach, as a
+## fighting rank does (SoldierMelee.resolve_men), while it is on the move; once FIGHTING, its own
+## strike (UnitCombat.strike) does. Returns whether it struck, so the caller arms the next cooldown.
 static func strike(unit: Unit) -> bool:
 	if unit.state != Unit.State.MOVING or not is_pursuing(unit) or unit._sim_soldier_pos.is_empty():
 		return false
 	var men := PackedInt32Array()
 	for i in range(unit._sim_soldier_pos.size()):
 		men.push_back(i)
-	var defenders: Array[Unit] = [unit.target_enemy]
+	var defenders: Array[Unit] = []
+	for foe in SoldierCornered.foes_near(unit, unit.position,
+			unit.soldier_reach() + SoldierCornered._spread(unit)):
+		if foe.state == Unit.State.ROUTING:
+			defenders.append(foe)
 	SoldierMelee.resolve_men(unit, men, defenders)
 	return true

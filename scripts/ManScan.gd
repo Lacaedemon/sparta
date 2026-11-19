@@ -42,9 +42,9 @@ static func still_valid(unit: Unit, index: int, cached: Dictionary) -> bool:
 ## body's position and facing, INF for an out-of-range index), "nearest_pos" (that body's
 ## position) and "contributors" ([unit, body count] for every foe unit with a perceived
 ## body). `rule` is ManSight.compile's answer for the frame, `foes` the frame's ManFoes,
-## `radius` his sight in world units.
+## `radius` his sight in world units. With `routed_only`, only the bodies of routed foes count.
 static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: RefCounted,
-		half_angle: float, rear: float) -> Dictionary:
+		half_angle: float, rear: float, routed_only: bool = false) -> Dictionary:
 	var out: Dictionary = none()
 	if index < 0 or index >= unit._sim_soldier_pos.size():
 		return out
@@ -61,7 +61,8 @@ static func scan(unit: Unit, index: int, radius: float, rule: Dictionary, foes: 
 	var nearest_sq: float = INF
 	var perceived: int = 0
 	for foe in foes.candidates(pos, radius):
-		if foe.team == unit.team or foe.state == Unit.State.DEAD:
+		if foe.team == unit.team or foe.state == Unit.State.DEAD \
+				or (routed_only and foe.state != Unit.State.ROUTING):
 			continue
 		var reach_out: float = radius + foes.reach_of(foe)
 		if foe.position.distance_squared_to(pos) > reach_out * reach_out:

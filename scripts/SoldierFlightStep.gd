@@ -5,10 +5,10 @@ extends RefCounted
 ## his own acceleration allows: there is no slot, no anchor and no flight of the unit's to keep
 ## pace with. Near impassable terrain he veers along the face he is running at
 ## (SoldierBodies.router_terrain_avoid). He faces the way he runs. He looks round only once a
-## reaction time (Unit.rout_reaction_ticks), on a tick of his own, and runs the way he then chose
-## until he looks again (Unit._sim_flight_dir, SoldierLookRound); a man who finds no way to run
-## stands and fights (SoldierCornered). Called by SoldierBodies.step in place of the slot arrival, after the bodies
-## are resized and before the terrain backstop.
+## reaction time (Unit.rout_reaction_ticks), on a battle tick of his own (SoldierFlight.tick), and
+## runs the way he then chose until he looks again (Unit._sim_flight_dir, SoldierLookRound); a man
+## who finds no way to run stands and fights (SoldierCornered). Called by SoldierBodies.step in
+## place of the slot arrival, after the bodies are resized and before the terrain backstop.
 
 
 ## How far along his own line a routed man judges the way round terrain: past any block rect,
@@ -34,7 +34,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 	for i in range(n):
 		var pos: Vector2 = unit._sim_soldier_pos[i]
 		var vel: Vector2 = unit._sim_body_vel[i]
-		if (frame + i) % period == 0:
+		if (SoldierFlight.tick + i) % period == 0:
 			SoldierLookRound.look(unit, i, frame, grown)
 		var own: Vector2 = unit._sim_flight_dir[i]
 		var desired: Vector2 = unit._sim_steer[i]

@@ -157,6 +157,7 @@ static func demote(u: Unit) -> void:
 	u._sim_soldier_role = PackedByteArray()
 	# And each routed man's or rider's chosen way: the aggregate record has no men to run.
 	u._sim_flight_dir = PackedVector2Array()
+	u._sim_chase_dir = PackedVector2Array()
 	u._render_dirty = true   # the render swaps to the aggregate (formation-grid) marks
 
 

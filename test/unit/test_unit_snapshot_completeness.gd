@@ -54,7 +54,7 @@ const EXCLUDED := {
 	"_front_line_candidates": CACHE,
 	"_front_profile": CACHE,
 	"_engaged_indices_cache": CACHE,
-	"_sim_touching_foe": CACHE,   # refilled by SoldierEnemyContact each tick before the bodies read it
+	"_sim_touching_foe": CACHE,   # refilled by SoldierTouch each tick before the bodies read it
 	"_engaged_indices_cache_frame": CACHE,
 	"_engaged_indices_cache_count": CACHE,
 	"_engaged_indices_cache_engaged": CACHE,

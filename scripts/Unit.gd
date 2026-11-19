@@ -1853,9 +1853,13 @@ var _far_flee_pace: float = 0.0
 # he runs in until he next looks round, or ZERO while he stands cornered and fights
 # (SoldierCornered). Empty outside a rout; SoldierMelee.reap trims a dead man's entry.
 var _sim_flight_dir: PackedVector2Array = PackedVector2Array()
-# Per man, 1 when his body touched an enemy body this tick, index-aligned with the bodies:
-# cleared and filled by SoldierEnemyContact.accumulate, which visits the touching pairs, before
-# the bodies step (SoldierPress reads it); empty for a unit that pass did not visit.
+# Each pursuing rider's chosen way, index-aligned with the bodies (SoldierPursuitStep): the
+# direction he rides in until he next looks round. Empty outside a chase; SoldierMelee.reap
+# trims a dead man's entry.
+var _sim_chase_dir: PackedVector2Array = PackedVector2Array()
+# Per man, 1 when an enemy body lies within the two bodies' radii of his this tick, index-aligned
+# with the bodies: cleared and filled by SoldierTouch.mark before the bodies step (SoldierPress
+# reads it); empty for a unit with no enemy body near its own.
 var _sim_touching_foe: PackedByteArray = PackedByteArray()
 # True from a rally until its grid is laid out where its men have pulled up
 # (_reform_where_men_stand): while it holds, each man still running slows on his own
@@ -11430,6 +11434,7 @@ func _rout() -> void:
 	_current_speed = 0.0
 	_rally_pending = false
 	_sim_flight_dir = PackedVector2Array()
+	_sim_chase_dir = PackedVector2Array()
 	state = State.ROUTING
 	selected = false
 	target_enemy = null
@@ -11645,6 +11650,7 @@ func _rally() -> void:
 func _reform_where_men_stand() -> void:
 	_rally_pending = false
 	_sim_flight_dir = PackedVector2Array()
+	_sim_chase_dir = PackedVector2Array()
 	_fold_grid_lag()
 	_formation_angle = 0.0
 	_absorbed_fold = 0.0
@@ -12512,6 +12518,7 @@ func to_snapshot_dict() -> Dictionary:
 		"separation_velocity": _separation_velocity,
 		"far_flee_pace": _far_flee_pace, "rally_pending": _rally_pending,
 		"sim_flight_dir": _sim_flight_dir.duplicate(),
+		"sim_chase_dir": _sim_chase_dir.duplicate(),
 		"body_march_ff_prev": _body_march_ff_prev, "body_march_orderly": _body_march_orderly,
 		"march_target_frac": _march_target_frac,
 		"march_stopped_ticks": _march_stopped_ticks,
@@ -12796,6 +12803,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	_far_flee_pace = float(d.get("far_flee_pace", _far_flee_pace))
 	_rally_pending = bool(d.get("rally_pending", _rally_pending))
 	_sim_flight_dir = PackedVector2Array(d.get("sim_flight_dir", PackedVector2Array()))
+	_sim_chase_dir = PackedVector2Array(d.get("sim_chase_dir", PackedVector2Array()))
 	_body_march_ff_prev = d.get("body_march_ff_prev", _body_march_ff_prev)
 	_body_march_orderly = bool(d.get("body_march_orderly", _body_march_orderly))
 	_march_target_frac = float(d.get("march_target_frac", _march_target_frac))
