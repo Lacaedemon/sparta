@@ -132,12 +132,18 @@ func test_the_grid_follows_the_riders_on_their_places_not_the_one_riding_off() -
 			Vector2(0.001, 0.001), "with every rider riding, the troop is read off its men")
 
 
-func _end_chase_by_step(p: Unit, s: Array, state: int) -> void:
+func _end_chase_by_step(p: Unit, s: Array, state: int, on_place: bool = false) -> void:
 	_attack(p, s[0])
 	await _look_once(p, s)
 	assert_true(SoldierPursuitStep.is_pursuing(p), "setup: a rider rides")
 	p._sim_chase_dir[1] = Vector2.ZERO
 	(s[0] as Unit)._sim_soldier_pos[0] = AT + Vector2(0, -p.sight_range - 400.0)
+	var slots: PackedVector2Array = p.soldier_world_slots(p.soldiers)
+	if not on_place:   # the chase has left every rider far off his place
+		p._sim_soldier_pos[0] = slots[0] + Vector2(0, -400)
+		p._sim_soldier_pos[1] = slots[1] + Vector2(0, -400)
+	else:   # rider 1 kept his place
+		p._sim_soldier_pos[1] = slots[1]
 	await get_tree().physics_frame
 	SoldierFlight.tick = 0   # rider 0 looks round on this tick
 	SoldierFlight.prepare(Engine.get_physics_frames(), s, [], null)
@@ -204,3 +210,61 @@ func test_an_order_that_is_no_attack_on_the_runners_sends_no_rider() -> void:
 	p.target_enemy = s[0]   # its target taken up from contact is the routed unit
 	await _look_once(p, [s[0], p, formed])
 	assert_false(SoldierPursuitStep.is_pursuing(p), "an attack ordered on another unit sends none")
+
+
+func test_a_rider_whose_chase_ends_rides_back_to_his_place_while_others_kept_theirs() -> void:
+	var s: Array = _scene()
+	var p: Unit = s[1]
+	await _end_chase_by_step(p, s, Unit.State.MOVING, true)
+	assert_true(p._sim_chase_dir.is_empty(), "the chase is over")
+	assert_eq(p._last_redeal_tick, -1, "with a rider on his place, the unit does not re-form")
+
+
+func test_a_retarget_from_contact_leaves_the_attack_on_the_routed_unit_standing() -> void:
+	var s: Array = _scene()
+	var p: Unit = s[1]
+	_attack(p, s[0])
+	p.target_enemy = _unit(0, 1, AT + Vector2(0, -900), 3)   # contact took up another foe
+	await _look_once(p, s)
+	assert_true(SoldierPursuitStep.chasing(p, 0), "the order, not the target taken up, sends him")
+
+
+func test_a_chasing_rider_of_a_standing_unit_strikes() -> void:
+	var s: Array = _scene()
+	var r: Unit = s[0]
+	var p: Unit = s[1]
+	p.state = Unit.State.IDLE   # a standing troop on the chase stance, or ON_SIGHT
+	r._sim_soldier_pos[0] = p._sim_soldier_pos[0] + Vector2(0, -10)   # a runner by rider 0
+	p._sim_soldier_facing[0] = Vector2.UP
+	p._sim_chase_dir = PackedVector2Array([Vector2.UP, Vector2.ZERO])
+	var struck := false
+	for _k in range(80):
+		struck = SoldierPursuitStep.strike(p) or struck
+	assert_true(struck, "the rider riding the runner down strikes")
+
+
+func test_the_slotted_step_leaves_a_chasing_rider_to_the_pursuit() -> void:
+	var s: Array = _scene()
+	var p: Unit = s[1]
+	p.order_mode = Unit.ORDER_CHASE
+	var slots: PackedVector2Array = p.soldier_world_slots(p.soldiers)
+	p._sim_soldier_pos[0] = slots[0] + Vector2(-300, 0)   # his place lies 300 wu east of him
+	p._sim_body_vel[0] = Vector2.ZERO
+	p._sim_chase_dir = PackedVector2Array([Vector2.UP, Vector2.ZERO])
+	await get_tree().physics_frame
+	SoldierFlight.tick = 1   # not rider 0's tick to look round: he keeps riding north
+	SoldierFlight.prepare(Engine.get_physics_frames(), s, [], null)
+	var x0: float = p._sim_soldier_pos[0].x
+	p.step_sim_soldiers(TICK)
+	assert_almost_eq(p._sim_soldier_pos[0].x, x0, 0.0001, "nothing draws him east toward his place")
+
+
+func test_a_troop_is_scattered_when_most_of_its_men_stand_off_their_places() -> void:
+	var p := _unit(1, 3, AT, 2)
+	var slots: PackedVector2Array = p.soldier_world_slots(p.soldiers)
+	for i in range(3):
+		p._sim_soldier_pos[i] = slots[i]
+	p._sim_soldier_pos[0] = slots[0] + Vector2(0, -400)
+	assert_false(SoldierTakeUp.scattered(p, 3), "one man of three off his place: the ranks stand")
+	p._sim_soldier_pos[1] = slots[1] + Vector2(0, -400)
+	assert_true(SoldierTakeUp.scattered(p, 3), "two of three off: the ranks are where the men are not")

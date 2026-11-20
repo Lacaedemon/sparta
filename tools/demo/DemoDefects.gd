@@ -450,7 +450,11 @@ static func analyze(snapshots: Array) -> Dictionary:
 			# read as an error. A dump without relations carries no edges and is not judged.
 			var spacing_now: float = float(u["motion_ref"]["formation_spacing"])
 			var rel = u["soldiers_full"].get("relations", {})
-			var rd: Dictionary = DemoRelational.read(bodies, rel, spacing_now * MISSLOT_SETTLED_FRAC,
+			# A rider riding a runner down is off his place by design: the shape is read off the
+			# rest (DemoChasers), as it is not read at all while every rider rides (shape_mask).
+			var kept: Array = DemoChasers.drop(bodies, rel, u["soldiers_full"].get("chasing", []))
+			var rd: Dictionary = DemoRelational.read(kept[0], kept[1],
+					spacing_now * MISSLOT_SETTLED_FRAC,
 					0.5 * float(u["motion_ref"].get("file_pitch", spacing_now)))
 			s["edges"].append(rd["edges"])
 			s["follow_rms"].append(rd["rms"])
@@ -464,7 +468,7 @@ static func analyze(snapshots: Array) -> Dictionary:
 						int(s["ticks"][-1]) - int(s["ticks"][-2]))
 			var still: bool = restless <= MISSLOT_STILL_FRAC * float(u["motion_ref"].get("walk_speed", 34.0))
 			s["misslotted"].append(
-					float(rd["behind_wrong"]) / maxf(1.0, float(bodies.size()))
+					float(rd["behind_wrong"]) / maxf(1.0, float(kept[0].size()))
 					if still and float(rd["settled"]) <= spacing_now * MISSLOT_SETTLED_FRAC else 0.0)
 			s["files"].append(DemoRelations.files(rel.get("leaders", [])))
 			s["deal"].append(rel.get("leaders", []))
@@ -541,10 +545,12 @@ static func judged_mask(s: Dictionary) -> Array:
 
 
 ## Which samples are judged for a formation's shape (blob, follow error, misslot, crossing
-## routes): judged_mask(), less the samples where the unit rides a router down
-## (SoldierPursuitStep): each of its men then chases the runner nearest him, off any place, as a
-## routed man runs off his. So are the samples where a rallied unit's men still pull up from their
-## flight (`rally_halting`, Unit.shedding_flight): each slows along his own run, and the unit has
+## routes): judged_mask(), less the samples where every rider of the unit rides a router down
+## (SoldierPursuitStep.all_chasing, the dump's `pursuing`): each then chases the runner nearest
+## him, off any place, as a routed man runs off his, and the unit has no grid. While only some of
+## its riders chase, the rest keep their places, and the shape is judged. So are the samples
+## where a rallied unit's men still pull up from their flight (`rally_halting`,
+## Unit.shedding_flight): each slows along his own run, and the unit has
 ## no grid until they have stopped. A transcript dumped before a field existed reads none.
 static func shape_mask(s: Dictionary) -> Array:
 	var mask: Array = judged_mask(s)
@@ -713,8 +719,8 @@ static func _unit_verdicts(uid: int, s: Dictionary) -> Array:
 		out.append(_sustained_verdict(uid, "misslotted", s, "misslotted",
 				MISSLOT_MAX_FRAC, follow_error_mask(s, mask, true), MIN_SUSTAIN, true))
 
-	# Facing whipsaw while marching. A unit riding a router down has no formed facing to judge:
-	# its facing is its aim at a quarry whose men scatter (SoldierPursuitStep).
+	# Facing whipsaw while marching. A unit every rider of which rides a router down has no formed
+	# facing to judge: its facing is read off riders whose quarry scatters (SoldierPursuitStep).
 	var moving_angles: Array = []
 	var flutter_angles: Array = []
 	var flutter_ticks: Array = []

@@ -9,13 +9,13 @@ class_name SoldierBodies
 ## friendly-avoidance steering velocity forward so it drifts off a crowding friend; the
 ## unengaged bulk feeds the unit's march velocity forward so it tracks its moving slots
 ## with no lag, easing onto a reformed slot instead of snapping. A body's fully-integrated
-## speed is still hard-capped near its unit's own top pace (Unit.superphysical_speed_frac
-## * move_speed) no matter how far its slot has receded (a routed unit's men run on their own,
-## SoldierFlightStep) -- see the final clamp at the end of the per-soldier loop in step(). That clamp floors at whatever speed the body already
-## carried in, so it never suppresses a deliberately faster external push (a knockback) --
-## only the march/arrival stacking it exists to bound. Operates on a Unit's
-## `_sim_soldier_pos` / `_sim_body_vel` / `_sim_steer` (the state stays on the unit, where
-## the render, steering, and melee read it).
+## speed is still hard-capped near its unit's own top pace (Unit.superphysical_speed_frac *
+## move_speed) no matter how far its slot has receded (a routed unit's men run on their own,
+## SoldierFlightStep) -- see the final clamp at the end of the per-soldier loop in step(). That
+## clamp floors at whatever speed the body already carried in, so it never suppresses a deliberately
+## faster external push (a knockback) -- only the march/arrival stacking it exists to bound.
+## Operates on a Unit's `_sim_soldier_pos` / `_sim_body_vel` / `_sim_steer` (the state stays on the
+## unit, where the render, steering, and melee read it).
 ## Deterministic and order-free across soldiers, no RNG -- replay-safe like the rest of the
 ## soldier layer.
 
@@ -320,11 +320,13 @@ static func step(unit: Unit, delta: float) -> void:
 		SoldierFlight.work_usec += Time.get_ticks_usec() - chase_t0
 		if all_chase:
 			return
-	# A chase that has just ended (no rider sees a runner) leaves each rider where he rode; the
-	# unit forms up where its men stand, as a rally does, rather than each man riding back through
-	# the others to a place the chase has left behind. A unit left standing (IDLE) first lets its
-	# riders pull up from the gallop (pull_up_rallied); one given somewhere to go forms up at once.
-	if chase_over:
+	# A rider whose chase has ended rides back to his own place in the ranks. Only when the chase
+	# has left most men off their places (SoldierTakeUp.scattered, judged man by man) does the unit
+	# form up where its men stand, as a rally does, rather than each man riding back through the
+	# others to a place the chase has left behind. A unit left
+	# standing (IDLE) first lets its riders pull up from the gallop (pull_up_rallied); one given
+	# somewhere to go forms up at once.
+	if chase_over and SoldierTakeUp.scattered(unit, n):
 		if unit.state == Unit.State.IDLE:
 			unit._rally_pending = true
 		else:

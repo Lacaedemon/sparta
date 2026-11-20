@@ -21,9 +21,9 @@ static func look_round(unit: Unit, n: int) -> bool:
 		if not unit._sim_chase_dir.is_empty():
 			unit._sim_chase_dir = PackedVector2Array()
 		return false
-	var quarry: Unit = _quarry(unit)
+	var quarry: int = _quarry_uid(unit)
 	var any: bool = _any_routed(unit)
-	if quarry == null and not any and unit._sim_chase_dir.is_empty():
+	if quarry < 0 and not any and unit._sim_chase_dir.is_empty():
 		return false
 	if not unit._sim_chase_dir.is_empty() and unit._sim_chase_dir.size() != n:
 		unit._sim_chase_dir.resize(n)
@@ -33,7 +33,7 @@ static func look_round(unit: Unit, n: int) -> bool:
 	for i in range(n):
 		if (SoldierFlight.tick + i) % period == 0:
 			var way: Vector2 = Vector2.ZERO
-			if quarry != null or any:
+			if quarry >= 0 or any:
 				way = _look(unit, i, frame, quarry, any)
 			if way != Vector2.ZERO and unit._sim_chase_dir.is_empty():
 				unit._sim_chase_dir.resize(n)
@@ -47,33 +47,36 @@ static func look_round(unit: Unit, n: int) -> bool:
 	return true
 
 
-## The way rider `i` rides: at the nearest routed man he sees of any routed foe when `any`, else
-## of `quarry`; ZERO when he sees none.
-static func _look(unit: Unit, i: int, frame: int, quarry: Unit, any: bool) -> Vector2:
-	var pos: Vector2 = unit._sim_soldier_pos[i]
-	if any:
-		var seen: Dictionary = SoldierFlight.perceived(unit, i, frame, true)
-		var foe: Unit = seen["nearest_unit"]
-		return Vector2.ZERO if foe == null \
-				else (foe._sim_soldier_pos[seen["nearest_index"]] - pos).normalized()
-	var best: float = unit.sight_range * unit.sight_range
-	var way := Vector2.ZERO
-	for q in quarry._sim_soldier_pos:
-		var d2: float = pos.distance_squared_to(q)
-		if d2 <= best and d2 > 0.0 and SoldierFlightStep._sees(unit, i, q, frame):
-			best = d2
-			way = (q - pos).normalized()
-	return way
+## Whether most of `unit`'s first `n` men stand off their own places, each judged on his own:
+## farther from his slot than the out-of-good-order distance (Unit.standoff_off_slot_pitches file
+## pitches). Then the ranks are where the men are not, and the unit forms up where they stand.
+static func scattered(unit: Unit, n: int) -> bool:
+	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	var near: float = unit.standoff_off_slot_pitches * unit.file_pitch_wu()
+	var m: int = mini(n, slots.size())
+	var off: int = 0
+	for i in range(m):
+		if unit._sim_soldier_pos[i].distance_squared_to(slots[i]) > near * near:
+			off += 1
+	return 2 * off > m
 
 
-## The routed unit `unit` is ordered to attack (Order.Type.ATTACK on it), or null.
-static func _quarry(unit: Unit) -> Unit:
-	var t: Unit = unit.target_enemy
+## The way rider `i` rides: at the nearest running man he sees (ManPerception's routed-only
+## look), when `any` or when that man is of the unit his order attacks (uid `quarry`); ZERO when
+## he sees none, or the nearest runner he sees is of another unit.
+static func _look(unit: Unit, i: int, frame: int, quarry: int, any: bool) -> Vector2:
+	var seen: Dictionary = SoldierFlight.perceived(unit, i, frame, true)
+	var foe: Unit = seen["nearest_unit"]
+	if foe == null or not (any or foe.uid == quarry):
+		return Vector2.ZERO
+	return (foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]).normalized()
+
+
+## The uid of the unit `unit`'s order attacks (Order.Type.ATTACK), or -1: read off the order, not
+## off the target the unit has taken up, which contact can change.
+static func _quarry_uid(unit: Unit) -> int:
 	var o: Order = unit.current_order
-	if o == null or o.type != Order.Type.ATTACK or t == null or not is_instance_valid(t) \
-			or t.uid != o.target_uid or t.state != Unit.State.ROUTING:
-		return null
-	return t
+	return o.target_uid if o != null and o.type == Order.Type.ATTACK else -1
 
 
 ## Whether `unit` rides down any routed man its riders see: a standing order to pursue, or the

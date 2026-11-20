@@ -448,7 +448,8 @@ func test_an_enemy_that_routs_mid_wheel_is_turned_onto_in_place_past_the_thresho
 	e.state = Unit.State.ROUTING
 	u.target_enemy = e   # it follows the rout (_face_for_action turns only a follower onto one)
 	_wheel_tick(u, e, true)
-	assert_ne(u._engage_turn_target, Vector2.ZERO, "past the threshold a router is turned onto in place")
+	assert_eq(u._engage_turn_target, Vector2.ZERO,
+			"a router whose centre stands among the ranks is not turned onto (RoutedFront)")
 
 
 func test_a_block_that_drops_to_the_far_tier_mid_wheel_turns_in_place_past_the_threshold() -> void:

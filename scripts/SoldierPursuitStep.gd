@@ -79,11 +79,12 @@ static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float,
 	return (vel / speed).rotated(swing) * move_toward(speed, desired.length(), accel * delta)
 
 
-## `unit`'s pursuing men strike the routed men of any routed foe within their reach, as a
-## fighting rank does (SoldierMelee.resolve_men), while it is on the move; once FIGHTING, its own
-## strike (UnitCombat.strike) does. Returns whether it struck, so the caller arms the next cooldown.
+## Each of `unit`'s riders riding a runner down (chasing) strikes the routed men of any routed foe
+## within his reach, as a fighting rank does (SoldierMelee.resolve_men), whatever his unit's state
+## but FIGHTING, when its own strike (UnitCombat.strike) does. Returns whether any struck, so the
+## caller arms the next cooldown.
 static func strike(unit: Unit) -> bool:
-	if unit.state != Unit.State.MOVING or not is_pursuing(unit) or unit._sim_soldier_pos.is_empty():
+	if unit.state == Unit.State.FIGHTING or not is_pursuing(unit) or unit._sim_soldier_pos.is_empty():
 		return false
 	var men := PackedInt32Array()
 	for i in range(unit._sim_soldier_pos.size()):

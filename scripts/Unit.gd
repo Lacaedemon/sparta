@@ -1793,18 +1793,17 @@ var _current_speed: float = 0.0
 # clean public name, matching the other cross-script unit reads (global_position, team, …).
 var current_speed: float:
 	get: return _current_speed
-# The march velocity SoldierBodies.step fed forward to this unit's unengaged bodies on its
-# last step (_approach_velocity). From this velocity the step reads the rate the march
-# velocity changed at since then, in speed or in heading (capped at
-# march_share_max_accel_mult times the body's own acceleration;
-# SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly) that is
-# not a rout (a routed unit's men run on their own), and only when the march speed did not
-# fall, does the step grant that much extra acceleration to each unengaged body, on top of
-# its own body_accel, scaled by how far the body stands off its slot
-# (SoldierBodies.march_share_frac: none within march_share_from_pitches, half a file pitch by
-# default, all of it from march_share_full_pitches out). Engaged bodies take none. So a man well behind his slot
-# still gains on it while the march speeds up or swings round without losing speed (see
-# march_accel_budget for how exactly that is judged).
+# The march velocity SoldierBodies.step fed forward to this unit's unengaged bodies on its last step
+# (_approach_velocity). From this velocity the step reads the rate the march velocity changed at
+# since then, in speed or in heading (capped at march_share_max_accel_mult times the body's own
+# acceleration; SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly)
+# that is not a rout (a routed unit's men run on their own), and only when the march speed did not
+# fall, does the step grant that much extra acceleration to each unengaged body, on top of its own
+# body_accel, scaled by how far the body stands off its slot (SoldierBodies.march_share_frac: none
+# within march_share_from_pitches, half a file pitch by default, all of it from
+# march_share_full_pitches out). Engaged bodies take none. So a man well behind his slot still gains
+# on it while the march speeds up or swings round without losing speed (see march_accel_budget for
+# how exactly that is judged).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
 # Whether this tick's march is an orderly one (_move_to's `orderly`: a MOVE order marching
 # to its destination, whether the player or the AI issued it, or a fighting withdrawal's
@@ -4522,12 +4521,13 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# and their centre (SoldierBodies' readout of a router) can stand among this block's ranks,
 	# where a bearing to it names no front. Only a unit following the rout turns onto it: horse
 	# riding it down (SoldierPursuitStep.is_pursuing) or a block whose target it is
-	# (SoldierFootPursuit), and then onto the nearest runner outside its own block (RoutedFront),
-	# not onto their centre; with every runner among its ranks it keeps its heading too. Any
-	# other unit keeps its heading, and its men strike the routed men in their reach.
+	# (SoldierFootPursuit), and only while their centre stands clear of its own block
+	# (RoutedFront; a facing read off what its men see is #1955). With that centre among its ranks
+	# it keeps its heading too. Any other unit keeps its heading, and its men strike the routed
+	# men in their reach.
 	if enemy_unit != null and enemy_unit.state == State.ROUTING:
 		var follows: bool = SoldierPursuitStep.is_pursuing(self) or target_enemy == enemy_unit
-		if follows and not enemy_unit._sim_soldier_pos.is_empty():
+		if follows:
 			point = RoutedFront.point(self, enemy_unit)
 		if not follows or point == Vector2.INF:
 			if _engage_turn_target != Vector2.ZERO:

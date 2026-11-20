@@ -57,10 +57,11 @@ func test_a_block_not_following_the_rout_keeps_its_heading() -> void:
 
 func test_a_block_whose_target_is_the_router_turns_onto_it() -> void:
 	var u := _make_unit(60, 1, 0)
-	var r := _router(ROUTER_OFFSET)
+	var ahead := Vector2(-20.0, u.soldier_block_half_extents().y + 30.0)   # clear of its front
+	var r := _router(ahead)
 	u.target_enemy = r
 	u._face_for_action(r.position, DT, r)
-	assert_almost_eq(u.facing.angle_to(ROUTER_OFFSET), 0.0, 0.001,
+	assert_almost_eq(u.facing.angle_to(ahead), 0.0, 0.001,
 			"a block following the rout turns its front onto the router")
 
 
@@ -68,12 +69,13 @@ func test_horse_riding_the_rout_down_turns_onto_it() -> void:
 	var u := _make_unit(20, 1, 0)
 	u.is_cavalry = true
 	u.state = Unit.State.FIGHTING
-	var r := _router(ROUTER_OFFSET)
+	var ahead := Vector2(-20.0, u.soldier_block_half_extents().y + 30.0)   # clear of its front
+	var r := _router(ahead)
 	u._sim_chase_dir.resize(u.soldiers)
 	u._sim_chase_dir[0] = Vector2.RIGHT   # one rider rides at a routed man he sees
 	assert_true(SoldierPursuitStep.is_pursuing(u), "sanity: the troop rides the rout down")
 	u._face_for_action(r.position, DT, r)
-	assert_almost_eq(u.facing.angle_to(ROUTER_OFFSET), 0.0, 0.001,
+	assert_almost_eq(u.facing.angle_to(ahead), 0.0, 0.001,
 			"horse riding the rout down turns its front onto the router")
 
 
@@ -87,18 +89,17 @@ func test_a_rider_with_no_routed_man_in_sight_keeps_the_heading() -> void:
 	assert_almost_eq(u.facing.y, 1.0, FACING_TOL, "a troop not riding the rout down holds")
 
 
-func test_a_following_block_faces_the_nearest_runner_outside_it_not_their_centre() -> void:
+func test_a_following_block_holds_while_the_runners_centre_is_among_its_ranks() -> void:
 	var u := _make_unit(60, 1, 0)
 	u.order_mode = Unit.ORDER_ATTACK_FLANK   # not HOLD: it commits to the router and follows
-	var r := _router(ROUTER_OFFSET)
+	var r := _router(ROUTER_OFFSET)   # the runners' centre among its ranks
 	u.target_enemy = r
+	var before: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	u._face_for_action(r.position, DT, r)
+	assert_almost_eq(u.facing.y, 1.0, FACING_TOL, "with their centre among its ranks it holds")
+	assert_lt(_max_slot_shift(before, u.soldier_world_slots(u.soldiers)), SLOT_HOLD_TOL,
+			"and no slot moves")
 	var half: Vector2 = u.soldier_block_half_extents()
-	# Two runners among the block's ranks, their centre inside it too.
-	r._sim_soldier_pos = PackedVector2Array([Vector2(-10, 5), Vector2(15, -5)])
+	r.position = Vector2(20.0, half.y + 30.0)   # their centre clear of its front
 	u._face_for_action(r.position, DT, r)
-	assert_almost_eq(u.facing.y, 1.0, FACING_TOL, "with every runner among its ranks it holds")
-	# A third runs clear of the front rank, off to one side: it turns onto him, not their centre.
-	var out := Vector2(20.0, half.y + 30.0)
-	r._sim_soldier_pos.push_back(out)
-	u._face_for_action(r.position, DT, r)
-	assert_almost_eq(u.facing.angle_to(out), 0.0, 0.001, "it turns onto the runner outside it")
+	assert_almost_eq(u.facing.angle_to(r.position), 0.0, 0.001, "clear of it, it turns onto them")
