@@ -404,14 +404,69 @@ func test_a_files_first_drill_with_men_waiting_plays_on_alike_after_a_restore() 
 	assert_lt(worst, 0.001, "every man stands where he stood the first time (%.4f wu off)" % worst)
 
 
-## Run `u`'s files-first drill until some men wait in their files, some man stands and forty
-## have moved off, so the release flags the snapshot carries are ones the men behind still need.
+## Run `u`'s files-first drill until the snapshot it would take carries state the next tick
+## needs: a waiting man whose man ahead stood this tick (_waiting_on_a_man_who_stood), and men whose
+## release flags decide whether they wait (_release_flags_matter).
 func _run_until_standing_and_waiting(u: Unit) -> void:
+	var stood: bool = false
+	var flags: bool = false
 	for _t in range(DRILL_TICKS):
 		await get_tree().physics_frame
-		if u._explicatio_waiting.count(1) > 0 and u._explicatio_standing.count(1) > 0 \
-				and u._explicatio_released.count(1) >= 40:
+		stood = stood or _waiting_on_a_man_who_stood(u) >= 0
+		flags = flags or _release_flags_matter(u)
+		if _waiting_on_a_man_who_stood(u) >= 0 and _release_flags_matter(u):
 			return
+	assert_true(stood and flags, "precondition: a tick on which both matter (stood %s, flags %s)"
+			% [stood, flags])
+
+
+## The waiting man of `u` whose man ahead stood this tick, so goes the next, or -1.
+func _waiting_on_a_man_who_stood(u: Unit) -> int:
+	if u._explicatio_waiting.size() != u.soldiers or u._explicatio_standing.size() != u.soldiers:
+		return -1
+	for i in range(u.soldiers):
+		var a: int = u._explicatio_leaders[i] if u._explicatio_waiting[i] == 1 else -1
+		if a >= 0 and u._explicatio_standing[a] == 1:
+			return i
+	return -1
+
+
+## Whether reading `u`'s files-first hold now without its release flags would set men waiting
+## whom the flags keep out of their files: then a restore that lost them would play on otherwise.
+func _release_flags_matter(u: Unit) -> bool:
+	if u._explicatio_released.count(1) == 0 or not u.explicatio_drill_active():
+		return false
+	var n: int = u.soldiers
+	var plan: Dictionary = UnitFormation.explicatio_follow_plan(u._sim_soldier_file,
+			u._sim_soldier_rank, u._sim_soldier_role, u._explicatio_lane_split,
+			u._explicatio_stand_file, u.file_pitch_wu(), u.rank_pitch_wu(), u._explicatio_inward)
+	var bare: Dictionary = ExplicatioOpening.hold_unopened(plan, u._sim_soldier_file,
+			u._sim_soldier_rank, u._sim_soldier_pos.slice(0, n), u._sim_soldier_facing.slice(0, n),
+			u._explicatio_lane_split, u._explicatio_inward, u._explicatio_following,
+			u._explicatio_standing, PackedByteArray(), u.file_pitch_wu(), u.rank_pitch_wu())
+	return (bare["waiting"] as PackedByteArray).count(1) > u._explicatio_waiting.count(1)
+
+
+## A man killed while a waiting man's man ahead stands: reap closes last tick's standing up with
+## the men (SoldierMelee.reap), so on the next tick the waiting man still sees the man ahead of him
+## stand, and goes.
+func test_a_casualty_keeps_last_ticks_standing_lined_up() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.CENTRE, ALTERNATE_RANK,
+			OUTWARD, LENGTHEN, DuplicatioMarch.Reading.WALK, FILES_FIRST)
+	var i: int = -1
+	for _t in range(DRILL_TICKS):
+		await get_tree().physics_frame
+		i = _waiting_on_a_man_who_stood(u)
+		if i > 0 and u._explicatio_leaders[i] > 0:
+			break
+		i = -1
+	assert_gt(i, 0, "precondition: a waiting man whose man ahead stood, a man stored before both")
+	u._sim_soldier_hp[0] = 0.0   # a man stored before both falls
+	SoldierMelee.reap(u, null)
+	assert_eq(u._explicatio_standing.size(), u.soldiers, "last tick's standing closes up")
+	await get_tree().physics_frame
+	assert_eq(u._explicatio_waiting[i - 1], 0, "he still sees the man ahead of him stand, and goes")
 
 
 ## Walk `u`'s drill to its end, recording who waits and who stands on every tick, then 30 ticks
