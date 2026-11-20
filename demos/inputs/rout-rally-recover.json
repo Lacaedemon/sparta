@@ -19,11 +19,5 @@
     {"tick": 250, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": [200, 300], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [250, 1200], "uid": 0, "absent": true}
-  ],
-  "defect_exemptions": {
-    "overlap": {
-      "uids": [2],
-      "reason": "This is a regression from 9b6fab5c, which read 8.49, 8.93, 8.85, 9.73 and 10.13 on seeds 0 to 4. overlap reads the second enemy cavalry troop (uid 2) against 5, with dense 2-tick FULL dumps measured 2026-11-20 on #1949's branch: seed 0 9.21, seed 1 8.99, seed 2 0.74, seed 3 8.77, seed 4 9.21. Only seed 2 fails. Each rider rides at the nearest routed man he sees, of any routed foe (#1949), where on 9b6fab5c every rider rode at his own unit's target. On seed 2 the troop's riders followed runners west where on 9b6fab5c they rode north-east after their target, and the chase ended at tick 483 with the troop at the gallop (170 wu/s) and an order to march on, so it formed up at once: each rider was dealt a place 30 to 70 wu off and rode on west at the gallop, and riders 5 and 8, closing at about 1.4 wu a tick on crossing lines, came within 1.27 wu at tick 492 (the samples fail from tick 488 to 518; the worst, 0.74, is another pair). The same-unit contact band stops a closing pair only at contact distance, and a horse at the gallop cannot shed that closing speed there at his braking rate. A rider who sees another on a crossing line and gives way before contact is the per-man personal space of #1956."
-    }
-  }
+  ]
 }

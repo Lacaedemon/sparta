@@ -4515,6 +4515,17 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		return true
+	# A routed enemy shows no front to bring this one to bear on: his men run each his own way,
+	# and their centre (SoldierBodies' readout of a router) can stand among this block's ranks,
+	# where a bearing to it names no front. Only a unit following the rout turns onto it: horse
+	# riding it down (SoldierPursuitStep.is_pursuing) or a block whose target it is
+	# (SoldierFootPursuit). Any other unit keeps its heading, and its men strike the routed men
+	# in their reach.
+	if enemy_unit != null and enemy_unit.state == State.ROUTING \
+			and not SoldierPursuitStep.is_pursuing(self) and target_enemy != enemy_unit:
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
+		return true
 	var dir: Vector2 = point - position
 	if dir.length_squared() < 0.0001:
 		return true

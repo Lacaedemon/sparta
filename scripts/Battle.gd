@@ -3813,7 +3813,7 @@ func unit_by_uid(uid: int) -> UnitRef:
 ## stays close as it closes on the runners, and still demotes once they are past DEMOTE_RANGE.
 ## A horse unit riding the rout down man by man does not demote while it does
 ## (TierTransition.can_demote): its riders are scattered after their runners. Runs every tick over
-## the live units in tree order — a pure function of already-serialized positions, so both
+## the live units in tree order -- a pure function of already-serialized positions, so both
 ## runs of a replay transition the same units on the same ticks.
 func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")

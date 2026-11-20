@@ -198,6 +198,7 @@ func test_a_reface_onto_a_routing_enemy_still_snaps() -> void:
 	var u := _make_block()
 	var e := _make_enemy(_bearing_point(30.0))
 	e.state = Unit.State.ROUTING
+	u.target_enemy = e   # it follows the rout (_face_for_action turns only a follower onto one)
 	u._face_for_action(e.position, DT, e)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
 		"a pursuer in contact keeps its front on a fleeing enemy")
@@ -445,6 +446,7 @@ func test_an_enemy_that_routs_mid_wheel_is_turned_onto_in_place_past_the_thresho
 	e.position = _off_heading(u, 80.0, 10.0)
 	assert_true(u._enemy_inside_own_footprint(e), "sanity: the router stands among the ranks")
 	e.state = Unit.State.ROUTING
+	u.target_enemy = e   # it follows the rout (_face_for_action turns only a follower onto one)
 	_wheel_tick(u, e, true)
 	assert_ne(u._engage_turn_target, Vector2.ZERO, "past the threshold a router is turned onto in place")
 

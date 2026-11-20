@@ -89,7 +89,8 @@ func test_a_man_takes_part_of_his_line_from_a_mate_ahead() -> void:
 	var u := _pair_with_mate(100.0, SoldierFlight.Follow.HERD)
 	var pitch: float = 50.0
 	var d: Vector2 = SoldierFlight.with_mate(u, 1, Vector2.UP, 0, pitch)
-	var want: Vector2 = (Vector2.UP * (1.0 - u.rout_herding) + Vector2.RIGHT * u.rout_herding).normalized()
+	var want: Vector2 = (Vector2.UP * (1.0 - u.rout_herding)
+			+ Vector2.RIGHT * u.rout_herding).normalized()
 	assert_almost_eq(d.x, want.x, 0.0001,
 			"a full pitch ahead, he mixes in rout_herding of the mate's run")
 	assert_almost_eq(d.y, want.y, 0.0001, "both components")

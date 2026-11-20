@@ -36,17 +36,17 @@ static func choose(unit: Unit, i: int, threat: Vector2,
 
 
 ## Which way along `across` (+1 or -1) man `i` of `unit` turns when nothing else chooses for him:
-## away from the bulk of the men of his own unit he can see (within his sight, Unit.sight_range),
-## so a block's files part to either side, else the way he is already moving, else along
-## `across`. He goes by the men he sees, not by where his unit's centre lies.
+## away from the bulk of the men of his own unit he can see (SoldierFlightStep._sees: within his
+## sight and his line of sight), so a block's files part to either side, else the way he is
+## already moving, else along `across`. He goes by the men he sees, not by where his unit's
+## centre lies.
 static func own_side(unit: Unit, i: int, across: Vector2) -> float:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
-	var near: float = unit.sight_range
+	var frame: int = Engine.get_physics_frames()
 	var lean: float = 0.0
 	for j in range(unit._sim_soldier_pos.size()):
-		var to: Vector2 = unit._sim_soldier_pos[j] - pos
-		if j != i and to.length_squared() <= near * near:
-			lean -= to.dot(across)
+		if j != i and SoldierFlightStep._sees(unit, i, unit._sim_soldier_pos[j], frame):
+			lean -= (unit._sim_soldier_pos[j] - pos).dot(across)
 	if absf(lean) <= 0.000001 and i < unit._sim_body_vel.size():
 		lean = unit._sim_body_vel[i].dot(across)
 	return -1.0 if lean < 0.0 else 1.0

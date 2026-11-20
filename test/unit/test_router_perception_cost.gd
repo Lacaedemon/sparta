@@ -83,7 +83,8 @@ func _measure(on: bool, label: String) -> Array:
 	for x in tick_us:
 		sum += x
 	var mean_ms: float = sum / 1000.0 / ticks
-	print("[router-perception-cost] %s: ticks=%d | ms/tick mean=%.2f median=%.2f p95=%.2f max=%.2f | routed men/tick=%.1f" % [
+	print(("[router-perception-cost] %s: ticks=%d | ms/tick mean=%.2f median=%.2f p95=%.2f"
+			+ " max=%.2f | routed men/tick=%.1f") % [
 		label, ticks, mean_ms, sorted[ticks / 2] / 1000.0, sorted[int(ticks * 0.95)] / 1000.0,
 		sorted[-1] / 1000.0, float(routed) / ticks])
 	print("[router-perception-cost] %s: routing work ms/tick=%.3f | looks/tick=%.1f" % [

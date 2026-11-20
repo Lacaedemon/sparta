@@ -3,12 +3,11 @@ extends RefCounted
 ## Horse riding a router down. A horse unit under an order to move or fight takes up the chase
 ## when one of its riders has a routed man within his reach (SoldierTakeUp); each rider then rides
 ## at the nearest routed man he sees (ManPerception, the men of every routed foe), looking round
-## once a
-## reaction time (Unit.rout_reaction_ticks) on a battle tick of his own (SoldierFlight.tick), until
-## he sees none (Unit._sim_chase_dir ZERO), and strikes the routed men in his reach (strike). The
-## chase lasts while any rider still sees one. At Cannae the Numidian horse cut most of the fleeing
-## Roman cavalry down (Polybius 3.116); riding at the nearest is the sim's choice. Foot follow a
-## rout in their ranks (SoldierFootPursuit).
+## once a reaction time (Unit.rout_reaction_ticks) on a battle tick of his own
+## (SoldierFlight.tick), until he sees none (Unit._sim_chase_dir ZERO), and strikes the routed
+## men in his reach (strike). The chase lasts while any rider still sees one. At Cannae the
+## Numidian horse cut most of the fleeing Roman cavalry down (Polybius 3.116); riding at the
+## nearest is the sim's choice. Foot follow a rout in their ranks (SoldierFootPursuit).
 
 
 ## Whether `unit` is riding a rout down: a horse unit under an order to move or fight (MOVING or

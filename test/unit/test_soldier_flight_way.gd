@@ -40,10 +40,25 @@ func test_balanced_pulls_never_stall_him() -> void:
 	var w := _man(AT + Vector2(-10, 0), AT)
 	assert_lt(SoldierFlightWay.choose(w, 0, Vector2(0, -1)).x, 0.0,
 			"a man with his mate east goes west")
-	var far := _man(AT + Vector2(-10, 0), AT + Vector2(-10 + w.sight_range + 10.0, 0))
-	far._sim_body_vel[0] = Vector2(-5, 0)   # running west, his mate out of sight beside him
+	# Running west, his mate out of sight to the west: the mate would send him east.
+	var far := _man(AT + Vector2(-10, 0), AT + Vector2(-10 - w.sight_range - 10.0, 0))
+	far._sim_body_vel[0] = Vector2(-5, 0)
 	assert_lt(SoldierFlightWay.choose(far, 0, Vector2(0, -1)).x, 0.0,
-		"with no mate at his elbow he keeps the way he is moving")
+		"with no mate in sight he keeps the way he is moving")
+
+
+func test_a_mate_behind_rock_does_not_choose_his_side() -> void:
+	var u := _man(AT, AT + Vector2(-40, 0))   # his mate west of him: he would go east
+	u._sim_body_vel[0] = Vector2(-5, 0)   # running west
+	var frame: int = Engine.get_physics_frames()
+	SoldierFlight.prepare(frame, [u], [], null)
+	assert_gt(SoldierFlightWay.choose(u, 0, Vector2(0, -1)).x, 0.0, "in sight, he parts from him")
+	var wall := {"rect": Rect2(AT + Vector2(-25, -50), Vector2(10, 100)), "kind": "block",
+		"sight": "block"}
+	SoldierFlight.prepare(frame, [u], [wall], null)
+	assert_lt(SoldierFlightWay.choose(u, 0, Vector2(0, -1)).x, 0.0,
+		"rock between them hides the mate, so he keeps the way he is moving")
+	SoldierFlight.prepare(frame, [u], [], null)
 
 
 func test_he_goes_round_on_his_refuge_s_side_where_fewer_foes_stand() -> void:
