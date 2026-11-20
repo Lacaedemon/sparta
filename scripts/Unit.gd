@@ -6891,7 +6891,8 @@ func follow_line_width() -> float:
 ## A man who stands goes on pressing for his place, and the tick nothing holds him he is no
 ## longer done, nor are the men who were done behind him. So each file is dressed from the front
 ## back, each man once the man ahead of him is, by what each man sees of his own way, never by a
-## distance laid on the block or a time, and nothing latches but taking one's place. The drill
+## distance laid on the block or a time. Two things are for good: taking one's place, and, files
+## first, stepping out of one's old file (ExplicatioOpening.hold_unopened). The drill
 ## ends when every man is done, and at once when the block marches, fights, routs, squares,
 ## changes width, loses its file-major grid, or its men no longer line up with the roles the drill
 ## dealt them (a reinforcement re-deals the block). Either way the slot grid takes over from where
@@ -6947,10 +6948,10 @@ func _advance_explicatio_drill() -> void:
 ## whose leader has stopped following or stands, and who stands on his place, is pressed by a
 ## man of another regiment with room where he is, `held` (_explicatio_held_men), or waiting on a
 ## lane (`_explicatio_lanes`) every man of which has stopped following or stands. A man still in
-## his unopened old file (files first) never stands: he goes once he sees the man ahead of him
-## stand (ExplicatioOpening.hold_unopened). Read down each follow chain from the front, so a man
-## stands only once the man he dresses on does. Each man's lane and press are this tick's, read
-## from where the men stand.
+## his unopened old file (files first) never stands: he goes once the man ahead of him stands
+## by this reading, or steps out (ExplicatioOpening.hold_unopened). Read down each follow chain
+## from the front, so a man stands only once the man he dresses on does. Each man's lane and press
+## are this tick's, read from where the men stand.
 func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 	var stand := PackedByteArray()
 	stand.resize(soldiers)
@@ -6961,7 +6962,7 @@ func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 			if stand[i] == 1 or _explicatio_following[i] == 0:
 				continue
 			if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
-				continue   # still in his unopened file: he goes once he sees the man ahead stand
+				continue   # still in his unopened file: he goes once the man ahead stands
 			var a: int = _explicatio_leaders[i]
 			if not (a < 0 or _explicatio_following[a] == 0 or stand[a] == 1):
 				continue

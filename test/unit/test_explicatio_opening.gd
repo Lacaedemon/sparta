@@ -579,8 +579,8 @@ func test_the_reading_rides_the_live_order_and_a_snapshot() -> void:
 ## 2026-11-19. Files first, each file opens out with its men still in it and only then does its
 ## epistates step in beside the leader, so no file leader gets a fortieth of a rank pitch ahead.
 ## The column leaders still come up into line past it before they settle, 1.27 wu centred and
-## 1.32 wu held on the right, so the front as a whole runs a little further ahead files first,
-## or a little further, within a quarter of a rank pitch, the bound every other reading keeps.
+## 1.32 wu held on the right, so the front as a whole runs a little further ahead files first
+## than together, but within a quarter of a rank pitch, the bound every other reading keeps.
 ## The men wait in their files on the way, and the drill ends with the files doubled and nobody
 ## closer than a body radius to another man.
 # TODO(#1989): a man coming up into line with way on across his front still overshoots it.

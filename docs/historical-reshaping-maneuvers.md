@@ -191,7 +191,7 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
 - **`files_first`** (also the sim's inference).
   Each old file opens out to its distance as a whole, every man keeping his place in it behind the man ahead of him,
   and only once its file leader stands, on his place or held off it, does the man behind him step out into the interval beside it and come up,
-  and each man behind him once he sees the man ahead of him in his line stand or step out.
+  and each man behind him once the man ahead of him in his line stands, by the drill's own reading of who stands, or steps out.
   While he waits he trails the man ahead of him, a rank pitch behind.
   What he sees of that man's motion cannot tell a man stepping out from one trailing the file sideways as it opens
   (in a centred alternate-rank drill all 8061 offsets of men stepping out, 0 to 4.6 wu, lay within the 5.64 wu trailing men reached, measured 2026-11-20),
@@ -268,11 +268,11 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   when he is held: the step he took toward his place brought him no nearer it and he is going toward it no faster,
   so something he cannot pass, a face of rock or a friend's body, holds him off his place,
   or when every man of the lane he waits on has stopped or stands.
-  In the files-first reading a man still waiting in his unopened old file never stands: he goes once he sees the man ahead of him in his line stand or step out.
+  In the files-first reading a man still waiting in his unopened old file never stands: he goes once the man ahead of him in his line stands, by the drill's own reading, or steps out.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held.
   A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
   A friendly block that presses men and then marches off leaves them to go on to their places.
-  Only taking one's place is for good.
+  Two things are for good: taking one's place, and, files first, stepping out of one's old file.
   When the drill ends the grid is laid on every man where he stands, as before,
   and a held man's slot then lies near the place he could not reach.
   The men whose slots lie on the rock press on for them, and the block walks back after them:

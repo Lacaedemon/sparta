@@ -21,15 +21,17 @@ const NAMES := {Reading.TOGETHER: "together", Reading.FILES_FIRST: "files first"
 ## whole. The leader, the front man of the file that stays (rank 0), keeps his own plan. From
 ## where the men stand (`bodies`), the man ahead of a man is the nearest of the leader and the men
 ## of his old file within a file pitch (`file_pitch`) of his line and ahead of him by both men's
-## facings (`facings`), so no two men wait on each other. A man waits until he sees that man stand,
-## on his place for good (`following` 0) or on the last tick (`stood`), or step out: be a man the
-## deal put in the interval file, standing over half a file pitch off his line. What a man sees of
-## the motion cannot tell a man stepping out from one trailing the file sideways as it opens (all
-## 8061 offsets of men stepping out in a centred alternate-rank drill, 0 to 4.6 wu, lay within the
-## 5.64 wu the trailing men reached), so the step-out is read from the deal, which file each man
-## was given, drill every man knows; a man of the file that stays only trails. A man who has gone
-## and stands over half a file pitch off his leader's line has stepped out (`released`) and never
-## waits again. Adds "waiting" and "released" (with this tick's added).
+## facings (`facings`), so no two men wait on each other. A man waits until that man stands, on his
+## place for good (`following` 0) or on the last tick by the drill's own reading (`stood`,
+## Unit._explicatio_standing_men, which needs the man he dresses on done or standing too: a man at
+## rest is not enough, since every man is at rest before the drill moves), or steps out: be a man
+## the deal put in the interval file, standing over half a file pitch off his line.
+## What a man sees of the motion cannot tell a man stepping out from one trailing the file
+## sideways as it opens (all 8061 offsets of men stepping out in a centred alternate-rank drill, 0
+## to 4.6 wu, lay within the 5.64 wu the trailing men reached), so the step-out is read from the
+## deal, which file each man was given, drill every man knows; a man of the file that stays only
+## trails. A man who has gone and stands over half a file pitch off his leader's line has stepped
+## out (`released`) and never waits again. Adds "waiting" and "released" (with this tick's added).
 static func hold_unopened(plan: Dictionary, file_ids: PackedInt32Array, ranks: PackedInt32Array,
 		bodies: PackedVector2Array, facings: PackedVector2Array, lane_split: int, inward: bool,
 		following: PackedByteArray, stood: PackedByteArray, released: PackedByteArray,

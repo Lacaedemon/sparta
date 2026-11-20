@@ -23,14 +23,17 @@ const FRIEND_STANDS := 240
 ## Ticks for the drill to play out: the half-file drill measured on this build ends by tick 620
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
-## The x 1090 terrain drill after it ends, measured 2026-11-19 on this build (seed 1948): the
-## front walks back TERRAIN_FELL wu in the 240 ticks after and the nearest two men come
-## TERRAIN_CLOSEST wu apart, together and files first alike within a few hundredths. These are
-## bounds the walk back may not exceed, not values it must keep: it is a defect, and keeping each
-## man's place from the men around him rather than from a slot should shrink it.
+## The x 1090 terrain drill after it ends, measured 2026-11-20 on this build (seed 1948): in the
+## 240 ticks after, the front walks back 26.4721 wu together and 25.6694 wu files first, and the
+## nearest two men come 1.0180 wu apart together and 1.0052 wu files first. Each bound is the
+## together measurement plus a deliberate tolerance, a quarter wu on the walk back and a twentieth
+## of a wu on the spacing, which the files-first readings fall inside, so "no worse" allows run to
+## run noise from a later change and no more. These are bounds the walk back may not exceed, not
+## values it must keep: it is a defect, and keeping each man's place from the men around him
+## rather than from a slot should shrink it.
 # TODO(#1954): the walk back after the drill, the post-drill shape #1954 requires (#1990).
-const TERRAIN_FELL := 26.5
-const TERRAIN_CLOSEST := 1.0
+const TERRAIN_FELL := 26.4721 + 0.25
+const TERRAIN_CLOSEST := 1.0180 - 0.05
 const HALF_FILE := UnitFormation.ExplicatioDrill.HALF_FILE
 const ALTERNATE_RANK := UnitFormation.ExplicatioDrill.ALTERNATE_RANK
 
@@ -147,7 +150,6 @@ func _places(u: Unit) -> PackedVector2Array:
 	return u._explicatio_places
 
 
-## The farthest any man of `u` stands from his slot.
 ## How many of `u`'s men stand more than the reform settle distance off their slots: read the
 ## tick a drill ends, the men it ended short of their places, the grid laid on every man.
 func _short(u: Unit) -> int:
@@ -159,6 +161,7 @@ func _short(u: Unit) -> int:
 	return n
 
 
+## The farthest any man of `u` stands from his slot.
 func _worst_off_slot(u: Unit) -> float:
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var worst: float = 0.0
@@ -1113,7 +1116,7 @@ func _held_by_terrain(opening: int) -> Dictionary:
 	for p in u._sim_soldier_pos:
 		right_edge = maxf(right_edge, p.x)
 	assert_lt(right_edge, 1150.0, "nobody stands on the rock")
-	gut.p("opening %d: ended %d, short %d, fell %.2f, closest %.2f" % [opening, walk["ended"],
+	gut.p("opening %d: ended %d, short %d, fell %.4f, closest %.4f" % [opening, walk["ended"],
 			walk["short"], front_at_end - front_low, closest])
 	return {"fell": front_at_end - front_low, "closest": closest}
 
