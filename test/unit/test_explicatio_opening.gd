@@ -143,6 +143,40 @@ func test_the_men_of_a_file_not_yet_opened_keep_their_places_in_it() -> void:
 		assert_eq(leaders[i], drill_leaders[i], "man %d of the opened file has the drill's plan" % i)
 
 
+## A man of the old file who has come up ahead of its leader has moved off: he is not in the column
+## and does not wait, and the man behind the leader still follows the leader.
+func test_a_man_ahead_of_his_file_leader_is_not_in_the_column() -> void:
+	var f: Dictionary = _two_old_files()
+	var bodies: PackedVector2Array = f["bodies"]
+	bodies[5] += Vector2(0, 20)   # old file 1's epistates, up past his file leader
+	var held: Dictionary = ExplicatioOpening.hold_unopened(f["plan"], f["files"], f["ranks"],
+			bodies, Vector2(0, 1), 0, false, PackedByteArray([1, 1, 1, 1, 1, 1, 1, 1]), 9.0)
+	assert_eq((held["waiting"] as PackedByteArray)[5], 0, "the man ahead of the leader does not wait")
+	assert_eq((held["leaders"] as PackedInt32Array)[6], 4, "the man behind the leader follows him")
+
+
+## A man waiting in his old file stands when, and only when, the man ahead of him in it stands:
+## while the files open on open ground every waiting man stands exactly as the man he follows.
+func test_a_waiting_man_stands_only_with_the_man_ahead_of_him() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.CENTRE, ALTERNATE_RANK,
+			OUTWARD, LENGTHEN, DuplicatioMarch.Reading.WALK, FILES_FIRST)
+	var checked: int = 0
+	var unlike: int = 0
+	for _t in range(120):
+		await get_tree().physics_frame
+		if not u.explicatio_drill_active() or u._explicatio_standing.size() != u.soldiers:
+			continue
+		for i in range(u.soldiers):
+			if u._explicatio_waiting.size() != u.soldiers or u._explicatio_waiting[i] == 0:
+				continue
+			checked += 1
+			if u._explicatio_standing[i] != u._explicatio_standing[u._explicatio_leaders[i]]:
+				unlike += 1
+	assert_gt(checked, 0, "precondition: men waited in their files")
+	assert_eq(unlike, 0, "no waiting man stood apart from the man ahead of him")
+
+
 ## A casualty closes up each file's ranks (SoldierMelee.reap, UnitFormation.drop_rank_assignment),
 ## so a man's rank in his new file no longer says who stood ahead of him. The man ahead is read
 ## from where the men stand: with the epistates of old file 0 fallen and the ranks closed up, the
