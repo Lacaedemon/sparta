@@ -31,10 +31,8 @@ static var _frame: int = -1
 ## pursuing and pulling-up men, and in their blows and the blows struck at them.
 static var looks: int = 0
 static var work_usec: int = 0
-## How many battle ticks have run, the one the bodies are stepping included (Battle._tick + 1,
-## which a replay seek rewinds; the physics frame counter does not). Battle sets it before the
-## bodies step; each routed man and each rider looks round on a tick of his own phased on it
-## (SoldierFlightStep, SoldierPursuitStep).
+## Battle ticks run, this one included (Battle._tick + 1; a seek rewinds it, not the frame counter):
+## routed men and riders look round on ticks of their own phased on it.
 static var tick: int = 0
 
 
@@ -50,8 +48,8 @@ static func prepare(frame: int, units: Array, terrain: Array, path_field: Object
 
 ## What man `i` of `unit` perceives (ManPerception.perceive's answer), out to his unit's whole
 ## sight_range: a man running from foes still sees the ones ahead of him, so the fog's routing cut
-## does not apply. Nothing when perception is off or nothing prepared it this frame.
-## With `routed_only`, only routed foes count (a rider riding a rout down).
+## does not apply. Nothing when perception is off or nothing prepared it this frame. With
+## `routed_only`, only routed foes count (a rider riding a rout down).
 static func perceived(unit: Unit, i: int, frame: int, routed_only: bool = false) -> Dictionary:
 	looks += 1
 	if not perceive_threats or frame != _frame:
