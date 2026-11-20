@@ -4,9 +4,9 @@ extends GutTest
 ## docs/historical-reshaping-maneuvers.md, "The explicatio drills"):
 ## - TOGETHER, the default: the files open out while the men step in, the sim's own inference.
 ## - FILES_FIRST: each old file opens out to its distance as a whole, its men keeping their places
-##   in it, and only then do they step into the interval beside it (Asclepiodotus 10.17 inserts
-##   between files already open; Bingham's note on Aelian 29.3, "must be done in open order";
-##   Aelian 33, the files "moue on till the first distance recouered").
+##   in it, and only then do they step into the interval beside it, each once the man ahead of
+##   him has gone (Bingham's note on Aelian 29.3, "must be done in open order"; Aelian 33 and
+##   Bingham's note on it, the files "moue on till the first distance recouered").
 
 const SPAWN := Vector2(500, 300)
 const SPEARMEN := 140
@@ -121,26 +121,55 @@ func _two_old_files() -> Dictionary:
 
 ## While the front man of an old file is still following, each man behind him follows the man
 ## ahead of him in the column, a rank pitch behind, held from the drill; the front man keeps his
-## own plan. Once he has taken his place the man behind him moves off, and so does each man behind
-## him once the man ahead of him has, read down the column on the same tick.
+## own plan. Once he has taken his place only the man right behind him moves off: the man behind
+## that man still waits on him, who has not yet moved.
 func test_the_men_of_a_file_not_yet_opened_keep_their_places_in_it() -> void:
 	var f: Dictionary = _two_old_files()
 	var drill_leaders: PackedInt32Array = (f["plan"]["leaders"] as PackedInt32Array).duplicate()
 	var following := PackedByteArray([0, 1, 1, 1, 1, 1, 1, 1])   # old file 0's front man is placed
 	var held: Dictionary = ExplicatioOpening.hold_unopened(f["plan"], f["files"], f["ranks"],
-			f["bodies"], Vector2(0, 1), 0, false, following, 9.0)
+			f["bodies"], Vector2(0, 1), 0, false, following, 9.0, 9.0)
 	var leaders: PackedInt32Array = held["leaders"]
-	assert_eq(held["waiting"], PackedByteArray([0, 0, 0, 0, 0, 1, 1, 1]),
-		"the men behind the front man of the file not yet opened wait")
-	assert_eq(leaders[4], drill_leaders[4], "that file's front man keeps his plan")
+	assert_eq(held["waiting"], PackedByteArray([0, 0, 1, 1, 0, 1, 1, 1]),
+		"behind the placed leader only his epistates moves off; behind the other leader all wait")
+	assert_eq(leaders[1], drill_leaders[1], "the man behind the placed leader has the drill's plan")
+	assert_eq(leaders[2], 1, "the man behind him still waits on him")
+	assert_eq(leaders[4], drill_leaders[4], "the other file's front man keeps his plan")
 	assert_eq(leaders[5], 4, "the epistates stays behind his file leader")
 	assert_eq(leaders[6], 5, "the next man behind the epistates")
 	assert_eq(leaders[7], 6, "and the last behind him")
 	assert_eq((held["offsets"] as PackedVector2Array)[5], Vector2(0.0, 9.0), "a rank behind")
 	assert_eq((held["guides"] as PackedInt32Array)[5], SoldierFollow.NOT_FOLLOWING,
 		"dressing on nobody's line")
-	for i in range(4):
-		assert_eq(leaders[i], drill_leaders[i], "man %d of the opened file has the drill's plan" % i)
+
+
+## Each man moves off when he sees the man ahead of him go: once old file 0's epistates has stepped
+## more than half a file pitch out of the file, the man behind him moves off and the last man still
+## waits on him; once that man has taken his place, the last man moves off too. A leader still
+## following who has stepped aside as his file opens holds the man behind him all the same: only
+## his taking his place lets that man go.
+func test_each_man_moves_off_once_the_man_ahead_of_him_has_gone() -> void:
+	var f: Dictionary = _two_old_files()
+	var bodies: PackedVector2Array = f["bodies"]
+	bodies[1] += Vector2(5.0, 0.0)   # the epistates has stepped out toward his interval
+	bodies[4] += Vector2(5.0, 0.0)   # old file 1's leader, still following, has stepped aside
+	var following := PackedByteArray([0, 1, 1, 1, 1, 1, 1, 1])
+	var plan: Dictionary = f["plan"]
+	var held: Dictionary = ExplicatioOpening.hold_unopened(plan.duplicate(true), f["files"],
+			f["ranks"], bodies, Vector2(0, 1), 0, false, following, 9.0, 9.0)
+	assert_eq((held["waiting"] as PackedByteArray).slice(0, 4), PackedByteArray([0, 0, 0, 1]),
+		"the man behind the epistates moves off; the last man waits on him")
+	assert_eq((held["waiting"] as PackedByteArray)[5], 1,
+		"the man behind a leader who has stepped aside but not taken his place still waits")
+	assert_eq((held["leaders"] as PackedInt32Array)[3], 2, "on the man ahead of him")
+	bodies[1] -= Vector2(1.0, 0.0)   # back to 4 wu out: within half a file pitch
+	held = ExplicatioOpening.hold_unopened(plan.duplicate(true), f["files"], f["ranks"], bodies,
+			Vector2(0, 1), 0, false, following, 9.0, 9.0)
+	assert_eq((held["waiting"] as PackedByteArray)[2], 1, "a man not yet out of the file holds him")
+	following[2] = 0   # the man behind the epistates, a man of the file that stays, takes his place
+	held = ExplicatioOpening.hold_unopened(plan.duplicate(true), f["files"], f["ranks"], bodies,
+			Vector2(0, 1), 0, false, following, 9.0, 9.0)
+	assert_eq((held["waiting"] as PackedByteArray)[3], 0, "the last man moves off")
 
 
 ## A man of the old file who has come up ahead of its leader has moved off: he is not in the column
@@ -150,9 +179,59 @@ func test_a_man_ahead_of_his_file_leader_is_not_in_the_column() -> void:
 	var bodies: PackedVector2Array = f["bodies"]
 	bodies[5] += Vector2(0, 20)   # old file 1's epistates, up past his file leader
 	var held: Dictionary = ExplicatioOpening.hold_unopened(f["plan"], f["files"], f["ranks"],
-			bodies, Vector2(0, 1), 0, false, PackedByteArray([1, 1, 1, 1, 1, 1, 1, 1]), 9.0)
+			bodies, Vector2(0, 1), 0, false, PackedByteArray([1, 1, 1, 1, 1, 1, 1, 1]), 9.0, 9.0)
 	assert_eq((held["waiting"] as PackedByteArray)[5], 0, "the man ahead of the leader does not wait")
 	assert_eq((held["leaders"] as PackedInt32Array)[6], 4, "the man behind the leader follows him")
+
+
+## Live, files first, alternate rank: in every old file the last man moves off some ticks after the
+## man right behind its leader, not on the same tick, since each man moves off only once he sees
+## the man ahead of him go.
+func test_the_rear_of_a_file_moves_off_after_its_front() -> void:
+	var u: Unit = await _stage()
+	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.CENTRE, ALTERNATE_RANK,
+			OUTWARD, LENGTHEN, DuplicatioMarch.Reading.WALK, FILES_FIRST)
+	var forward: Vector2 = u.facing
+	var columns: Dictionary = {}   # old file -> its men, front to rear, as they stand at the start
+	for i in range(u.soldiers):
+		var k: int = u._sim_soldier_file[i] >> 1
+		if not columns.has(k):
+			columns[k] = []
+		columns[k].append(i)
+	var first: Dictionary = {}   # old file -> the man right behind its leader
+	var last: Dictionary = {}    # old file -> its rear man
+	for k in columns:
+		var men: Array = columns[k]
+		men.sort_custom(func(a: int, b: int) -> bool:
+			return u._sim_soldier_pos[a].dot(forward) > u._sim_soldier_pos[b].dot(forward))
+		if men.size() > 2:
+			first[k] = men[1]
+			last[k] = men[men.size() - 1]
+	var gone := PackedInt32Array()
+	gone.resize(u.soldiers)
+	gone.fill(-1)
+	var waited := PackedByteArray()
+	waited.resize(u.soldiers)
+	for t in range(DRILL_TICKS):
+		await get_tree().physics_frame
+		if not u.explicatio_drill_active():
+			break
+		if u._explicatio_waiting.size() != u.soldiers:
+			continue
+		for i in range(u.soldiers):
+			if u._explicatio_waiting[i] == 1:
+				waited[i] = 1
+			elif waited[i] == 1 and gone[i] < 0:
+				gone[i] = t
+	var later: int = 0
+	for k in last:
+		if waited[first[k]] == 0:
+			continue
+		assert_gte(gone[first[k]], 0, "old file %d: the man behind the leader moved off" % k)
+		assert_gt(gone[last[k]], gone[first[k]],
+			"old file %d: its rear man moved off after the man behind its leader" % k)
+		later += 1
+	assert_gt(later, 0, "precondition: files whose men waited")
 
 
 ## A man waiting in his old file stands when, and only when, the man ahead of him in it stands:
@@ -193,7 +272,7 @@ func test_a_man_whose_man_ahead_fell_follows_the_next_man_ahead() -> void:
 	var plan: Dictionary = UnitFormation.explicatio_follow_plan(files, ranks, roles, 0, 0, 9.0,
 			9.0)
 	var held: Dictionary = ExplicatioOpening.hold_unopened(plan.duplicate(true), files, ranks,
-			bodies, Vector2(0, 1), 0, false, PackedByteArray([1, 1, 1, 1, 1]), 9.0)
+			bodies, Vector2(0, 1), 0, false, PackedByteArray([1, 1, 1, 1, 1]), 9.0, 9.0)
 	var leaders: PackedInt32Array = held["leaders"]
 	assert_eq(held["waiting"], PackedByteArray([0, 1, 1, 1, 1]), "every man behind A0 waits")
 	assert_eq(leaders[1], 0, "A2 follows A0, the man now ahead of him")
@@ -201,7 +280,7 @@ func test_a_man_whose_man_ahead_fell_follows_the_next_man_ahead() -> void:
 	assert_eq(leaders[2], 3, "A4 follows A3")
 	assert_eq(leaders[4], 2, "and A5 follows A4")
 	var unlined: Dictionary = ExplicatioOpening.hold_unopened(plan.duplicate(true), files, ranks,
-			bodies, Vector2(0, 1), 0, false, PackedByteArray([1]), 9.0)
+			bodies, Vector2(0, 1), 0, false, PackedByteArray([1]), 9.0, 9.0)
 	assert_eq(unlined["waiting"], PackedByteArray([0, 0, 0, 0, 0]),
 		"flags that do not line up hold nobody")
 
@@ -254,10 +333,11 @@ func test_the_reading_rides_the_live_order_and_a_snapshot() -> void:
 ## 2026-11-19. Files first, each file opens out with its men still in it and only then does its
 ## epistates step in beside the leader, so no file leader gets a fortieth of a rank pitch ahead.
 ## The column leaders still come up into line past it before they settle, 1.27 wu centred and
-## 1.24 wu held on the right, so the front as a whole runs as far ahead files first as together or
-## a little further, within a quarter of a rank pitch, the bound every other reading keeps (TODO(#1989): a man coming up into line with way on
-## across his front still overshoots it). The men wait in their files on the way, and the drill
-## ends with the files doubled and nobody closer than a body radius to another man.
+## 1.24 wu held on the right, so the front as a whole runs as far ahead files first as together,
+## or a little further, within a quarter of a rank pitch, the bound every other reading keeps.
+## The men wait in their files on the way, and the drill ends with the files doubled and nobody
+## closer than a body radius to another man.
+# TODO(#1989): a man coming up into line with way on across his front still overshoots it.
 func test_files_first_keeps_the_alternate_rank_file_leaders_on_their_line() -> void:
 	for anchor in [UnitFormation.Anchor.CENTRE, UnitFormation.Anchor.RIGHT]:
 		var u: Unit = await _stage()

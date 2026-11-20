@@ -1418,9 +1418,10 @@ Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to t
   A block already in tight order, a shield wall, a testudo or a square has no closer order to take, and is not given the order.
 - **Together** (the default, the game's own reading): the files open out while the men step into the intervals.
 - **Files first**: each file opens out to its distance with all its men still in it,
-  and only once its file leader is in his place do its men step into the interval beside it and come up.
-  Asclepiodotus puts the new files "between the original files", which already stand apart,
-  and Bingham's note on Aelian 29.3 says the insertion "must be done in open order";
+  and only once its file leader is in his place do its men step into the interval beside it and come up,
+  each man once he sees the man ahead of him go.
+  Bingham's note on Aelian 29.3 says the doubling "must be done in open order",
+  the files already standing apart when the men march up between them;
   doing the opening first in a drill that opens and inserts at once is the game's inference.
   With every second man stepping in, the file leaders then keep the line they stood on,
   where together each man stepping out from right behind his file leader presses him about 1 wu (5 cm) ahead of it.

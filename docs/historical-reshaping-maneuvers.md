@@ -189,10 +189,13 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
   The files open out sideways while the men who change file step out and come up the intervals.
 
 - **`files_first`**.
-  Each old file opens out to its distance as a whole, every man keeping his place in it behind the man who stood ahead of him,
-  and only once its file leader has taken his place do its men step into the interval beside it and come up.
-  Asclepiodotus 10.17 inserts the new files "between the original files", so the files already stand apart,
-  and Bingham's note on Aelian 29.3 says the insertion "must be done in open order".
+  Each old file opens out to its distance as a whole, every man keeping his place in it behind the man ahead of him,
+  and only once its file leader has taken his place does the man behind him step into the interval beside it and come up,
+  and each man behind him once he sees the man ahead of him go.
+  Bingham's note on Aelian 29.3 says the doubling "must be done in open order",
+  the files "standing in open order" when the middlemen march up between them.
+  Asclepiodotus 10.17 and Aelian 29.3 themselves insert on the same ground, the phalanx keeping its length,
+  so they are the `same_ground` reading, not this one.
   In Aelian 33 the opening is the files moving out to their distance, "the rest proceeding on to the Target",
   and in Bingham's note on it they "moue on till the first distance recouered".
   The lengthening explicatio opens and inserts in one drill,

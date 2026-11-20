@@ -6620,7 +6620,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 	if _explicatio_opening == ExplicatioOpening.Reading.FILES_FIRST:
 		plan = ExplicatioOpening.hold_unopened(plan, _sim_soldier_file, _sim_soldier_rank,
 				_sim_soldier_pos.slice(0, count), facing.normalized(), _explicatio_lane_split,
-				_explicatio_inward, _explicatio_following, rank_pitch_wu())
+				_explicatio_inward, _explicatio_following, file_pitch_wu(), rank_pitch_wu())
 		leaders = plan["leaders"]
 		_explicatio_waiting = plan["waiting"]
 	var points := PackedVector2Array()

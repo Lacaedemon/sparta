@@ -25,12 +25,12 @@ const FRIEND_STANDS := 240
 const DRILL_TICKS := 800
 ## The x 1090 terrain drill after it ends, measured on this build (seed 1948): the front walks back
 ## 26.47 wu in the 240 ticks after, and the nearest two men come 1.02 wu apart; widened files
-## first, 25.66 wu and 1.01 wu.
+## first, 25.65 wu and 1.00 wu.
 # TODO(#1990): the block should keep the shape its men took, not walk to slots on the rock.
 const TERRAIN_FELL := 26.47
 const TERRAIN_CLOSEST := 1.02
-const TERRAIN_FELL_FILES_FIRST := 25.66
-const TERRAIN_CLOSEST_FILES_FIRST := 1.01
+const TERRAIN_FELL_FILES_FIRST := 25.65
+const TERRAIN_CLOSEST_FILES_FIRST := 1.00
 const HALF_FILE := UnitFormation.ExplicatioDrill.HALF_FILE
 const ALTERNATE_RANK := UnitFormation.ExplicatioDrill.ALTERNATE_RANK
 
@@ -1042,8 +1042,8 @@ func test_a_drill_crowded_by_a_friendly_block_still_ends() -> void:
 ## wing onto the rock: the men it holds off their places, whom no regiment presses, are held while
 ## their steps make no way, the men behind them dress on them, and the drill ends with them short
 ## of their places. On main the men the rock held kept following, and every man behind them, so the
-## drill never ended (it was still running after 3000 ticks with 7 to 38 men following, for blocks
-## 30 to 50 wu off it). But once it ends the grid's slots of the men held short lie on the rock,
+## drill never ended: after 3000 ticks 22 men still followed at x 1090, its left flank 24 wu short
+## of the hill, and 7 at x 1075, 39 wu short (measured on main, 2026-11-19). But once it ends the grid's slots of the men held short lie on the rock,
 ## they press on for them, and the block walks back after them, a regression of the drill now
 ## ending that waits on relational formation keeping: the measured values are pinned here, so a
 ## change to them shows.
