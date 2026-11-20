@@ -201,6 +201,11 @@ func test_only_a_man_of_the_interval_file_steps_out() -> void:
 		held = _hold(f, bodies, following, PackedByteArray(), released)
 		assert_eq((held["waiting"] as PackedByteArray)[6], 0,
 			"the man behind him sees him step out and goes, whatever the epistates' own flags")
+	bodies[5] += Vector2(5.0, 0.0)   # now a file pitch out, in the interval, nearer than the leader
+	held = _hold(f, bodies, following)
+	assert_eq((held["waiting"] as PackedByteArray)[6], 1,
+		"a man out in the interval is not in the line: the man behind waits on his leader")
+	assert_eq((held["leaders"] as PackedInt32Array)[6], 4, "on the leader")
 
 
 ## A man of the old file who has come up ahead of its leader is not in the line ahead of the men
@@ -378,13 +383,22 @@ func test_a_casualty_after_men_have_stepped_out_brings_none_of_them_back() -> vo
 
 ## A snapshot taken files first while men wait in their old files restores a drill that plays on
 ## exactly as before: who waits and who stands on every tick, the tick it ends, and where every
-## man stands after. The men stood on the last tick ride the snapshot, since the men behind them
-## read them on the next.
+## man stands after. The men who stood on the last tick ride the snapshot, since the men behind
+## them read them on the next, and so do the release flags: the snapshot is taken on a tick when
+## each decides the next (_run_until_standing_and_waiting).
 func test_a_files_first_drill_with_men_waiting_plays_on_alike_after_a_restore() -> void:
+	await _assert_plays_on_alike("stood")
+
+
+func test_a_files_first_drill_with_men_out_plays_on_alike_after_a_restore() -> void:
+	await _assert_plays_on_alike("flags")
+
+
+func _assert_plays_on_alike(want: String) -> void:
 	var u: Unit = await _stage()
 	_battle.enqueue_file_double([u.uid], 1, UnitFormation.Anchor.CENTRE, ALTERNATE_RANK,
 			OUTWARD, LENGTHEN, DuplicatioMarch.Reading.WALK, FILES_FIRST)
-	await _run_until_standing_and_waiting(u)
+	await _run_until_standing_and_waiting(u, want)
 	assert_gt(u._explicatio_waiting.count(1), 0, "precondition: men wait in their files")
 	var snap: Dictionary = u.to_snapshot_dict()
 	var first: Dictionary = await _play_out(u)
@@ -405,19 +419,16 @@ func test_a_files_first_drill_with_men_waiting_plays_on_alike_after_a_restore() 
 
 
 ## Run `u`'s files-first drill until the snapshot it would take carries state the next tick
-## needs: a waiting man whose man ahead stood this tick (_waiting_on_a_man_who_stood), and men whose
-## release flags decide whether they wait (_release_flags_matter).
-func _run_until_standing_and_waiting(u: Unit) -> void:
-	var stood: bool = false
-	var flags: bool = false
+## needs: `want` "stood", a waiting man whose man ahead stood this tick
+## (_waiting_on_a_man_who_stood); "flags", men whose release flags decide whether they wait
+## (_release_flags_matter).
+func _run_until_standing_and_waiting(u: Unit, want: String) -> void:
 	for _t in range(DRILL_TICKS):
 		await get_tree().physics_frame
-		stood = stood or _waiting_on_a_man_who_stood(u) >= 0
-		flags = flags or _release_flags_matter(u)
-		if _waiting_on_a_man_who_stood(u) >= 0 and _release_flags_matter(u):
+		if (want == "stood" and _waiting_on_a_man_who_stood(u) >= 0) \
+				or (want == "flags" and _release_flags_matter(u)):
 			return
-	assert_true(stood and flags, "precondition: a tick on which both matter (stood %s, flags %s)"
-			% [stood, flags])
+	fail_test("precondition: no tick on which the %s decide the next" % want)
 
 
 ## The waiting man of `u` whose man ahead stood this tick, so goes the next, or -1.
