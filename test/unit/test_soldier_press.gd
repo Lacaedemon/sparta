@@ -28,7 +28,9 @@ func test_a_foe_man_touching_a_foe_body_presses_whoever_is_near_him() -> void:
 	ours.target_enemy = foe
 	foe.target_enemy = _unit(0, AT + Vector2(5000, 0))
 	foe.state = Unit.State.FIGHTING
-	assert_false(_pressed(ours), "fighting in name but touching no one, he presses no one")
+	assert_true(_pressed(ours), "one of the men his block's melee strikes with, he fights")
+	foe.state = Unit.State.IDLE
+	assert_false(_pressed(ours), "out of the fight and touching no one, he presses no one")
 	foe._sim_touching_foe = PackedByteArray([1])   # as SoldierTouch marks him
 	assert_true(_pressed(ours), "touching a foe body, he fights, whichever block he touches")
 	foe._sim_soldier_pos[0] = AT + Vector2(2.0 * ours.soldier_reach() + 5.0, 0)

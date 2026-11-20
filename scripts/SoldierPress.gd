@@ -1,12 +1,14 @@
 class_name SoldierPress
 extends RefCounted
 ## Which men of a block stand in the press of a fight: within a given distance of an enemy man who
-## fights, one standing, not running, with his body touching an enemy body this tick
-## (Unit._sim_touching_foe, which SoldierTouch.mark fills before the bodies step: an enemy body
-## within the two bodies' radii, whatever his unit's state or his place in it). A man pressing a
-## flank fights whichever block his own targets; one only passing within weapon's reach does not;
-## a running man (Unit._sim_flight_dir) fights no one. The fighting men, few, are filed once a frame
-## by team and cell (a test that rebuilds the field within one frame calls reset()).
+## fights. He fights when he is one of the men his block's melee strikes with this tick
+## (Unit.engaged_soldier_indices: a pick its melee makes only while the block is engaged, a unit
+## state), or when, standing and not running, his body touches an enemy body (Unit._sim_touching_foe,
+## which SoldierTouch.mark fills: an enemy body within the two bodies' radii, whatever his unit's
+## state or his place). A man pressing a flank fights whichever block his own targets; one only
+## passing within weapon's reach does not; a running man (Unit._sim_flight_dir) fights no one.
+## Battle files the fighting men once a tick before the bodies step (prepare); a test that rebuilds
+## the field within one frame calls reset(), and an ask with nothing filed this frame files then.
 
 static var _frame: int = -1
 static var _cell: float = 1.0
@@ -30,23 +32,34 @@ static func reset() -> void:
 	_frame = -1
 
 
-## File this frame's fighting close-tier men, once, by team and cell: those touching a foe who
-## are not running.
 static func _build(unit: Unit) -> void:
-	var frame: int = Engine.get_physics_frames()
-	if frame == _frame:
+	if Engine.get_physics_frames() == _frame:
 		return
-	_frame = frame
+	_frame = Engine.get_physics_frames()
 	_cells = {}
-	if not unit.is_inside_tree():
-		return
-	var units: Array = unit.get_tree().get_nodes_in_group("units") \
-			+ unit.get_tree().get_nodes_in_group("routers")
+	if unit.is_inside_tree():
+		prepare(unit.get_tree().get_nodes_in_group("units") + unit.get_tree().get_nodes_in_group("routers"))
+
+
+## File this tick's fighting close-tier men of `units` by team and cell. Each engaged block's pick
+## is its melee's cached one when the melee made it this tick, else made here without touching that
+## cache (Unit.engaged_soldier_indices with use_cache off), so the melee's own pick is unmoved.
+static func prepare(units: Array) -> void:
+	_frame = Engine.get_physics_frames()
+	_cells = {}
 	var reach_max: float = 1.0
 	for u: Unit in units:
 		reach_max = maxf(reach_max, u.soldier_reach())
 	_cell = 2.0 * reach_max
 	for u: Unit in units:
+		if u.state == Unit.State.DEAD or u.tier == FormationTier.FAR or not u.is_engaged():
+			pass
+		elif u._engaged_indices_cache_frame == _frame and u._engaged_indices_cache_engaged 				and u._engaged_indices_cache_count == u._sim_soldier_pos.size():
+			for j in u._engaged_indices_cache:
+				_file(u, j)
+		else:
+			for j in u.engaged_soldier_indices(u._sim_soldier_pos.size(), false):
+				_file(u, j)
 		for j in range(u._sim_touching_foe.size()):
 			if u._sim_touching_foe[j] == 1 \
 					and (j >= u._sim_flight_dir.size() or u._sim_flight_dir[j] == Vector2.ZERO):
