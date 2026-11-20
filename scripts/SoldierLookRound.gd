@@ -31,7 +31,8 @@ static func look(unit: Unit, i: int, frame: int, grown: Array[Rect2]) -> void:
 
 
 ## `own` when no rock lies along it as far as man `i` can see (Unit.sight_range); else the way
-## nearest it that is clear that far, turning first to his own side of his unit's centre; else,
+## nearest it that is clear that far, turning first to his own side (SoldierFlightWay.own_side);
+## else,
 ## with rock every way, the way along which the rock lies farthest off.
 static func way_round_rock(unit: Unit, i: int, own: Vector2, grown: Array[Rect2]) -> Vector2:
 	if grown.is_empty() or own == Vector2.ZERO:
@@ -42,7 +43,7 @@ static func way_round_rock(unit: Unit, i: int, own: Vector2, grown: Array[Rect2]
 	var best_clear: float = _clear(pos, own, sight, grown)
 	if best_clear >= 1.0:
 		return own
-	var side: float = 1.0 if (pos - unit.position).cross(own) >= 0.0 else -1.0
+	var side: float = SoldierFlightWay.own_side(unit, i, own.orthogonal())
 	for turn in TURNS:
 		for s in [side, -side]:
 			var way: Vector2 = own.rotated(turn * float(s))

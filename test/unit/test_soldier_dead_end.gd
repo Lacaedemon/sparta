@@ -33,7 +33,8 @@ func _spawn(foe_at: Vector2) -> Array:
 	_battle.terrain = _walls()
 	_battle.scenario = [
 		{"team": 0, "type": "Infantry", "count": 4, "x": 710.0, "y": 1290.0, "facing": [0, -1]},
-		{"team": 1, "type": "Infantry", "count": 12, "x": foe_at.x, "y": foe_at.y, "facing": [0, -1]},
+		{"team": 1, "type": "Infantry", "count": 12, "x": foe_at.x, "y": foe_at.y, "facing": [0,
+				-1]},
 	]
 	add_child(_battle)
 	await get_tree().physics_frame
@@ -87,7 +88,8 @@ func test_a_man_boxed_by_rock_alone_is_not_cornered() -> void:
 	# Rock within his reach ahead and to either side, as tight as a slot in the rock.
 	var reach: float = u.soldier_reach()
 	var p: Vector2 = u._sim_soldier_pos[0]
-	var slot: Array[Rect2] = [Rect2(p + Vector2(-2.0 * reach, -1.5 * reach), Vector2(4.0 * reach, reach)),
+	var slot: Array[Rect2] = [Rect2(p + Vector2(-2.0 * reach, -1.5 * reach), Vector2(4.0 * reach,
+			reach)),
 			Rect2(p + Vector2(-1.5 * reach, -2.0 * reach), Vector2(reach, 2.5 * reach)),
 			Rect2(p + Vector2(0.5 * reach, -2.0 * reach), Vector2(reach, 2.5 * reach))]
 	assert_false(SoldierCornered.is_cornered(u, 0, Vector2.UP, seen, slot),

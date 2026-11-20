@@ -308,7 +308,8 @@ func test_bounded_wheel_carry_leaves_a_carry_within_the_ceiling_untouched() -> v
 		"no tick, nothing to bound")
 	var from := Vector2(123.456, 78.901)
 	var near: Vector2 = from + Vector2(0.333, 0.777)
-	assert_eq(Maneuver.bounded_wheel_carry(from, near, Vector2(31.7, -12.3), 200.0, 1.0 / 60.0), near,
+	assert_eq(Maneuver.bounded_wheel_carry(from, near, Vector2(31.7, -12.3), 200.0, 1.0 / 60.0),
+			near,
 		"bit for bit, so a formed block's wheel is unchanged")
 
 

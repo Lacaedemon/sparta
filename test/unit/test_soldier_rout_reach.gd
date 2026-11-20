@@ -30,7 +30,8 @@ func _runner_at_the_flank() -> Array:
 		return block._sim_soldier_pos[a].y < block._sim_soldier_pos[b].y)
 	var flank_man: int = flank[flank.size() / 2]
 	var r := _unit(1, 1)
-	r._sim_soldier_pos[0] = block._sim_soldier_pos[flank_man] + Vector2(0.5 * block.soldier_reach(), 0)
+	r._sim_soldier_pos[0] = block._sim_soldier_pos[flank_man] + Vector2(0.5 * block.soldier_reach(),
+			0)
 	r._rout()
 	block.state = Unit.State.FIGHTING
 	block.target_enemy = r

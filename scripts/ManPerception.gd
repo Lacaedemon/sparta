@@ -55,7 +55,8 @@ var _sight: Dictionary = {}
 var _foes := Foes.new()
 # unit -> {index -> result}; Scan.still_valid says whether a result still holds.
 var _results: Dictionary = {}
-var _routed_results: Dictionary = {}   # the same, counting only routed foes (perceive's routed_only)
+# The same, counting only routed foes (perceive's routed_only).
+var _routed_results: Dictionary = {}
 
 
 ## Bind this frame's inputs: the physics-frame counter SpatialHash is built with, every unit
@@ -99,6 +100,15 @@ func perceive(unit: Unit, index: int, frame: int, routed_only: bool = false) -> 
 		visual_field_half_angle, rear_weight, routed_only)
 	by_index[index] = result
 	return _public(result)
+
+
+## Whether man `index` of `unit` can see the point `target` this frame: within his sight and
+## along his own line of sight (ManSight), as he sees a foe.
+func sees(unit: Unit, index: int, target: Vector2) -> bool:
+	var pos: Vector2 = unit._sim_soldier_pos[index]
+	var radius: float = sight_radius if sight_radius > 0.0 else unit.sight_range
+	return not _sight.is_empty() \
+			and Sight.line_of_sight(pos, radius, target, Sight.near(_sight, pos, radius))
 
 
 func _public(r: Dictionary) -> Dictionary:

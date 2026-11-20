@@ -41,5 +41,6 @@ func test_under_short_foot_break_off_once_the_runners_are_out_of_reach() -> void
 	assert_null(f.target_enemy, "and takes up no routed unit again")
 	f.target_enemy = pair[1]
 	f.is_cavalry = true
-	assert_eq(UnitTargeting.current_target(f), pair[1], "horse ride the rout down whatever the reading")
+	assert_eq(UnitTargeting.current_target(f), pair[1],
+			"horse ride the rout down whatever the reading")
 

@@ -1,23 +1,25 @@
 class_name SoldierPursuitStep
 extends RefCounted
-## Horse riding a router down: each rider chases the nearest routed man he sees (ManPerception, the
-## men of every routed foe), not the routed unit's centre. He looks round once a reaction time
-## (Unit.rout_reaction_ticks), on a battle tick of his own (SoldierFlight.tick), and rides at that
-## man until he next looks (Unit._sim_chase_dir), riding on while he sees none; he strikes the
-## routed men in his reach at his unit's cadence (strike): at Cannae the Numidian horse cut most of
-## the fleeing Roman cavalry down (Polybius 3.116); riding at the nearest is the sim's choice. Foot
-## follow a rout in their ranks (SoldierFootPursuit). SoldierBodies.step calls step in place of the
-## slot arrival, and couple reads the unit's `position` off its men while it pursues.
+## Horse riding a router down. A horse unit under an order to move or fight takes up the chase
+## when one of its riders has a routed man within his reach (SoldierTakeUp); each rider then rides
+## at the nearest routed man he sees (ManPerception, the men of every routed foe), looking round
+## once a
+## reaction time (Unit.rout_reaction_ticks) on a battle tick of his own (SoldierFlight.tick), until
+## he sees none (Unit._sim_chase_dir ZERO), and strikes the routed men in his reach (strike). The
+## chase lasts while any rider still sees one. At Cannae the Numidian horse cut most of the fleeing
+## Roman cavalry down (Polybius 3.116); riding at the nearest is the sim's choice. Foot follow a
+## rout in their ranks (SoldierFootPursuit).
 
 
-## Whether `unit` is riding a routed enemy down: a mounted unit ordered at a routing foe with men,
-## moving or among its runners (FIGHTING). The order sends it; each rider picks his man (step).
+## Whether `unit` is riding a rout down: a horse unit under an order to move or fight (MOVING or
+## FIGHTING) with a rider still riding at a routed man he sees. Read off the men, not a target.
 static func is_pursuing(unit: Unit) -> bool:
 	if not unit.is_cavalry or (unit.state != Unit.State.MOVING and unit.state != Unit.State.FIGHTING):
 		return false
-	var quarry: Unit = unit.target_enemy
-	return is_instance_valid(quarry) and quarry.state == Unit.State.ROUTING \
-			and quarry.team != unit.team and not quarry._sim_soldier_pos.is_empty()
+	for way in unit._sim_chase_dir:
+		if way != Vector2.ZERO:
+			return true
+	return false
 
 
 ## Step `unit`'s first `n` pursuing men by `delta`; `guard` as SoldierFlightStep.step's.
@@ -34,12 +36,12 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		var had: int = unit._sim_chase_dir.size()
 		unit._sim_chase_dir.resize(n)
 		for i in range(had, n):
-			unit._sim_chase_dir[i] = look(unit, i, frame, unit._sim_body_vel[i].normalized())
+			unit._sim_chase_dir[i] = look(unit, i, frame)
 	for i in range(n):
 		var pos: Vector2 = unit._sim_soldier_pos[i]
 		var vel: Vector2 = unit._sim_body_vel[i]
 		if (SoldierFlight.tick + i) % period == 0:
-			unit._sim_chase_dir[i] = look(unit, i, frame, unit._sim_chase_dir[i])
+			unit._sim_chase_dir[i] = look(unit, i, frame)
 		var dir: Vector2 = unit._sim_chase_dir[i]
 		var pace: float = top * (field.speed_at(pos) if field != null else 1.0)
 		var desired: Vector2 = (dir * pace + unit._sim_steer[i]).limit_length(pace)
@@ -61,7 +63,8 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 ## A rider's next velocity from `vel`: he swings onto `desired` at `turn` (radians a second) at his
 ## pace, as a horse at the gallop turns rather than pulling up to, gaining or shedding pace at
 ## `accel`. At rest, or shoved past the pace he wants, he changes straight toward `desired`.
-static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float, delta: float) -> Vector2:
+static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float,
+		delta: float) -> Vector2:
 	var speed: float = vel.length()
 	if speed <= SoldierBodies.REST_SPEED or desired == Vector2.ZERO \
 			or speed > desired.length() + accel * delta:
@@ -71,14 +74,13 @@ static func ride(vel: Vector2, desired: Vector2, accel: float, turn: float, delt
 
 
 ## The way rider `i` of `unit` rides when he looks round: toward the nearest routed man he sees,
-## or on along `was` when he sees none.
-static func look(unit: Unit, i: int, frame: int, was: Vector2) -> Vector2:
+## or ZERO, no chase, when he sees none.
+static func look(unit: Unit, i: int, frame: int) -> Vector2:
 	var seen: Dictionary = SoldierFlight.perceived(unit, i, frame, true)
 	var foe: Unit = seen["nearest_unit"]
 	if foe == null:
-		return was
-	var to: Vector2 = foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]
-	return to.normalized() if to.length_squared() > 0.0 else was
+		return Vector2.ZERO
+	return (foe._sim_soldier_pos[seen["nearest_index"]] - unit._sim_soldier_pos[i]).normalized()
 
 
 ## `unit`'s pursuing men strike the routed men of any routed foe within their reach, as a

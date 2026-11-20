@@ -268,6 +268,7 @@ static func step(unit: Unit, delta: float) -> void:
 	# A rallied man still pulling up faces his run too (pull_up_rallied).
 	var pulling_up: bool = unit._rally_pending and unit.state == Unit.State.IDLE
 	# So does a man riding a router down (SoldierPursuitStep).
+	SoldierTakeUp.take_up(unit, n)
 	var pursuing: bool = SoldierPursuitStep.is_pursuing(unit)
 	if not unit._per_soldier_facing and not routing and not pulling_up and not pursuing:
 		unit._sim_soldier_facing = unit.soldier_world_facings(n)
@@ -625,10 +626,9 @@ static func step(unit: Unit, delta: float) -> void:
 		# test_infantry_respreads_after_melee_exit.gd's 90-tick settle-streak requirement
 		# outright, even though it changes nothing test_soldier_bodies.gd's own standoff
 		# tests check for.
-		if not sep_vels.is_empty():
-			var sep: Vector2 = sep_vels[i]
-			if sep != Vector2.ZERO:
-				step_vel += sep
+		var sep: Vector2 = sep_vels[i] if not sep_vels.is_empty() else Vector2.ZERO
+		if sep != Vector2.ZERO:
+			step_vel += sep
 
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
@@ -643,7 +643,8 @@ static func step(unit: Unit, delta: float) -> void:
 		unit._sim_body_vel[i] = new_vel
 		# Final physical ceiling, applied after every adjustment above and to every body
 		# alike (marching, engaged, idle/reforming): a man cannot exceed his own top pace (his
-		# sprint, `top_pace` above; a routed man is stepped by SoldierFlightStep) by more than a hard
+		# sprint, `top_pace` above; a routed man is stepped by SoldierFlightStep) by more than a
+		# hard
 		# margin no matter how fast his slot is receding out from under him.
 		# The arrival term above is already capped at jog pace, but the march feed-forward
 		# stacks on top of it with no cap of its own, so only this clamp on the FULLY
@@ -660,7 +661,11 @@ static func step(unit: Unit, delta: float) -> void:
 		var superphysical_cap: float = maxf(
 			top_pace * unit.superphysical_speed_frac, pre_tick_speed)
 		unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(superphysical_cap)
-		unit._sim_soldier_pos[i] += step_vel.limit_length(superphysical_cap) * delta
+		# The same-unit contact wins over his own drive under the ceiling, as for a free-running
+		# man (with_contact): shortening the sum would shorten the push and the stop with it, and
+		# a man at his top pace would ride on into a friend (a rider at the gallop reached 1.27 wu
+		# from another that way).
+		unit._sim_soldier_pos[i] += with_contact(step_vel - sep, sep, superphysical_cap) * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
@@ -1120,7 +1125,8 @@ static func _separate_same_unit(unit: Unit, n: int, target_slots: PackedVector2A
 			off_place[i] = 1
 			any_off = true
 	if any_off:
-		var pressed: PackedByteArray = SoldierPress.mask(unit, off_place, 2.0 * unit.soldier_reach())
+		var pressed: PackedByteArray = SoldierPress.mask(unit, off_place,
+				2.0 * unit.soldier_reach())
 		for i in range(n):
 			if pressed[i] == 1:
 				off_place[i] = 0

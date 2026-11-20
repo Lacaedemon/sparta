@@ -873,10 +873,12 @@ func test_a_pair_near_its_places_takes_only_the_push_in_a_hold_as_outside_one() 
 	var still: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2.ZERO, true)
 	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
 	var closing: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-10.0, 0.0), true)
-	assert_almost_eq(closing.x, still.x, 0.001, "in a hold a pair near its places takes only the push")
+	assert_almost_eq(closing.x, still.x, 0.001,
+			"in a hold a pair near its places takes only the push")
 	var out: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
 	var out_still: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2.ZERO, false)
-	assert_almost_eq(out.x, out_still.x, 0.001, "outside a hold a pair near its places takes only the push")
+	assert_almost_eq(out.x, out_still.x, 0.001,
+			"outside a hold a pair near its places takes only the push")
 
 
 ## A unit's standoff distance, as _separate_same_unit derives it.

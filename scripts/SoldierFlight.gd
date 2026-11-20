@@ -31,8 +31,8 @@ static var _frame: int = -1
 ## pursuing and pulling-up men, and in their blows and the blows struck at them.
 static var looks: int = 0
 static var work_usec: int = 0
-## Battle ticks run, this one included (Battle._tick + 1; a seek rewinds it, not the frame counter):
-## routed men and riders look round on ticks of their own phased on it.
+## Battle ticks run, this one included (Battle._tick + 1, which a seek rewinds): routed men and
+## riders look round on ticks of their own phased on it.
 static var tick: int = 0
 
 

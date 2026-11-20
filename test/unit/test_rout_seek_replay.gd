@@ -50,10 +50,13 @@ func test_a_rout_replays_the_same_after_a_restore() -> void:
 	assert_eq(router.state, Unit.State.ROUTING, "setup: the infantry is routing")
 	var snap: Dictionary = battle.capture_snapshot()
 	var at: int = battle.current_tick()
-	await _play_to(battle, at + PLAY_ON)
+	var chased: int = 0
+	while battle.current_tick() < at + PLAY_ON:
+		await get_tree().physics_frame
+		if SoldierPursuitStep.is_pursuing(rider):
+			chased += 1
 	var first: Dictionary = _men(battle)
-	assert_true(SoldierPursuitStep.is_pursuing(rider) or not rider._sim_chase_dir.is_empty() \
-			or rider.state != Unit.State.MOVING, "setup: the horse rode the rout down")
+	assert_gt(chased, 0, "setup: the horse rode the rout down within the replayed stretch")
 	battle.restore_snapshot(snap)
 	await get_tree().physics_frame   # the engine frame now runs PLAY_ON + 1 ahead of the first pass
 	await _play_to(battle, at + PLAY_ON)

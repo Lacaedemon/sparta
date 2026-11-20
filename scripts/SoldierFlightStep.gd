@@ -39,7 +39,7 @@ static func step(unit: Unit, n: int, guard: Dictionary, delta: float) -> void:
 		var own: Vector2 = unit._sim_flight_dir[i]
 		var desired: Vector2 = unit._sim_steer[i]
 		if own != Vector2.ZERO:
-			var mate: int = _mate_ahead(unit, i, own, mates)
+			var mate: int = _mate_ahead(unit, i, own, mates, frame)
 			var dir: Vector2 = SoldierFlight.with_mate(unit, i, own, mate, pitch)
 			desired += dir * top * (field.speed_at(pos) if field != null else 1.0)
 		if own != Vector2.ZERO and not guard.is_empty() and guard["inside"][i] == 0:
@@ -69,9 +69,10 @@ static func _size_choices(unit: Unit, n: int) -> void:
 
 
 ## The file-mate ahead of man `i` along `own`: of the men in front of and behind him in his
-## file (`mates`, SoldierFileNeighbours.compute), the one farther ahead along his line, or -1
-## when neither is ahead of him.
-static func _mate_ahead(unit: Unit, i: int, own: Vector2, mates: Array[PackedInt32Array]) -> int:
+## file (`mates`, SoldierFileNeighbours.compute) that he can see (_sees), the one
+## farther ahead along his line, or -1 when neither is ahead of him in sight.
+static func _mate_ahead(unit: Unit, i: int, own: Vector2, mates: Array[PackedInt32Array],
+		frame: int) -> int:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
 	var best: int = -1
 	var best_ahead: float = 0.0
@@ -80,7 +81,15 @@ static func _mate_ahead(unit: Unit, i: int, own: Vector2, mates: Array[PackedInt
 		if j < 0:
 			continue
 		var ahead: float = (unit._sim_soldier_pos[j] - pos).dot(own)
-		if ahead > best_ahead:
+		if ahead > best_ahead and _sees(unit, i, unit._sim_soldier_pos[j], frame):
 			best_ahead = ahead
 			best = j
 	return best
+
+
+## Whether man `i` of `unit` can see `target` (ManPerception.sees: his sight and his line of
+## sight), or, with perception off or unbound this frame, whether it lies within his sight.
+static func _sees(unit: Unit, i: int, target: Vector2, frame: int) -> bool:
+	if SoldierFlight.perceive_threats and frame == SoldierFlight._frame:
+		return SoldierFlight._perception.sees(unit, i, target)
+	return unit._sim_soldier_pos[i].distance_to(target) <= unit.sight_range

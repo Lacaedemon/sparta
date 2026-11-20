@@ -65,7 +65,8 @@ static func _touches(p: Vector2, team: int, r: float, cell: float) -> bool:
 		var by_cell: Dictionary = _cells[t]
 		for dx in range(-1, 2):
 			for dy in range(-1, 2):
-				for m: int in by_cell.get(((cx + dx) << 32) ^ ((cy + dy) & 0xFFFFFFFF), PackedInt32Array()):
+				for m: int in by_cell.get(((cx + dx) << 32) ^ ((cy + dy) & 0xFFFFFFFF),
+						PackedInt32Array()):
 					var touch: float = r + _radius[m]
 					if _pos[m].distance_squared_to(p) <= touch * touch:
 						return true

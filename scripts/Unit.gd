@@ -1794,7 +1794,8 @@ var current_speed: float:
 # step reads the rate the march velocity changed at since then, in speed or in heading
 # (capped at march_share_max_accel_mult times the body's own acceleration;
 # SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly) that
-# is not a rout (a routed unit's men run on their own), and only when the march speed did not fall, does the step grant that much
+# is not a rout (a routed unit's men run on their own), and only when the march speed did not fall,
+# does the step grant that much
 # extra acceleration to each unengaged body, on top of its own body_accel, scaled by how
 # far the body stands off its slot (SoldierBodies.march_share_frac: none within
 # march_share_from_pitches, half a file pitch by default, all of it from
@@ -9638,7 +9639,8 @@ func _advance_moving_wheel(leaf: Order, delta: float) -> bool:
 	position = hinge_new + (position - hinge_old).rotated(step)
 	for i in range(_sim_soldier_pos.size()):
 		var p: Vector2 = _sim_soldier_pos[i]
-		_sim_soldier_pos[i] = UnitManeuver.bounded_wheel_carry(p, hinge_new + (p - hinge_old).rotated(step),
+		_sim_soldier_pos[i] = UnitManeuver.bounded_wheel_carry(p,
+				hinge_new + (p - hinge_old).rotated(step),
 				_sim_body_vel[i], move_speed * superphysical_speed_frac, delta)
 		_sim_body_vel[i] = _sim_body_vel[i].rotated(step)
 	state = State.MOVING
@@ -10623,7 +10625,8 @@ func stamina_band() -> int:
 	# A far-tier router is billed at its aggregate flight's pace; a close-tier router's men are
 	# each billed at their own (man_stamina_flow_per_s).
 	if state == State.ROUTING:
-		return StaminaFlow.band_for_speed(_far_flee_pace, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
+		return StaminaFlow.band_for_speed(_far_flee_pace, walk_speed, jog_speed, move_speed,
+				ARRIVE_SPEED_EPSILON)
 	return StaminaFlow.band_for_speed(_current_speed, walk_speed, jog_speed, move_speed, ARRIVE_SPEED_EPSILON)
 
 
@@ -11426,7 +11429,8 @@ func _rout() -> void:
 	if state == State.FIGHTING:
 		_far_flee_pace = 0.0
 	else:
-		_far_flee_pace = clampf(_approach_velocity.dot(SoldierFlight.refuge_direction(self, position)),
+		_far_flee_pace = clampf(_approach_velocity.dot(SoldierFlight.refuge_direction(self,
+				position)),
 				0.0, flee_speed())
 	# _process_rout returns before the idle decay, so a pre-rout velocity left here would sit
 	# frozen through the rout and coast the rallied unit off along it on its first idle tick.
@@ -11680,7 +11684,8 @@ func deal_slots_where_men_stand() -> void:
 		return
 	var files: int = maxi(1, formation_files(soldiers))
 	_sim_soldier_row_slot = UnitFormation.pair_slots_rear_rank_first(live,
-			UnitFormation.slots(self, soldiers), files, rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5)
+			UnitFormation.slots(self,
+					soldiers), files, rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5)
 	_row_slot_files = files
 	_row_slot_dealt = true
 	_row_layout_files = files

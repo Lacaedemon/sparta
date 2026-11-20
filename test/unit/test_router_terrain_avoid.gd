@@ -98,7 +98,8 @@ func test_a_man_standing_at_the_face_is_turned_too() -> void:
 	# where he wants to go this tick meets the face, so that is turned along it.
 	var pos := Vector2(0.0, FACE_RECT.end.y)
 	var desired := Vector2(0.0, -RUN_SPEED)
-	var out: Vector2 = SoldierBodies.router_terrain_avoid(pos, Vector2.ZERO, Vector2(-300.0, -600.0),
+	var out: Vector2 = SoldierBodies.router_terrain_avoid(pos, Vector2.ZERO, Vector2(-300.0,
+			-600.0),
 			desired, _face_rects(), BODY_ACCEL, TICK)
 	assert_almost_eq(out.x, -RUN_SPEED, 0.001, "he runs west along the face")
 	assert_almost_eq(out.y, 0.0, 0.001, "with nothing left heading into the face")

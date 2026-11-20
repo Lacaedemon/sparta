@@ -5637,11 +5637,14 @@ func test_routing_flight_keeps_only_the_speed_already_carried_away_from_the_enem
 	assert_almost_eq(falling_back._far_flee_pace, 50.0, 0.0001,
 			"a unit already moving away keeps that pace into the flight")
 	var advancing := _open_ground_router(Vector2(0.0, 80.0))
-	assert_eq(advancing._far_flee_pace, 0.0, "a unit advancing on the enemy starts its flight from rest")
+	assert_eq(advancing._far_flee_pace, 0.0,
+			"a unit advancing on the enemy starts its flight from rest")
 	var oblique := _open_ground_router(Vector2(30.0, -40.0))
-	assert_almost_eq(oblique._far_flee_pace, 40.0, 0.0001, "only the part of the speed along the flight counts")
+	assert_almost_eq(oblique._far_flee_pace, 40.0, 0.0001,
+			"only the part of the speed along the flight counts")
 	var too_fast := _open_ground_router(Vector2(0.0, -10000.0))
-	assert_almost_eq(too_fast._far_flee_pace, too_fast.flee_speed(), 0.0001, "never above flee_speed()")
+	assert_almost_eq(too_fast._far_flee_pace, too_fast.flee_speed(), 0.0001,
+			"never above flee_speed()")
 
 
 func test_routing_from_melee_ignores_leftover_charge_speed() -> void:

@@ -25,7 +25,8 @@ func test_the_edge_refuge_is_each_side_s_own_rear_edge() -> void:
 	var a := _unit(0, Vector2(500, 500))
 	var b := _unit(1, Vector2(500, 900))
 	assert_eq(SoldierFlight.refuge_direction(a, a.position), Vector2.UP, "team 0's camp lies north")
-	assert_eq(SoldierFlight.refuge_direction(b, b.position), Vector2.DOWN, "team 1's camp lies south")
+	assert_eq(SoldierFlight.refuge_direction(b, b.position), Vector2.DOWN,
+			"team 1's camp lies south")
 
 
 func test_the_lines_refuge_is_the_nearest_friendly_unit() -> void:
@@ -47,7 +48,8 @@ func test_the_lines_refuge_is_the_nearest_friendly_unit() -> void:
 func test_with_perception_off_a_man_runs_for_his_refuge() -> void:
 	var a := _unit(0, Vector2(500, 500))
 	SoldierFlight.perceive_threats = false
-	assert_eq(SoldierFlight.perceived(a, 0, Engine.get_physics_frames())["threat"], Vector2.ZERO, "no threat")
+	assert_eq(SoldierFlight.perceived(a, 0, Engine.get_physics_frames())["threat"], Vector2.ZERO,
+			"no threat")
 	assert_eq(SoldierFlightWay.choose(a, 0, Vector2.ZERO), Vector2.UP,
 			"his own direction is his refuge")
 
@@ -88,7 +90,8 @@ func test_a_man_takes_part_of_his_line_from_a_mate_ahead() -> void:
 	var pitch: float = 50.0
 	var d: Vector2 = SoldierFlight.with_mate(u, 1, Vector2.UP, 0, pitch)
 	var want: Vector2 = (Vector2.UP * (1.0 - u.rout_herding) + Vector2.RIGHT * u.rout_herding).normalized()
-	assert_almost_eq(d.x, want.x, 0.0001, "a full pitch ahead, he mixes in rout_herding of the mate's run")
+	assert_almost_eq(d.x, want.x, 0.0001,
+			"a full pitch ahead, he mixes in rout_herding of the mate's run")
 	assert_almost_eq(d.y, want.y, 0.0001, "both components")
 	var half := _pair_with_mate(25.0, SoldierFlight.Follow.HERD)
 	var dh: Vector2 = SoldierFlight.with_mate(half, 1, Vector2.UP, 0, pitch)
@@ -106,7 +109,8 @@ func test_no_line_from_no_mate_a_still_mate_or_the_alone_reading() -> void:
 	var alone := _pair_with_mate(100.0, SoldierFlight.Follow.ALONE)
 	assert_eq(SoldierFlight.with_mate(alone, 1, Vector2.UP, 0, 50.0), Vector2.UP, "ALONE")
 	u._sim_body_vel[0] = Vector2.ZERO
-	assert_eq(SoldierFlight.with_mate(u, 1, Vector2.UP, 0, 50.0), Vector2.UP, "a mate standing still")
+	assert_eq(SoldierFlight.with_mate(u, 1, Vector2.UP, 0, 50.0), Vector2.UP,
+			"a mate standing still")
 
 
 func test_the_column_reading_heads_for_the_place_behind_the_mate() -> void:
@@ -133,7 +137,8 @@ func test_a_routed_man_builds_his_run_at_his_own_acceleration_and_faces_it() -> 
 		assert_almost_eq(u.soldier_facing(i).y, -1.0, 0.0001, "and faces his run, north")
 	for _t in range(2000):
 		SoldierFlightStep.step(u, u._sim_soldier_pos.size(), {}, TICK)
-	assert_almost_eq(u._sim_body_vel[0].length(), u.flee_speed(), 0.01, "he tops out at his flee pace")
+	assert_almost_eq(u._sim_body_vel[0].length(), u.flee_speed(), 0.01,
+			"he tops out at his flee pace")
 
 
 func test_a_man_takes_his_line_from_whichever_file_mate_is_ahead() -> void:
@@ -142,8 +147,30 @@ func test_a_man_takes_his_line_from_whichever_file_mate_is_ahead() -> void:
 	assert_eq(mates[0][6], 0, "man 6's file-mate in front is man 0")
 	assert_eq(mates[1][0], 6, "and man 0's behind him is man 6")
 	u._sim_soldier_pos[6] = u._sim_soldier_pos[0] + Vector2(0, -40)   # man 6 runs out in front
-	assert_eq(SoldierFlightStep._mate_ahead(u, 0, Vector2.UP, mates), 6, "man 0 now follows man 6")
-	assert_eq(SoldierFlightStep._mate_ahead(u, 6, Vector2.UP, mates), -1, "and man 6 follows nobody")
+	assert_eq(SoldierFlightStep._mate_ahead(u, 0, Vector2.UP, mates, -1), 6,
+			"man 0 now follows man 6")
+	assert_eq(SoldierFlightStep._mate_ahead(u, 6, Vector2.UP, mates, -1), -1,
+		"and man 6 follows nobody")
+
+
+func test_a_man_follows_a_file_mate_only_while_he_can_see_him() -> void:
+	var u := _unit(0, Vector2(500, 500), 12)
+	var mates: Array[PackedInt32Array] = SoldierFileNeighbours.compute(u, 12, 6)
+	var at: Vector2 = u._sim_soldier_pos[0]
+	u._sim_soldier_pos[6] = at + Vector2(0, -40)   # man 6 runs out in front
+	var frame: int = Engine.get_physics_frames()
+	SoldierFlight.prepare(frame, [u], [], null)
+	assert_eq(SoldierFlightStep._mate_ahead(u, 0, Vector2.UP, mates, frame), 6,
+			"in sight, he follows")
+	var wall := {"rect": Rect2(at + Vector2(-50, -25), Vector2(100, 10)), "kind": "block",
+		"sight": "block"}
+	SoldierFlight.prepare(frame, [u], [wall], null)
+	assert_eq(SoldierFlightStep._mate_ahead(u, 0, Vector2.UP, mates, frame), -1,
+		"rock between them hides the mate, and he follows no one")
+	SoldierFlight.prepare(frame, [u], [], null)
+	u._sim_soldier_pos[6] = at + Vector2(0, -(u.sight_range + 10.0))
+	assert_eq(SoldierFlightStep._mate_ahead(u, 0, Vector2.UP, mates, frame), -1,
+		"nor a mate past his sight")
 
 
 func test_a_routed_man_looks_round_once_a_reaction_time_on_a_tick_of_his_own() -> void:

@@ -5,8 +5,9 @@ extends RefCounted
 ## (Unit.engaged_soldier_indices: a pick its melee makes only while the block is engaged, a unit
 ## state; see prepare for which picks count), or when, standing and not running, his body touches
 ## an enemy body (Unit._sim_touching_foe, which SoldierTouch.mark fills: an enemy body within the
-## two bodies' radii, whatever his unit's state or his place). A man pressing a flank fights whichever block his own targets; one only
-## passing within weapon's reach does not; a running man (Unit._sim_flight_dir) fights no one.
+## two bodies' radii, whatever his unit's state or his place). So a foe man pressing a flank
+## fights, whichever block his own is set against; a foe man only passing within weapon's reach of
+## the block does not; and a running man (Unit._sim_flight_dir) fights no one.
 ## Battle files the fighting men once a tick before the bodies step (prepare); a test that rebuilds
 ## the field within one frame calls reset(), and an ask with nothing filed this frame files then.
 
@@ -38,7 +39,8 @@ static func _build(unit: Unit) -> void:
 	_frame = Engine.get_physics_frames()
 	_cells = {}
 	if unit.is_inside_tree():
-		prepare(unit.get_tree().get_nodes_in_group("units") + unit.get_tree().get_nodes_in_group("routers"))
+		var tree: SceneTree = unit.get_tree()
+		prepare(tree.get_nodes_in_group("units") + tree.get_nodes_in_group("routers"))
 
 
 ## File this tick's fighting close-tier men of `units` by team and cell: the touching men, and the
@@ -68,7 +70,8 @@ static func prepare(units: Array) -> void:
 
 ## File man `j` of `u`, if he lives.
 static func _file(u: Unit, j: int) -> void:
-	if j >= u._sim_soldier_pos.size() or (j < u._sim_soldier_hp.size() and u._sim_soldier_hp[j] <= 0.0):
+	if j >= u._sim_soldier_pos.size() \
+			or (j < u._sim_soldier_hp.size() and u._sim_soldier_hp[j] <= 0.0):
 		return
 	var q: Vector2 = u._sim_soldier_pos[j]
 	var by_cell: Dictionary = _cells.get_or_add(u.team, {})
@@ -88,7 +91,8 @@ static func _near(p: Vector2, team: int, dist: float) -> bool:
 		var by_cell: Dictionary = _cells[t]
 		for dx in range(-1, 2):
 			for dy in range(-1, 2):
-				for q: Vector2 in by_cell.get(((cx + dx) << 32) ^ ((cy + dy) & 0xFFFFFFFF), PackedVector2Array()):
+				for q: Vector2 in by_cell.get(((cx + dx) << 32) ^ ((cy + dy) & 0xFFFFFFFF),
+						PackedVector2Array()):
 					if q.distance_squared_to(p) <= dist * dist:
 						return true
 	return false

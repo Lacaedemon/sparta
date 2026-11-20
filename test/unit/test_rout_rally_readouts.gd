@@ -80,7 +80,8 @@ func test_a_rallied_unit_s_men_pull_up_on_their_own_then_it_re_forms() -> void:
 	assert_almost_eq(u._sim_body_vel[1].length(), u.jog_speed * 0.5 - 1.0, 0.0001,
 			"the walking man slows too")
 	u._sim_body_vel[0] = Vector2(0, -u.jog_speed)
-	assert_false(SoldierBodies.pull_up_rallied(u, 2, 60.0, TICK), "none above a jog: they have pulled up")
+	assert_false(SoldierBodies.pull_up_rallied(u, 2, 60.0, TICK),
+			"none above a jog: they have pulled up")
 	u.step_sim_soldiers(TICK)
 	assert_false(u._rally_pending, "so the step lays the grid out where they stand")
 	assert_eq(u._formation_angle, 0.0, "square to their heading")
@@ -124,6 +125,8 @@ func test_a_horse_unit_riding_a_rout_down_does_not_demote() -> void:
 	p.is_cavalry = true
 	p.target_enemy = r
 	p.state = Unit.State.MOVING
+	assert_true(TierTransition.can_demote(p), "its target routing is not enough: no rider is chasing")
+	p._sim_chase_dir = PackedVector2Array([Vector2.UP, Vector2.ZERO])   # one rider rides a runner down
 	assert_false(TierTransition.can_demote(p), "its riders are scattered after their runners")
 	p.is_cavalry = false
 	assert_true(TierTransition.can_demote(p), "foot following in their ranks may")

@@ -70,7 +70,8 @@ func test_ground_shuts_a_way_as_a_foe_does() -> void:
 func test_a_man_with_nothing_within_reach_is_not_cornered() -> void:
 	var pair: Array = _router_and_foes([Vector2(0, -200)])
 	var none: Array[Rect2] = []
-	assert_false(SoldierCornered.is_cornered(pair[0], 0, Vector2.UP, _seen(pair[0], pair[1], 0), none),
+	assert_false(SoldierCornered.is_cornered(pair[0], 0, Vector2.UP, _seen(pair[0], pair[1], 0),
+			none),
 			"a foe beyond his reach does not corner him")
 
 
@@ -81,7 +82,8 @@ func test_cornered_men_strike_the_foes_within_reach() -> void:
 	r._rout()
 	r.cornered = SoldierBreakOut.Mode.STAND
 	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
-	assert_false(SoldierBreakOut.fight(r), "standing his ground, a man still running does not fight")
+	assert_false(SoldierBreakOut.fight(r),
+			"standing his ground, a man still running does not fight")
 	r._sim_flight_dir[0] = Vector2.ZERO
 	var before: float = 0.0
 	for hp in f._sim_soldier_hp:
@@ -165,13 +167,15 @@ func test_a_man_cutting_out_strikes_only_the_foe_in_his_way() -> void:
 	r._rout()
 	r.cornered = SoldierBreakOut.Mode.CUT
 	r._sim_flight_dir = PackedVector2Array([Vector2.UP])
-	assert_false(SoldierBreakOut.has_foe_to_strike(r, 0, Vector2.UP), "a foe behind is not in his way")
+	assert_false(SoldierBreakOut.has_foe_to_strike(r, 0, Vector2.UP),
+			"a foe behind is not in his way")
 	assert_false(SoldierBreakOut.fight(r), "so he does not stop to strike him")
 	assert_true(SoldierBreakOut.has_foe_to_strike(r, 0, Vector2.DOWN), "running at him, he is")
 	r._sim_flight_dir[0] = Vector2.DOWN
 	assert_true(SoldierBreakOut.fight(r), "and he strikes the foe in his way")
 	r.cornered = SoldierBreakOut.Mode.STAND
-	assert_false(SoldierBreakOut.fight(r), "standing his ground instead, a running man strikes nobody")
+	assert_false(SoldierBreakOut.fight(r),
+			"standing his ground instead, a running man strikes nobody")
 
 
 func test_a_dead_man_s_chosen_way_goes_with_him() -> void:
@@ -198,6 +202,7 @@ func test_a_foe_that_gains_a_body_in_the_frame_is_measured_again() -> void:
 	var r: Unit = pair[0]
 	var f: Unit = pair[1]
 	var far := AT + Vector2(0, 600)
-	assert_false(SoldierCornered.foes_near(r, far, 10.0).has(f), "setup: nothing of the foe is near")
+	assert_false(SoldierCornered.foes_near(r, far, 10.0).has(f),
+			"setup: nothing of the foe is near")
 	f._sim_soldier_pos.append(far)   # a newcomer standing there, in the same frame
 	assert_true(SoldierCornered.foes_near(r, far, 10.0).has(f), "his new body is counted")

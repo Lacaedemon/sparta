@@ -5,19 +5,23 @@ extends GutTest
 const AT := Vector2(500, 500)
 
 
-func _man(at: Vector2 = AT) -> Unit:
+## A one-man unit at `at`, or, with `mate_at`, a second man of it standing there.
+func _man(at: Vector2 = AT, mate_at: Variant = null) -> Unit:
 	var u: Unit = Unit.new()
-	u.max_soldiers = 1
+	u.max_soldiers = 1 if mate_at == null else 2
 	u.team = 0   # his refuge lies north (UP)
 	add_child_autofree(u)
 	u.position = AT
 	u.seed_sim_soldiers()
 	u._sim_soldier_pos[0] = at
+	if mate_at != null:
+		u._sim_soldier_pos[1] = mate_at
 	return u
 
 
 func test_no_foe_sends_him_to_his_refuge() -> void:
-	assert_eq(SoldierFlightWay.choose(_man(), 0, Vector2.ZERO), Vector2.UP, "nothing seen: his refuge")
+	assert_eq(SoldierFlightWay.choose(_man(), 0, Vector2.ZERO), Vector2.UP,
+			"nothing seen: his refuge")
 
 
 func test_foes_behind_add_to_his_refuge_pull() -> void:
@@ -28,13 +32,18 @@ func test_foes_behind_add_to_his_refuge_pull() -> void:
 func test_balanced_pulls_never_stall_him() -> void:
 	# Foes straight between him and his refuge, weighing exactly what his refuge pulls: summed,
 	# the two would leave him standing.
-	var u := _man(AT + Vector2(10, 0))   # east of his unit's centre
+	var u := _man(AT + Vector2(10, 0), AT)   # a mate at his elbow, west of him
 	var d: Vector2 = SoldierFlightWay.choose(u, 0, Vector2(0, -u.rout_refuge_weight))
 	assert_almost_eq(d.length(), 1.0, 0.0001, "he always has a way")
 	assert_gt(d.y, 0.0, "away from the foes")
-	assert_gt(d.x, 0.0, "and round them on his own side of the unit's centre, east")
-	var w := _man(AT + Vector2(-10, 0))
-	assert_lt(SoldierFlightWay.choose(w, 0, Vector2(0, -1)).x, 0.0, "a man west of it goes west")
+	assert_gt(d.x, 0.0, "and round them away from the mate beside him, east")
+	var w := _man(AT + Vector2(-10, 0), AT)
+	assert_lt(SoldierFlightWay.choose(w, 0, Vector2(0, -1)).x, 0.0,
+			"a man with his mate east goes west")
+	var far := _man(AT + Vector2(-10, 0), AT + Vector2(-10 + 3.0 * w.soldier_reach(), 0))
+	far._sim_body_vel[0] = Vector2(-5, 0)   # running west, his mate out of sight beside him
+	assert_lt(SoldierFlightWay.choose(far, 0, Vector2(0, -1)).x, 0.0,
+		"with no mate at his elbow he keeps the way he is moving")
 
 
 func test_he_goes_round_on_his_refuge_s_side_where_fewer_foes_stand() -> void:
