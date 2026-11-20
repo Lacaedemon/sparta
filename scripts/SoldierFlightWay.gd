@@ -36,12 +36,12 @@ static func choose(unit: Unit, i: int, threat: Vector2,
 
 
 ## Which way along `across` (+1 or -1) man `i` of `unit` turns when nothing else chooses for him:
-## away from the men of his own unit he sees beside him (within twice his reach, so the files part
-## to either side), else the way he is already moving, else along `across`. He cannot see where a
-## scattered rout's centre lies; he sees the men at his elbow.
+## away from the bulk of the men of his own unit he can see (within his sight, Unit.sight_range),
+## so a block's files part to either side, else the way he is already moving, else along
+## `across`. He goes by the men he sees, not by where his unit's centre lies.
 static func own_side(unit: Unit, i: int, across: Vector2) -> float:
 	var pos: Vector2 = unit._sim_soldier_pos[i]
-	var near: float = 2.0 * unit.soldier_reach()
+	var near: float = unit.sight_range
 	var lean: float = 0.0
 	for j in range(unit._sim_soldier_pos.size()):
 		var to: Vector2 = unit._sim_soldier_pos[j] - pos

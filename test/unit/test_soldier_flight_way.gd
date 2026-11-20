@@ -40,7 +40,7 @@ func test_balanced_pulls_never_stall_him() -> void:
 	var w := _man(AT + Vector2(-10, 0), AT)
 	assert_lt(SoldierFlightWay.choose(w, 0, Vector2(0, -1)).x, 0.0,
 			"a man with his mate east goes west")
-	var far := _man(AT + Vector2(-10, 0), AT + Vector2(-10 + 3.0 * w.soldier_reach(), 0))
+	var far := _man(AT + Vector2(-10, 0), AT + Vector2(-10 + w.sight_range + 10.0, 0))
 	far._sim_body_vel[0] = Vector2(-5, 0)   # running west, his mate out of sight beside him
 	assert_lt(SoldierFlightWay.choose(far, 0, Vector2(0, -1)).x, 0.0,
 		"with no mate at his elbow he keeps the way he is moving")

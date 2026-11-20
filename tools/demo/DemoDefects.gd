@@ -956,6 +956,7 @@ static func _is_numeric_value(v) -> bool:
 const DERIVED_FIELDS: Array[String] = [
 	"slots_across_centreline", "slot_lateral_excess", "slots_beyond_flanks", "grid_off_heading",
 	"slot_distance_max", "pairs_within_body_radius", "front_rank_line", "men_facing_about",
+	"men_x_span",
 ]
 
 
@@ -1000,6 +1001,9 @@ const DERIVED_FIELDS: Array[String] = [
 ##   units to 0.01: the men whose slot lies within half a rank pitch (motion_ref.rank_pitch) of
 ##   the front-most slot, read off their bodies. A front rank standing on one line reads one
 ##   value twice; pin it with that value and a `tol` stated in rank pitches.
+## - men_x_span: how wide the unit's men stand along the world x axis, the farthest east less the
+##   farthest west, in world units to 0.1, read off their bodies alone, so a rout with no slots
+##   reads it: a squadron that has run round both sides of a block reads wider than the block.
 ## - men_facing_about: how many of the unit's men face more than a right angle off its heading,
 ##   read off each man's own facing (soldiers_full.facing): the men of a countermarch on their way
 ##   back (DuplicatioMarch). An exact count.
@@ -1016,6 +1020,11 @@ static func derived_field(u: Dictionary, field: String):
 	if not (full is Dictionary) or not (ref is Dictionary):
 		return null
 	var pos: Array = full.get("pos", [])
+	if field == "men_x_span":
+		if pos.is_empty():
+			return null
+		var xs: Array = pos.map(func(q: Array) -> float: return float(q[0]))
+		return snappedf(xs.max() - xs.min(), 0.1)
 	var slots: Array = full.get("slots", [])
 	# Nothing to measure, or bodies and slots out of step (a dump taken while the body layer
 	# lags the headcount): a claim about either would pass on nothing, so it is uncheckable.
