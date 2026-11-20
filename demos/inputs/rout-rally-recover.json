@@ -19,11 +19,5 @@
     {"tick": 250, "uid": 0, "field": "state", "value": "ROUTING"},
     {"tick": [200, 300], "uid": 3, "field": "target_enemy_uid", "value": 0},
     {"tick": [250, 1200], "uid": 0, "absent": true}
-  ],
-  "defect_exemptions": {
-    "follow_error": {
-      "uids": [3],
-      "reason": "This is a regression from main. follow_error reads the trailing cavalry troop (uid3) late in its long march on the Spearmen (target uid 1), long after its chase ended. With dense 2-tick FULL dumps, measured 2026-11-19 on #1949's branch, the worst readings against 30 are: seed 0 uid2 9.83, uid3 10.88; seed 1 uid2 29.01, uid3 5.90; seed 2 uid2 29.71, uid3 7.79; seed 3 uid2 29.53, uid3 29.57; seed 4 uid2 38.63, uid3 117.31. Only uid3 on seed 4 fails; uid2 on seed 4 reads over 30 without lasting long enough to fail. On seed 4, main 6d65b227 reads uid2 17.57 and uid3 31.75 (over 30, not for long enough to fail). The cause: each rider rides at the nearest routed man he sees, so when the chase ends the riders stand scattered, and the troop forms up where they stand, with its grid at their centroid, and marches on at once. A rider left ahead of the block or beside it is sent round by the formed arrival's flank-and-rear corridor (SoldierBodies._corridor_to_slot), whose waypoint moves with the marching block, so he rides alongside it and does not close. On main the troop pursued as a block and was never scattered. A chase rally on the standard was tried on this branch and taken out (it set riders orbiting and did not end); the riders gathering before the troop marches on is #1954. A long march drifts on main too, which is #1983."
-    }
-  }
+  ]
 }
