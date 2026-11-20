@@ -188,28 +188,32 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
 - **`together`** (the default, the sim's own inference).
   The files open out sideways while the men who change file step out and come up the intervals.
 
-- **`files_first`**.
+- **`files_first`** (also the sim's inference).
   Each old file opens out to its distance as a whole, every man keeping his place in it behind the man ahead of him,
-  and only once its file leader has taken his place does the man behind him step into the interval beside it and come up,
-  and each man behind him once he sees the man ahead of him go.
-  Bingham's note on Aelian 29.3 says the doubling "must be done in open order",
-  the files "standing in open order" when the middlemen march up between them.
+  and only once its file leader stands, on his place or held off it, does the man behind him step out into the interval beside it and come up,
+  and each man behind him once he sees the man ahead of him stand or step out;
+  a man who has moved off never falls back to wait in his file, as a man who has taken his place never follows again.
+  No source gives the order of opening and inserting in the lengthening drill, which does both at once.
+  Bingham's note on Aelian 29.3 is about the doubling on the same ground:
+  it has the files of 16 "standing in open order" when the middlemen march up between them, and says that doubling "must be done in open order".
   Asclepiodotus 10.17 and Aelian 29.3 themselves insert on the same ground, the phalanx keeping its length,
   so they are the `same_ground` reading, not this one.
-  In Aelian 33 the opening is the files moving out to their distance, "the rest proceeding on to the Target",
-  and in Bingham's note on it they "moue on till the first distance recouered".
-  The lengthening explicatio opens and inserts in one drill,
-  so doing its opening first is the sim's inference from those passages.
+  Aelian 33 has files open out to their distance, "the rest proceeding on to the Target",
+  and Bingham's note on it "moue on till the first distance recouered":
+  how a file opens, not when in a lengthening drill.
   The files open one after another, the files next to the one that stands first and the flank files last, since each file leader dresses on the next one in toward it.
   In the alternate-rank drill this keeps every file leader on the line he stood on.
   Together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead:
-  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, and 1.24 wu held on the right, measured 2026-11-19.
-  Files first, the file leaders stay within 0.06 wu of it.
+  1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, and 1.24 wu held on the right.
+  Files first, the file leaders stay within 0.06 wu of it (0.04 wu held on the right).
   But files first does not keep the front as a whole on its line.
   The epistates coming up into line beside his file leader runs past it before he settles,
-  1.27 wu widened about the middle and 1.24 wu held on the right, measured the same day:
+  1.27 wu widened about the middle and 1.24 wu held on the right:
   further than the file leaders run ahead together about the middle, and as far held on the right
   ([#1989](https://github.com/Lacaedemon/sparta/issues/1989)).
+  These figures are measurements, not asserted values: the farthest the front stood ahead of the line it began on,
+  taken 2026-11-19 by `test/unit/test_explicatio_opening.gd`'s `_walk` (seed 1967),
+  whose tests assert only that the file leaders stay within a fortieth of a rank pitch files first and the front within a quarter.
   So the front's run ahead in the alternate-rank drill moves from the file leaders to the column leaders and is not removed.
 
 Arrian's *Tactica* (25.3 to 25.5, Hercher's Greek text on [classics.andrewgadsden.com](https://classics.andrewgadsden.com/library/arrian/tactica/25)) runs the other way:
@@ -258,7 +262,7 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   when he is held: the step he took toward his place brought him no nearer it and he is going toward it no faster,
   so something he cannot pass, a face of rock or a friend's body, holds him off his place,
   or when every man of the lane he waits on has stopped or stands.
-  In the files-first reading a man whose old file has not opened yet stands once the man ahead of him in it stands.
+  In the files-first reading a man still waiting in his unopened old file never stands: he goes once he sees the man ahead of him stand or step out.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held.
   A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
   A friendly block that presses men and then marches off leaves them to go on to their places.

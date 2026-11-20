@@ -23,14 +23,14 @@ const FRIEND_STANDS := 240
 ## Ticks for the drill to play out: the half-file drill measured on this build ends by tick 620
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
-## The x 1090 terrain drill after it ends, measured on this build (seed 1948): the front walks back
-## 26.47 wu in the 240 ticks after, and the nearest two men come 1.02 wu apart; widened files
-## first, 25.65 wu and 1.00 wu.
-# TODO(#1990): the block should keep the shape its men took, not walk to slots on the rock.
-const TERRAIN_FELL := 26.47
-const TERRAIN_CLOSEST := 1.02
-const TERRAIN_FELL_FILES_FIRST := 25.65
-const TERRAIN_CLOSEST_FILES_FIRST := 1.00
+## The x 1090 terrain drill after it ends, measured 2026-11-19 on this build (seed 1948): the
+## front walks back TERRAIN_FELL wu in the 240 ticks after and the nearest two men come
+## TERRAIN_CLOSEST wu apart, together and files first alike within a few hundredths. These are
+## bounds the walk back may not exceed, not values it must keep: it is a defect, and keeping each
+## man's place from the men around him rather than from a slot should shrink it.
+# TODO(#1954): the walk back after the drill, the post-drill shape #1954 requires (#1990).
+const TERRAIN_FELL := 26.5
+const TERRAIN_CLOSEST := 1.0
 const HALF_FILE := UnitFormation.ExplicatioDrill.HALF_FILE
 const ALTERNATE_RANK := UnitFormation.ExplicatioDrill.ALTERNATE_RANK
 
@@ -148,6 +148,17 @@ func _places(u: Unit) -> PackedVector2Array:
 
 
 ## The farthest any man of `u` stands from his slot.
+## How many of `u`'s men stand more than the reform settle distance off their slots: read the
+## tick a drill ends, the men it ended short of their places, the grid laid on every man.
+func _short(u: Unit) -> int:
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	var n: int = 0
+	for i in range(u.soldiers):
+		if slots[i].distance_to(u._sim_soldier_pos[i]) > Unit.REFORM_SETTLE_EPS:
+			n += 1
+	return n
+
+
 func _worst_off_slot(u: Unit) -> float:
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var worst: float = 0.0
@@ -165,17 +176,18 @@ func _worst_off_slot(u: Unit) -> float:
 ## tick ("held", Unit._explicatio_held_men) and the most who stood ("stood",
 ## Unit._explicatio_standing); how many men stood on one tick and on a later tick went on, still
 ## following ("resumed"), and how many of those had stood pressed by a man of another regiment
-## ("press_resumed"); how many stood short of their places when it ended ("short",
-## Unit.explicatio_last_short); how many men still waited in their old files on the last tick
-## of the drill ("last_waiting", Unit._explicatio_waiting); and the tick it ended ("ended", -1
-## if it did not).
+## ("press_resumed"); how many stood short of their places when it ended ("short", _short:
+## more than the reform settle distance off the slot the grid then lays for them); the most men
+## waiting in their old files on any tick ("waited", Unit._explicatio_waiting) and how many still
+## waited on the last tick of the drill ("last_waiting"); and the tick it ended ("ended", -1 if it
+## did not).
 ## `kill_tick` >= 0 kills man `kill_index` on that tick through SoldierMelee.reap.
 func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Dictionary:
 	var forward: Vector2 = u.facing
 	var front0: float = _front(u, forward)
 	var out := {"ahead": -INF, "behind": INF, "line": 0.0, "end_line": INF, "closest": INF,
 			"overtake": -INF, "ended": -1, "held": 0, "stood": 0, "resumed": 0,
-			"press_resumed": 0, "short": -1, "last_waiting": 0}
+			"press_resumed": 0, "short": -1, "waited": 0, "last_waiting": 0}
 	var stood_before := PackedByteArray()
 	var stood_pressed := {}
 	for t in range(ticks):
@@ -191,6 +203,7 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		var standing: PackedByteArray = u._explicatio_standing
 		if u.explicatio_drill_active():
 			out["last_waiting"] = u._explicatio_waiting.count(1)
+			out["waited"] = maxi(out["waited"], out["last_waiting"])
 		out["stood"] = maxi(out["stood"], standing.count(1))
 		if stood_before.size() == u.soldiers and standing.size() == u.soldiers:
 			for i in range(u.soldiers):
@@ -212,7 +225,7 @@ func _walk(u: Unit, ticks: int, kill_tick: int = -1, kill_index: int = -1) -> Di
 		if not u.explicatio_drill_active():
 			out["ended"] = t
 			out["end_line"] = end_line
-			out["short"] = u.explicatio_last_short
+			out["short"] = _short(u)
 			break
 		var ahead_of: PackedInt32Array = _man_ahead(u)
 		for i in range(u.soldiers):
@@ -1042,29 +1055,30 @@ func test_a_drill_crowded_by_a_friendly_block_still_ends() -> void:
 ## wing onto the rock: the men it holds off their places, whom no regiment presses, are held while
 ## their steps make no way, the men behind them dress on them, and the drill ends with them short
 ## of their places. On main the men the rock held kept following, and every man behind them, so the
-## drill never ended: after 3000 ticks 22 men still followed at x 1090, its left flank 24 wu short
-## of the hill, and 7 at x 1075, 39 wu short (measured on main, 2026-11-19). But once it ends the grid's slots of the men held short lie on the rock,
-## they press on for them, and the block walks back after them, a regression of the drill now
-## ending that waits on relational formation keeping: the measured values are pinned here, so a
-## change to them shows.
-# TODO(#1990): the walk back after the drill, which waits on relational formation keeping.
+## drill never ended: after 3000 ticks 22 men still followed at x 1090, its left flank 24 wu
+## short of the hill, and 7 at x 1075, 39 wu short (measured on main, 2026-11-19). Once it ends,
+## the grid's slots of the men held short lie on the rock, they press on for them, and the block
+## walks back after them: a defect of the drill now ending, bounded here (TERRAIN_FELL,
+## TERRAIN_CLOSEST) so it cannot grow, and left for relational formation keeping to remove.
+# TODO(#1954): the walk back after the drill, the post-drill shape #1954 requires (#1990).
 func test_a_drill_held_off_its_places_by_terrain_still_ends() -> void:
 	var r: Dictionary = await _held_by_terrain(ExplicatioOpening.Reading.TOGETHER)
-	assert_almost_eq(r["fell"], TERRAIN_FELL, 0.5,
+	assert_lte(r["fell"], TERRAIN_FELL,
 			"the front fell %.2f wu back in the 240 ticks after" % r["fell"])
-	assert_almost_eq(r["closest"], TERRAIN_CLOSEST, 0.1,
+	assert_gte(r["closest"], TERRAIN_CLOSEST,
 			"the nearest two men came %.2f wu apart" % r["closest"])
 
 
-## The same block widened files first: the old file whose head the rock holds off his place
-## cannot open, so its men, still in it, stand once the man ahead of them in it stands, and the
-## drill ends with them short, as it does together. The walk back after it is pinned likewise.
-# TODO(#1990): the walk back after the drill, which waits on relational formation keeping.
+## The same block widened files first: the leader of the old file the rock holds stands, the
+## man behind him sees him stand and moves off, and so on back, so that file opens too and the
+## drill ends with men short of their places, as it does together. The walk back after it is
+## bounded likewise.
+# TODO(#1954): the walk back after the drill, the post-drill shape #1954 requires (#1990).
 func test_a_files_first_drill_held_off_its_places_by_terrain_still_ends() -> void:
 	var r: Dictionary = await _held_by_terrain(ExplicatioOpening.Reading.FILES_FIRST)
-	assert_almost_eq(r["fell"], TERRAIN_FELL_FILES_FIRST, 0.5,
+	assert_lte(r["fell"], TERRAIN_FELL,
 			"the front fell %.2f wu back in the 240 ticks after" % r["fell"])
-	assert_almost_eq(r["closest"], TERRAIN_CLOSEST_FILES_FIRST, 0.1,
+	assert_gte(r["closest"], TERRAIN_CLOSEST,
 			"the nearest two men came %.2f wu apart" % r["closest"])
 
 
@@ -1085,8 +1099,8 @@ func _held_by_terrain(opening: int) -> Dictionary:
 	assert_gte(walk["ended"], 0, "the drill ended")
 	assert_gt(walk["short"], 0, "with men short of their places")
 	if opening == ExplicatioOpening.Reading.FILES_FIRST:
-		assert_gt(walk["last_waiting"], 0,
-			"precondition: men still waited in a file the rock held on the last tick of the drill")
+		assert_gt(walk["waited"], 0, "precondition: men waited in their old files")
+		assert_eq(walk["last_waiting"], 0, "every file opened, the one the rock holds too")
 	assert_null(DemoState.explicatio_following(u), "and the dump says no drill is under way")
 	var front_at_end: float = _front(u, u.facing)
 	var front_low: float = front_at_end
@@ -1106,8 +1120,8 @@ func _held_by_terrain(opening: int) -> Dictionary:
 
 ## A drill that ends of itself with men short of their places (one file's men still following
 ## when every man is done, 40 wu back) lays the grid on every man where he stands, as main does
-## (explicatio_grid_position): no rule picks the men it sits on. The men short are counted.
-func test_the_drill_ends_with_the_grid_on_every_man_and_counts_the_men_short() -> void:
+## (explicatio_grid_position): no rule picks the men it sits on.
+func test_the_drill_ends_with_the_grid_on_every_man() -> void:
 	var units: Array = await _stage([_spearmen()])
 	var u: Unit = units[0]
 	_battle.enqueue_file_double([u.uid], 1)
@@ -1119,12 +1133,11 @@ func test_the_drill_ends_with_the_grid_on_every_man_and_counts_the_men_short() -
 			u._sim_soldier_pos[i] -= u.facing * 40.0
 		else:
 			u._explicatio_following[i] = 0   # every other man has taken his place
-	var short: PackedByteArray = u._explicatio_short_men()
-	assert_gt(short.count(1), 1, "precondition: the file's men stand short")
+	assert_gt(u._explicatio_following.count(1), 1, "precondition: the file's men still follow")
 	var on_all: Vector2 = u.explicatio_grid_position()
-	u._end_explicatio_drill(short)
+	u._end_explicatio_drill()
 	assert_almost_eq(u.position, on_all, Vector2(0.01, 0.01), "the grid is laid on every man")
-	assert_eq(u.explicatio_last_short, short.count(1), "and the count of men short is kept")
+	assert_gt(_short(u), 1, "and the file's men stand short of their slots")
 
 
 ## A friendly block standing where the drilling block's west wing opens presses its men off their
@@ -1191,7 +1204,7 @@ func _play_out(u: Unit) -> Dictionary:
 		await get_tree().physics_frame
 		if not u.explicatio_drill_active():
 			out["ended"] = t
-			out["short"] = u.explicatio_last_short
+			out["short"] = _short(u)
 			break
 		out["standing"].append(u._explicatio_standing.duplicate())
 		out["held"].append(u._explicatio_men_held.duplicate())

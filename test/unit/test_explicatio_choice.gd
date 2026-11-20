@@ -47,7 +47,8 @@ func test_defaults_are_half_file_outward_lengthen() -> void:
 	assert_eq(sm.explicatio_drill, HALF_FILE, "B deals the half-file drill by default")
 	assert_eq(sm.explicatio_side, UnitFormation.ExplicatioSide.OUTWARD, "outward by default")
 	assert_eq(sm.explicatio_ground, UnitFormation.ExplicatioGround.LENGTHEN, "lengthening by default")
-	assert_eq(sm.get_explicatio_summary(), "half-file, outward, lengthen, together", "and the HUD words them so")
+	assert_eq(sm.get_explicatio_summary(), "half-file, outward, lengthen, together",
+		"and the HUD words them so")
 
 
 func test_alt_b_steps_the_drill_and_wraps() -> void:
@@ -166,8 +167,10 @@ func test_each_choice_flashes_and_updates_the_hud() -> void:
 	var hud := StubHud.new()
 	sm._hud = hud
 	sm._dispatch_key(_key(KEY_B))
-	assert_eq(hud.flashes, ["Explicatio: alternate rank, outward, lengthen, together"], "the toast names it")
-	assert_eq(hud.summaries, ["alternate rank, outward, lengthen, together"], "the control bar is told")
+	assert_eq(hud.flashes, ["Explicatio: alternate rank, outward, lengthen, together"],
+		"the toast names it")
+	assert_eq(hud.summaries, ["alternate rank, outward, lengthen, together"],
+		"the control bar is told")
 
 
 func test_key_label_names_alt() -> void:
@@ -184,7 +187,8 @@ func test_hud_button_shows_the_choice() -> void:
 	assert_eq(h._ctrl_explicatio_btn.text, "Explicatio: half-file, outward, lengthen, together",
 			"an empty summary shows the defaults")
 	h.update_explicatio("alternate rank, inward, same ground, files first")
-	assert_eq(h._ctrl_explicatio_btn.text, "Explicatio: alternate rank, inward, same ground, files first",
+	assert_eq(h._ctrl_explicatio_btn.text,
+			"Explicatio: alternate rank, inward, same ground, files first",
 			"a chosen reading shows as given")
 
 
@@ -198,7 +202,8 @@ func test_built_control_bar_shows_the_default_and_follows_the_selection_manager(
 	var h = HUDScript.new()
 	add_child_autofree(h)
 	var button: Button = h._ctrl_explicatio_btn
-	assert_eq(button.text, "Explicatio: half-file, outward, lengthen, together", "the bar starts on the defaults")
+	assert_eq(button.text, "Explicatio: half-file, outward, lengthen, together",
+		"the bar starts on the defaults")
 	var sm := _sm()
 	sm.explicatio_side = UnitFormation.ExplicatioSide.SHIELD_SIDE
 	h._sel_mgr = sm
