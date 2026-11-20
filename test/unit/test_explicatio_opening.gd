@@ -182,6 +182,23 @@ func test_each_man_moves_off_once_he_sees_the_man_ahead_of_him_stand_or_go() -> 
 		"the man behind a leader who stands moves off; the men behind him wait on him")
 
 
+## The leader, and a man still waiting, carry the file with them as it opens sideways, the men
+## behind trailing them: neither stepping aside lets the man behind him go. Only a man who has
+## moved off and steps out of the file does.
+func test_a_leader_or_a_waiting_man_stepping_aside_holds_the_man_behind_him() -> void:
+	var f: Dictionary = _two_old_files()
+	var bodies: PackedVector2Array = (f["bodies"] as PackedVector2Array).duplicate()
+	var following := PackedByteArray([1, 1, 1, 1, 1, 1, 1, 1])
+	bodies[4] += Vector2(5.0, 0.0)   # old file 1's leader, still following, has stepped aside
+	var held: Dictionary = _hold(f, bodies, following)
+	assert_eq((held["waiting"] as PackedByteArray)[5], 1, "the man behind the leader still waits")
+	bodies[4] -= Vector2(5.0, 0.0)
+	bodies[5] += Vector2(5.0, 0.0)   # its epistates, still waiting, trails him sideways
+	held = _hold(f, bodies, following)
+	assert_eq((held["waiting"] as PackedByteArray).slice(5, 8), PackedByteArray([1, 1, 1]),
+		"the man behind a waiting man who has stepped aside still waits on him")
+
+
 ## A man of the old file who has come up ahead of its leader has moved off: he is not in the column
 ## and does not wait, and the man behind the leader still follows the leader.
 func test_a_man_ahead_of_his_file_leader_is_not_in_the_column() -> void:
@@ -326,11 +343,13 @@ func test_a_files_first_drill_with_men_waiting_plays_on_alike_after_a_restore() 
 	assert_lt(worst, 0.001, "every man stands where he stood the first time (%.4f wu off)" % worst)
 
 
-## Run `u`'s files-first drill until some men wait in their files and some man stands.
+## Run `u`'s files-first drill until some men wait in their files, some man stands and forty
+## have moved off, so the release flags the snapshot carries are ones the men behind still need.
 func _run_until_standing_and_waiting(u: Unit) -> void:
 	for _t in range(DRILL_TICKS):
 		await get_tree().physics_frame
-		if u._explicatio_waiting.count(1) > 0 and u._explicatio_standing.count(1) > 0:
+		if u._explicatio_waiting.count(1) > 0 and u._explicatio_standing.count(1) > 0 \
+				and u._explicatio_released.count(1) >= 40:
 			return
 
 
