@@ -31,8 +31,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            -0.12,
-            -0.99
+            -0.05,
+            -1.0
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -65,7 +65,7 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              160.01,
+              160.0,
               480.02
             ],
             "broken_count": 0,
@@ -78,7 +78,7 @@
           },
           "soldier_summary_m": {
             "bbox_m": [
-              8.001,
+              8.0,
               24.001
             ],
             "centroid_m": [
@@ -217,8 +217,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.8,
-            -0.6
+            0.89,
+            -0.45
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -236,12 +236,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.84,
-            889.2
+            799.99,
+            889.38
           ],
           "position_m": [
-            39.992,
-            44.46
+            39.999,
+            44.469
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -251,25 +251,25 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              169.2,
-              489.19
+              168.59,
+              489.1
             ],
             "broken_count": 0,
             "centroid": [
-              799.84,
-              889.2
+              799.99,
+              889.38
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              8.46,
-              24.46
+              8.429,
+              24.455
             ],
             "centroid_m": [
-              39.992,
-              44.46
+              39.999,
+              44.469
             ]
           },
           "soldiers": 24,
@@ -317,7 +317,7 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.91,
+            799.92,
             749.97
           ],
           "position_m": [
@@ -403,7 +403,7 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.14,
+            0.13,
             0.99
           ],
           "file_pitch": 40.0,
@@ -422,12 +422,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.62,
-            889.84
+            799.91,
+            890.31
           ],
           "position_m": [
-            39.981,
-            44.492
+            39.996,
+            44.516
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -437,31 +437,31 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              196.36,
-              514.84
+              195.2,
+              514.41
             ],
             "broken_count": 0,
             "centroid": [
-              799.62,
-              889.84
+              799.91,
+              890.31
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              9.818,
-              25.742
+              9.76,
+              25.721
             ],
             "centroid_m": [
-              39.981,
-              44.492
+              39.996,
+              44.516
             ]
           },
           "soldiers": 24,
           "soldiers_at_block_terrain_edge": 0,
           "soldiers_in_block_terrain": 0,
-          "stamina_mean": 120.0,
+          "stamina_mean": 119.9,
           "state": "ROUTING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -503,12 +503,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.83,
-            749.89
+            799.88,
+            749.88
           ],
           "position_m": [
-            39.991,
-            37.495
+            39.994,
+            37.494
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -523,8 +523,8 @@
             ],
             "broken_count": 0,
             "centroid": [
-              799.83,
-              749.87
+              799.92,
+              749.84
             ],
             "count": 120,
             "prone_count": 0
@@ -535,8 +535,8 @@
               6.3
             ],
             "centroid_m": [
-              39.992,
-              37.493
+              39.996,
+              37.492
             ]
           },
           "soldiers": 120,
@@ -589,8 +589,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            -0.46,
-            0.89
+            0.93,
+            0.36
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -608,12 +608,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.42,
-            895.65
+            799.82,
+            896.72
           ],
           "position_m": [
-            39.971,
-            44.783
+            39.991,
+            44.836
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -623,31 +623,31 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              305.1,
-              615.29
+              302.86,
+              614.61
             ],
             "broken_count": 0,
             "centroid": [
-              799.42,
-              895.65
+              799.82,
+              896.72
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              15.255,
-              30.765
+              15.143,
+              30.731
             ],
             "centroid_m": [
-              39.971,
-              44.783
+              39.991,
+              44.836
             ]
           },
           "soldiers": 24,
           "soldiers_at_block_terrain_edge": 0,
           "soldiers_in_block_terrain": 0,
-          "stamina_mean": 119.3,
+          "stamina_mean": 119.2,
           "state": "ROUTING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -689,12 +689,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.6,
-            749.52
+            799.78,
+            749.37
           ],
           "position_m": [
-            39.98,
-            37.476
+            39.989,
+            37.469
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -709,8 +709,8 @@
             ],
             "broken_count": 0,
             "centroid": [
-              799.51,
-              749.44
+              799.7,
+              749.26
             ],
             "count": 120,
             "prone_count": 2
@@ -721,8 +721,8 @@
               6.3
             ],
             "centroid_m": [
-              39.976,
-              37.472
+              39.985,
+              37.463
             ]
           },
           "soldiers": 120,
@@ -776,7 +776,7 @@
           "engaged": false,
           "facing": [
             0.95,
-            -0.31
+            -0.3
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -794,12 +794,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.46,
-            904.01
+            800.68,
+            905.24
           ],
           "position_m": [
-            39.973,
-            45.201
+            40.034,
+            45.262
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -809,25 +809,25 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              490.01,
-              770.81
+              486.62,
+              769.66
             ],
             "broken_count": 0,
             "centroid": [
-              799.46,
-              904.01
+              800.68,
+              905.24
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              24.501,
-              38.54
+              24.331,
+              38.483
             ],
             "centroid_m": [
-              39.973,
-              45.201
+              40.034,
+              45.262
             ]
           },
           "soldiers": 24,
@@ -875,12 +875,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.25,
-            748.85
+            799.36,
+            748.68
           ],
           "position_m": [
-            39.963,
-            37.443
+            39.968,
+            37.434
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -895,11 +895,11 @@
             ],
             "broken_count": 0,
             "centroid": [
-              799.26,
-              748.73
+              799.29,
+              748.59
             ],
             "count": 120,
-            "prone_count": 1
+            "prone_count": 2
           },
           "soldier_summary_m": {
             "bbox_m": [
@@ -907,14 +907,14 @@
               6.3
             ],
             "centroid_m": [
-              39.963,
-              37.437
+              39.964,
+              37.43
             ]
           },
           "soldiers": 120,
           "soldiers_at_block_terrain_edge": 0,
           "soldiers_in_block_terrain": 0,
-          "stamina_mean": 99.9,
+          "stamina_mean": 100.0,
           "state": "IDLE",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -961,8 +961,8 @@
           "delegated_group_id": null,
           "engaged": false,
           "facing": [
-            0.48,
-            -0.88
+            0.18,
+            -0.98
           ],
           "file_pitch": 40.0,
           "formation": "NORMAL",
@@ -980,12 +980,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            800.19,
-            903.51
+            803.33,
+            904.11
           ],
           "position_m": [
-            40.009,
-            45.175
+            40.166,
+            45.206
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -995,31 +995,31 @@
           "requested_move_target": null,
           "soldier_summary": {
             "bbox": [
-              750.22,
-              935.43
+              745.7,
+              933.89
             ],
             "broken_count": 0,
             "centroid": [
-              800.19,
-              903.51
+              803.33,
+              904.11
             ],
             "count": 24,
             "prone_count": 0
           },
           "soldier_summary_m": {
             "bbox_m": [
-              37.511,
-              46.771
+              37.285,
+              46.695
             ],
             "centroid_m": [
-              40.009,
-              45.175
+              40.166,
+              45.206
             ]
           },
           "soldiers": 24,
           "soldiers_at_block_terrain_edge": 0,
           "soldiers_in_block_terrain": 0,
-          "stamina_mean": 116.1,
+          "stamina_mean": 116.0,
           "state": "ROUTING",
           "subcommander_rank": null,
           "subunit_size": 0,
@@ -1061,12 +1061,12 @@
           "order_mode": "Normal",
           "order_phase": null,
           "position": [
-            799.15,
-            748.26
+            799.28,
+            748.29
           ],
           "position_m": [
-            39.958,
-            37.413
+            39.964,
+            37.415
           ],
           "pursuing": false,
           "queue_tail": [],
@@ -1081,8 +1081,8 @@
             ],
             "broken_count": 0,
             "centroid": [
-              799.15,
-              748.18
+              799.23,
+              748.2
             ],
             "count": 120,
             "prone_count": 1
@@ -1093,8 +1093,8 @@
               6.3
             ],
             "centroid_m": [
-              39.958,
-              37.409
+              39.961,
+              37.41
             ]
           },
           "soldiers": 120,
