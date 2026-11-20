@@ -2429,7 +2429,7 @@ func _on_soldier_tick() -> void:
 	SoldierEnemyContact.accumulate(units, -frame - 1)
 	SoldierTouch.mark(units)   # which men's bodies touch a foe, for SoldierPress
 	SoldierPress.prepare(units)   # the fighting men, filed once before the bodies step
-	SoldierFlight.tick = _tick   # the men look round on battle ticks, which a seek rewinds
+	SoldierFlight.tick = _tick + 1   # ticks run, this one included: a seek rewinds it
 	# A routed man runs from the foes he perceives (SoldierFlight), so perception is bound for
 	# this frame before the bodies step, and only while some unit routs: nobody else asks.
 	if not get_tree().get_nodes_in_group("routers").is_empty():

@@ -31,9 +31,10 @@ static var _frame: int = -1
 ## pursuing and pulling-up men, and in their blows and the blows struck at them.
 static var looks: int = 0
 static var work_usec: int = 0
-## The battle tick the bodies step on (Battle._tick, which a replay seek rewinds; the physics
-## frame counter does not). Battle sets it before the bodies step; each routed man and each rider
-## looks round on a tick of his own phased on it (SoldierFlightStep, SoldierPursuitStep).
+## How many battle ticks have run, the one the bodies are stepping included (Battle._tick + 1,
+## which a replay seek rewinds; the physics frame counter does not). Battle sets it before the
+## bodies step; each routed man and each rider looks round on a tick of his own phased on it
+## (SoldierFlightStep, SoldierPursuitStep).
 static var tick: int = 0
 
 
