@@ -6570,8 +6570,63 @@ func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill
 	_explicatio_following.resize(soldiers)
 	_explicatio_following.fill(1)
 	_explicatio_released = PackedByteArray()
+	_explicatio_start = _sim_soldier_pos.slice(0, soldiers)
+	_explicatio_seen_at = _explicatio_start.duplicate()
 	_explicatio_drill = drill
 	_explicatio_follow_frame = -1
+
+
+## What the first `count` men's bodies show the men behind them this tick, for the files-first
+## hold (ExplicatioSettled.men), each man's place read from the deal (explicatio_follow_plan) before
+## anyone is held in his file: "at_rest", gone no further since the last tick
+## (_explicatio_seen_at) than SoldierBodies.REST_SPEED carries a man in a tick; "moved", over a
+## body radius from where he stood when the drill began (_explicatio_start); "placed", within
+## REFORM_SETTLE_EPS of his place; "blocked", at rest off it with rock or a man of another old
+## file directly in his way to it (ExplicatioSettled.body_in_way). No man's drill state is read.
+func _explicatio_seen(count: int) -> Dictionary:
+	var plan: Dictionary = UnitFormation.explicatio_follow_plan(_sim_soldier_file,
+			_sim_soldier_rank, _sim_soldier_role, _explicatio_lane_split, _explicatio_stand_file,
+			file_pitch_wu(), rank_pitch_wu(), _explicatio_inward)
+	var bodies: PackedVector2Array = _sim_soldier_pos.slice(0, count)
+	var facings: PackedVector2Array = _sim_soldier_facing.slice(0, count)
+	var points := PackedVector2Array()
+	points.resize(count)
+	points.fill(_explicatio_stand_point)
+	var own: PackedVector2Array = SoldierFollow.places(bodies, facings, plan["leaders"],
+			plan["offsets"], points, plan["guides"])
+	var at_rest := PackedByteArray()
+	at_rest.resize(count)
+	var blocked := PackedByteArray()
+	blocked.resize(count)
+	var placed := PackedByteArray()
+	placed.resize(count)
+	var r: float = soldier_body_radius()
+	var field: PathField = PathField.active
+	var old_files := PackedInt32Array()
+	for j in range(count):
+		old_files.append(_sim_soldier_file[j] >> 1)
+	var still: float = SoldierBodies.REST_SPEED / float(Engine.physics_ticks_per_second)
+	var last: PackedVector2Array = _explicatio_seen_at if _explicatio_seen_at.size() == count \
+			else bodies
+	for j in range(count):
+		at_rest[j] = 1 if bodies[j].distance_to(last[j]) <= still else 0
+		if own.size() != count:
+			continue
+		var to_place: Vector2 = own[j] - bodies[j]
+		placed[j] = 1 if to_place.length() <= REFORM_SETTLE_EPS else 0
+		if placed[j] == 1 or at_rest[j] == 0:
+			continue
+		var way: Vector2 = to_place.normalized()
+		if field != null and field.has_block_terrain() and field.is_blocked(bodies[j] + way * r, r):
+			blocked[j] = 1   # rock directly in his way
+		elif ExplicatioSettled.body_in_way(j, own[j], bodies, old_files, r, REFORM_SETTLE_EPS):
+			blocked[j] = 1
+	var moved := PackedByteArray()
+	moved.resize(count)
+	if _explicatio_start.size() == count:
+		for j in range(count):
+			moved[j] = 1 if bodies[j].distance_to(_explicatio_start[j]) > r else 0
+	return {"at_rest": at_rest, "moved": moved, "blocked": blocked, "placed": placed}
 
 
 ## Whether an explicatio drill is under way: the men follow each other, not the slot grid.
@@ -6619,10 +6674,13 @@ func _refresh_explicatio_follow(count: int) -> bool:
 	if leaders.size() != count:
 		return false
 	if _explicatio_opening == ExplicatioOpening.Reading.FILES_FIRST:
+		var seen: Dictionary = _explicatio_seen(count)
+		_explicatio_seen_at = _sim_soldier_pos.slice(0, count)
 		plan = ExplicatioOpening.hold_unopened(plan, _sim_soldier_file, _sim_soldier_rank,
 				_sim_soldier_pos.slice(0, count), _sim_soldier_facing.slice(0, count),
 				_explicatio_lane_split, _explicatio_inward, _explicatio_following,
-				_explicatio_standing, _explicatio_released, file_pitch_wu(), rank_pitch_wu())
+				seen, _explicatio_released, file_pitch_wu(),
+				rank_pitch_wu())
 		leaders = plan["leaders"]
 		_explicatio_waiting = plan["waiting"]
 		_explicatio_released = plan["released"]
@@ -6948,8 +7006,8 @@ func _advance_explicatio_drill() -> void:
 ## whose leader has stopped following or stands, and who stands on his place, is pressed by a
 ## man of another regiment with room where he is, `held` (_explicatio_held_men), or waiting on a
 ## lane (`_explicatio_lanes`) every man of which has stopped following or stands. A man still in
-## his unopened old file (files first) never stands: he goes once the man ahead of him stands
-## by this reading, or steps out (ExplicatioOpening.hold_unopened). Read down each follow chain
+## his unopened old file (files first) never stands: he goes once he sees the man ahead of him
+## settle or step out (ExplicatioOpening.hold_unopened). Read down each follow chain
 ## from the front, so a man stands only once the man he dresses on does. Each man's lane and press
 ## are this tick's, read from where the men stand.
 func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
@@ -6962,7 +7020,7 @@ func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 			if stand[i] == 1 or _explicatio_following[i] == 0:
 				continue
 			if _explicatio_waiting.size() == soldiers and _explicatio_waiting[i] == 1:
-				continue   # still in his unopened file: he goes once the man ahead stands
+				continue   # still in his unopened file: he goes once the man ahead settles
 			var a: int = _explicatio_leaders[i]
 			if not (a < 0 or _explicatio_following[a] == 0 or stand[a] == 1):
 				continue
@@ -7039,6 +7097,8 @@ func _end_explicatio_drill() -> void:
 	_explicatio_stepped_vel = PackedVector2Array()
 	_explicatio_waiting = PackedByteArray()
 	_explicatio_released = PackedByteArray()
+	_explicatio_start = PackedVector2Array()
+	_explicatio_seen_at = PackedVector2Array()
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_following = PackedByteArray()
 	_explicatio_follow_frame = -1
@@ -7623,13 +7683,20 @@ var _explicatio_rooms: PackedFloat32Array = PackedFloat32Array()
 # will open no further.
 var _explicatio_shut: PackedByteArray = PackedByteArray()
 # 1 for a man of an old file not yet opened past him, in the files-first reading
-# (ExplicatioOpening.hold_unopened): the man ahead of him in it has not moved off yet.
+# (ExplicatioOpening.hold_unopened): he has not yet seen the man ahead of him in it settle
+# (ExplicatioSettled.men) or step out.
 var _explicatio_waiting: PackedByteArray = PackedByteArray()
 # 1 for a man who has stepped out of his unopened old file in the files-first reading, gone and
 # off his leader's line (ExplicatioOpening.hold_unopened): he never waits in it again, as a man who
 # has taken his place never follows again. Empty at the start of a drill; a casualty takes his
 # entry out with him (SoldierMelee.reap), as it does his following flag.
 var _explicatio_released: PackedByteArray = PackedByteArray()
+# Where each man stood when the drill began, and where he stood on the last tick, as the men
+# behind him saw (Unit._explicatio_seen): the files-first hold reads from them who has gone and
+# who stands at rest. A casualty takes his entries out with him (SoldierMelee.reap), and both ride
+# a snapshot.
+var _explicatio_start: PackedVector2Array = PackedVector2Array()
+var _explicatio_seen_at: PackedVector2Array = PackedVector2Array()
 # When the files open, against when the men step in (ExplicatioOpening.Reading).
 var _explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
 # Where each man stood, and how fast he was going, when he last stepped for his place with nothing
@@ -7640,9 +7707,8 @@ var _explicatio_stepped_vel: PackedVector2Array = PackedVector2Array()
 # 1 for each man held this tick (_explicatio_held_men), written by each advance and read by
 # nothing in the sim before the next rewrites it, so a restore needs none (the tests read it).
 var _explicatio_men_held: PackedByteArray = PackedByteArray()
-# 1 for each man who stands this tick (_explicatio_standing_men), written by each advance. The next
-# tick's files-first hold reads it, the man behind seeing the man ahead stand
-# (ExplicatioOpening.hold_unopened), so it rides a snapshot.
+# 1 for each man who stands this tick (_explicatio_standing_men), written by each advance and read
+# by nothing in the sim before the next rewrites it, so a restore needs none.
 var _explicatio_standing: PackedByteArray = PackedByteArray()
 # This tick's lane of each man waiting on one, by index: the men of other files in his lane
 # (_refresh_explicatio_follow), or the men of the other part of the block on his way in the
@@ -13543,7 +13609,8 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_following": _explicatio_following.duplicate(),
 		"explicatio_stepped_from": _explicatio_stepped_from.duplicate(),
 		"explicatio_stepped_vel": _explicatio_stepped_vel.duplicate(),
-		"explicatio_standing": _explicatio_standing.duplicate(),
+		"explicatio_start": _explicatio_start.duplicate(),
+		"explicatio_seen_at": _explicatio_seen_at.duplicate(),
 		"explicatio_released": _explicatio_released.duplicate(),
 		"explicatio_stand_file": _explicatio_stand_file,
 		"explicatio_stand_point": _explicatio_stand_point,
@@ -13961,9 +14028,11 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			as PackedVector2Array).duplicate()
 	_explicatio_stepped_vel = (d.get("explicatio_stepped_vel", PackedVector2Array()) \
 			as PackedVector2Array).duplicate()
-	# Who stood on the last tick, which the men behind them in an unopened file see.
-	_explicatio_standing = (d.get("explicatio_standing", PackedByteArray()) as PackedByteArray) \
+	# Where each man stood when the drill began, which the men behind him in an unopened file saw.
+	_explicatio_start = (d.get("explicatio_start", PackedVector2Array()) as PackedVector2Array) \
 			.duplicate()
+	_explicatio_seen_at = (d.get("explicatio_seen_at", PackedVector2Array()) \
+			as PackedVector2Array).duplicate()
 	_explicatio_released = (d.get("explicatio_released", PackedByteArray()) as PackedByteArray) \
 			.duplicate()
 	_explicatio_stand_file = int(d.get("explicatio_stand_file", -1))

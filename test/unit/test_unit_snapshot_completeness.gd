@@ -46,6 +46,10 @@ const EXCLUDED := {
 	"_duplicatio_fronts": "this tick's front each man of a face-about duplicatio steers by, read afresh each tick from the men (_refresh_duplicatio_follow)",
 	"_explicatio_follow_frame": "the tick _explicatio_leaders and _explicatio_places were read on; the restore clears it so they are read afresh",
 	"_explicatio_shut": "this tick's whether each man's lane is held by men who have stopped following, read afresh each tick from the men (_refresh_explicatio_follow)",
+	"_explicatio_standing":
+		"this tick's whether each man stands, written by each advance from this tick's held " +
+		"men (_explicatio_standing_men) and read by nothing in the sim before the next " +
+		"rewrites it",
 	"_explicatio_men_held":
 		"this tick's whether each man is held, written by each advance from the restored " +
 		"stepped positions and velocities (_explicatio_held_men) and read by nothing in the " +

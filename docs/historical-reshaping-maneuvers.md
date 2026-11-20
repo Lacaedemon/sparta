@@ -190,8 +190,13 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
 
 - **`files_first`** (also the sim's inference).
   Each old file opens out to its distance as a whole, every man keeping his place in it behind the man ahead of him,
-  and only once its file leader stands, on his place or held off it, does the man behind him step out into the interval beside it and come up,
-  and each man behind him once the man ahead of him in his line stands, by the drill's own reading of who stands, or steps out.
+  and only once its file leader settles, on his place or held short of it, does the man behind him step out into the interval beside it and come up,
+  and each man behind him once he sees the man ahead of him in his line settle or step out.
+  He reads it from that man's body and the deal alone:
+  the man is settled on his own place with the man he dresses on settled too,
+  or at rest away from where he stood when the drill began,
+  when he is the file's leader or has rock or a man of another file touching him on his way to his place.
+  A man of the column merely at rest behind the man ahead is not settled, since the column comes to rest as a whole, and every man stands at rest before the drill moves.
   While he waits he trails the man ahead of him, a rank pitch behind.
   What he sees of that man's motion cannot tell a man stepping out from one trailing the file sideways as it opens
   (in a centred alternate-rank drill all 8061 offsets of men stepping out, 0 to 4.6 wu, lay within the 5.64 wu trailing men reached, measured 2026-11-20),
@@ -211,10 +216,10 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
   In the alternate-rank drill this keeps every file leader on the line he stood on.
   Together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead:
   1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, and 1.24 wu held on the right.
-  Files first, the file leaders stay within 0.08 wu of it (0.05 wu held on the right).
+  Files first, the file leaders stay within 0.07 wu of it (0.06 wu held on the right, measured 2026-11-20).
   But files first does not keep the front as a whole on its line.
   The epistates coming up into line beside his file leader runs past it before he settles,
-  1.27 wu widened about the middle and 1.32 wu held on the right:
+  1.26 wu widened about the middle and 1.30 wu held on the right:
   a little further than the file leaders run ahead together
   ([#1989](https://github.com/Lacaedemon/sparta/issues/1989)).
   These figures are measurements, not asserted values: the farthest the front stood ahead of the line it began on,
@@ -268,7 +273,7 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   when he is held: the step he took toward his place brought him no nearer it and he is going toward it no faster,
   so something he cannot pass, a face of rock or a friend's body, holds him off his place,
   or when every man of the lane he waits on has stopped or stands.
-  In the files-first reading a man still waiting in his unopened old file never stands: he goes once the man ahead of him in his line stands, by the drill's own reading, or steps out.
+  In the files-first reading a man still waiting in his unopened old file never stands: he goes once he sees the man ahead of him in his line settle or step out.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held.
   A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
   A friendly block that presses men and then marches off leaves them to go on to their places.

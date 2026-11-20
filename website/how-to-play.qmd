@@ -1418,8 +1418,8 @@ Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to t
   A block already in tight order, a shield wall, a testudo or a square has no closer order to take, and is not given the order.
 - **Together** (the default, the game's own reading): the files open out while the men step into the intervals.
 - **Files first** (also the game's own reading): each file opens out to its distance with all its men still in it,
-  and only once its file leader stands, on his place or held off it, do its men step into the interval beside it and come up,
-  each man once he sees the man ahead of him in his file stand or step out into the interval.
+  and only once its file leader settles, on his place or held short of it, do its men step into the interval beside it and come up,
+  each man once he sees the man ahead of him in his file settle, on his place or held short of it, or step out into the interval.
   The sources do not say whether the files open before or as the men step in when a drill does both at once;
   Bingham's note on Aelian 29.3 (*The Tactiks of Aelian*, 1616, p. 134) has the files already standing apart, in open order, for the doubling on the same ground.
   With every second man stepping in, the file leaders then keep the line they stood on,
