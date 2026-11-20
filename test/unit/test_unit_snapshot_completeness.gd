@@ -46,9 +46,17 @@ const EXCLUDED := {
 	"_duplicatio_fronts": "this tick's front each man of a face-about duplicatio steers by, read afresh each tick from the men (_refresh_duplicatio_follow)",
 	"_explicatio_follow_frame": "the tick _explicatio_leaders and _explicatio_places were read on; the restore clears it so they are read afresh",
 	"_explicatio_shut": "this tick's whether each man's lane is held by men who have stopped following, read afresh each tick from the men (_refresh_explicatio_follow)",
-	"_explicatio_men_held": "this tick's whether each man is held, written by each advance from the restored stepped positions and velocities (_explicatio_held_men) and read by nothing in the sim before the next rewrites it",
-	"_explicatio_lanes": "this tick's lane of each man waiting on one, read afresh each tick from where the men stand (_refresh_explicatio_follow, which a restore makes run afresh)",
-	"_explicatio_waiting":"this tick's whether each man's old file has yet to open in the files-first reading, read afresh each tick from the restored follow flags (_refresh_explicatio_follow, ExplicatioOpening.hold_unopened)",
+	"_explicatio_men_held":
+		"this tick's whether each man is held, written by each advance from the restored " +
+		"stepped positions and velocities (_explicatio_held_men) and read by nothing in the " +
+		"sim before the next rewrites it",
+	"_explicatio_lanes":
+		"this tick's lane of each man waiting on one, read afresh each tick from where the " +
+		"men stand (_refresh_explicatio_follow, which a restore makes run afresh)",
+	"_explicatio_waiting":
+		"this tick's whether each man's old file has yet to open in the files-first reading, " +
+		"read afresh each tick from the restored follow flags (_refresh_explicatio_follow, " +
+		"ExplicatioOpening.hold_unopened)",
 	"_explicatio_follow_count": "the man count _explicatio_leaders and _explicatio_places were read for, keyed with _explicatio_follow_frame, which the restore clears",
 	"_live_rank_count_gen": CACHE,
 	"_live_rank_count_soldiers": CACHE,

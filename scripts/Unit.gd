@@ -7624,10 +7624,10 @@ var _explicatio_shut: PackedByteArray = PackedByteArray()
 # 1 for a man of an old file not yet opened past him, in the files-first reading
 # (ExplicatioOpening.hold_unopened): the man ahead of him in it has not moved off yet.
 var _explicatio_waiting: PackedByteArray = PackedByteArray()
-# 1 for a man who has moved off his unopened old file in the files-first reading
-# (ExplicatioOpening.hold_unopened): he never waits in it again, as a man who has taken his place
-# never follows again. Empty at the start of a drill; a casualty, which this does not track, empties
-# it, and each man reads his file afresh.
+# 1 for a man who has stepped out of his unopened old file in the files-first reading, gone and
+# off his leader's line (ExplicatioOpening.hold_unopened): he never waits in it again, as a man who
+# has taken his place never follows again. Empty at the start of a drill; a casualty takes his
+# entry out with him (SoldierMelee.reap), as it does his following flag.
 var _explicatio_released: PackedByteArray = PackedByteArray()
 # When the files open, against when the men step in (ExplicatioOpening.Reading).
 var _explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
@@ -7639,8 +7639,8 @@ var _explicatio_stepped_vel: PackedVector2Array = PackedVector2Array()
 # 1 for each man held this tick (_explicatio_held_men), written by each advance and read by
 # nothing in the sim before the next rewrites it, so a restore needs none (the tests read it).
 var _explicatio_men_held: PackedByteArray = PackedByteArray()
-# 1 for each man who stands this tick (_explicatio_standing_men), written by each advance; the
-# next tick's files-first hold reads it, the man behind seeing the man ahead stand
+# 1 for each man who stands this tick (_explicatio_standing_men), written by each advance. The next
+# tick's files-first hold reads it, the man behind seeing the man ahead stand
 # (ExplicatioOpening.hold_unopened), so it rides a snapshot.
 var _explicatio_standing: PackedByteArray = PackedByteArray()
 # This tick's lane of each man waiting on one, by index: the men of other files in his lane
