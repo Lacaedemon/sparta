@@ -169,6 +169,10 @@ var _cached_combat_profile: Dictionary = {}
 # How far this unit, if foot, follows a rout it has broken (SoldierFootPursuit.Mode: FOLLOW, the
 # sim's choice, or SHORT, breaking off once the runners are out of reach, Thucydides 5.73.4).
 @export var foot_pursuit: int = SoldierFootPursuit.Mode.FOLLOW
+# Whether this unit, if horse, rides a rout down only under an order to (SoldierTakeUp.Mode:
+# ORDERED, the default) or whenever its riders see routed men off HOLD (ON_SIGHT); both the
+# sim's inference, the sources reached being silent.
+@export var horse_pursuit: int = SoldierTakeUp.Mode.ORDERED
 # What a routed man cornered by enemy bodies does: stand and fight (STAND, the default) or force
 # his way out where the foes stand thinnest (CUT), both the sim's inference; see SoldierBreakOut.
 @export var cornered: int = SoldierBreakOut.Mode.STAND
@@ -1790,16 +1794,15 @@ var _current_speed: float = 0.0
 var current_speed: float:
 	get: return _current_speed
 # The march velocity SoldierBodies.step fed forward to this unit's unengaged bodies on its
-# last step (_approach_velocity). From this velocity the
-# step reads the rate the march velocity changed at since then, in speed or in heading
-# (capped at march_share_max_accel_mult times the body's own acceleration;
-# SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly) that
-# is not a rout (a routed unit's men run on their own), and only when the march speed did not fall,
-# does the step grant that much
-# extra acceleration to each unengaged body, on top of its own body_accel, scaled by how
-# far the body stands off its slot (SoldierBodies.march_share_frac: none within
-# march_share_from_pitches, half a file pitch by default, all of it from
-# march_share_full_pitches out). Engaged bodies take none. So a man well behind his slot
+# last step (_approach_velocity). From this velocity the step reads the rate the march
+# velocity changed at since then, in speed or in heading (capped at
+# march_share_max_accel_mult times the body's own acceleration;
+# SoldierBodies.march_accel_budget). Only on an orderly march (_body_march_orderly) that is
+# not a rout (a routed unit's men run on their own), and only when the march speed did not
+# fall, does the step grant that much extra acceleration to each unengaged body, on top of
+# its own body_accel, scaled by how far the body stands off its slot
+# (SoldierBodies.march_share_frac: none within march_share_from_pitches, half a file pitch by
+# default, all of it from march_share_full_pitches out). Engaged bodies take none. So a man well behind his slot
 # still gains on it while the march speeds up or swings round without losing speed (see
 # march_accel_budget for how exactly that is judged).
 var _body_march_ff_prev: Vector2 = Vector2.ZERO
@@ -4519,13 +4522,17 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# and their centre (SoldierBodies' readout of a router) can stand among this block's ranks,
 	# where a bearing to it names no front. Only a unit following the rout turns onto it: horse
 	# riding it down (SoldierPursuitStep.is_pursuing) or a block whose target it is
-	# (SoldierFootPursuit). Any other unit keeps its heading, and its men strike the routed men
-	# in their reach.
-	if enemy_unit != null and enemy_unit.state == State.ROUTING \
-			and not SoldierPursuitStep.is_pursuing(self) and target_enemy != enemy_unit:
-		if _engage_turn_target != Vector2.ZERO:
-			_settle_engage_turn()
-		return true
+	# (SoldierFootPursuit), and then onto the nearest runner outside its own block (RoutedFront),
+	# not onto their centre; with every runner among its ranks it keeps its heading too. Any
+	# other unit keeps its heading, and its men strike the routed men in their reach.
+	if enemy_unit != null and enemy_unit.state == State.ROUTING:
+		var follows: bool = SoldierPursuitStep.is_pursuing(self) or target_enemy == enemy_unit
+		if follows and not enemy_unit._sim_soldier_pos.is_empty():
+			point = RoutedFront.point(self, enemy_unit)
+		if not follows or point == Vector2.INF:
+			if _engage_turn_target != Vector2.ZERO:
+				_settle_engage_turn()
+			return true
 	var dir: Vector2 = point - position
 	if dir.length_squared() < 0.0001:
 		return true
@@ -11440,9 +11447,8 @@ func _rout() -> void:
 	if state == State.FIGHTING:
 		_far_flee_pace = 0.0
 	else:
-		_far_flee_pace = clampf(_approach_velocity.dot(SoldierFlight.refuge_direction(self,
-				position)),
-				0.0, flee_speed())
+		var refuge: Vector2 = SoldierFlight.refuge_direction(self, position)
+		_far_flee_pace = clampf(_approach_velocity.dot(refuge), 0.0, flee_speed())
 	# _process_rout returns before the idle decay, so a pre-rout velocity left here would sit
 	# frozen through the rout and coast the rallied unit off along it on its first idle tick.
 	_approach_velocity = Vector2.ZERO
@@ -11694,9 +11700,9 @@ func deal_slots_where_men_stand() -> void:
 	if live.is_empty():
 		return
 	var files: int = maxi(1, formation_files(soldiers))
-	_sim_soldier_row_slot = UnitFormation.pair_slots_rear_rank_first(live,
-			UnitFormation.slots(self,
-					soldiers), files, rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5)
+	var grid: PackedVector2Array = UnitFormation.slots(self, soldiers)
+	_sim_soldier_row_slot = UnitFormation.pair_slots_rear_rank_first(live, grid, files,
+			rank_pitch_wu() * 0.5, file_pitch_wu() * 0.5)
 	_row_slot_files = files
 	_row_slot_dealt = true
 	_row_layout_files = files
@@ -12555,7 +12561,7 @@ func to_snapshot_dict() -> Dictionary:
 		"rout_time": rout_time, "rout_refuge": rout_refuge, "rout_follow": rout_follow,
 		"rout_herding": rout_herding, "rout_refuge_weight": rout_refuge_weight,
 		"rally_deal": rally_deal, "rout_reaction_time": rout_reaction_time,
-		"foot_pursuit": foot_pursuit,
+		"foot_pursuit": foot_pursuit, "horse_pursuit": horse_pursuit,
 		"cornered": cornered,
 		"melee_reface_fold_footprint_scale": melee_reface_fold_footprint_scale,
 		"combat_reface_snap_turn": combat_reface_snap_turn,
@@ -12841,6 +12847,7 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	rout_refuge_weight = float(d.get("rout_refuge_weight", rout_refuge_weight))
 	rally_deal = int(d.get("rally_deal", rally_deal))
 	foot_pursuit = int(d.get("foot_pursuit", foot_pursuit))
+	horse_pursuit = int(d.get("horse_pursuit", horse_pursuit))
 	cornered = int(d.get("cornered", cornered))
 	rout_reaction_time = float(d.get("rout_reaction_time", rout_reaction_time))
 	melee_reface_fold_footprint_scale = float(d.get("melee_reface_fold_footprint_scale",

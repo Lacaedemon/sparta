@@ -1,7 +1,7 @@
 extends GutTest
-## SoldierPursuitStep and SoldierTakeUp: horse take up a chase when a rider has a routed man in
-## his reach, each rider rides at the nearest routed man he sees, of any routed foe, and the chase
-## lasts while one still sees one; riders strike the routed men they reach.
+## SoldierPursuitStep: under a standing order to pursue (SoldierTakeUp), each rider rides at the
+## nearest routed man he sees, of any routed foe, while he sees one; riders strike the routed men
+## they reach.
 
 const TICK := 1.0 / 60.0
 const AT := Vector2(500, 500)
@@ -27,33 +27,9 @@ func _split_rout() -> Array:
 	p._sim_soldier_pos[0] = AT + Vector2(-300, 200)
 	p.is_cavalry = true
 	p.target_enemy = r
+	p.order_mode = Unit.ORDER_CHASE   # a standing order to pursue (SoldierTakeUp)
 	p.state = Unit.State.MOVING
 	return [r, p]
-
-
-func test_riders_take_up_the_chase_with_a_routed_man_in_reach() -> void:
-	var pair: Array = _split_rout()
-	var p: Unit = pair[1]
-	SoldierFlight.prepare(Engine.get_physics_frames(), pair, [], null)
-	SoldierTakeUp.take_up(p, 1)
-	assert_true(p._sim_chase_dir.is_empty(), "a runner 200 wu off is out of his reach")
-	assert_false(SoldierPursuitStep.is_pursuing(p), "so he is not chasing")
-	p._sim_soldier_pos[0] = pair[0]._sim_soldier_pos[0] + Vector2(0, 0.5 * p.soldier_reach())
-	p.position = p._sim_soldier_pos[0]   # a unit's position reads its men
-	await get_tree().physics_frame   # a new tick, so the spread and the perception are read again
-	SoldierFlight.prepare(Engine.get_physics_frames(), pair, [], null)
-	p.state = Unit.State.IDLE
-	SoldierTakeUp.take_up(p, 1)
-	assert_true(p._sim_chase_dir.is_empty(), "under no order to move or fight, no chase")
-	p.state = Unit.State.MOVING
-	p.is_cavalry = false
-	SoldierTakeUp.take_up(p, 1)
-	assert_true(p._sim_chase_dir.is_empty(), "foot follow a rout in their ranks")
-	p.is_cavalry = true
-	SoldierTakeUp.take_up(p, 1)
-	assert_true(SoldierPursuitStep.is_pursuing(p), "a runner in his reach: he takes up the chase")
-	p._sim_chase_dir[0] = Vector2.ZERO
-	assert_false(SoldierPursuitStep.is_pursuing(p), "a rider who sees no runner chases no one")
 
 
 func test_the_chase_goes_on_after_his_unit_s_target_rallies_while_he_sees_another() -> void:
@@ -70,7 +46,7 @@ func test_the_chase_goes_on_after_his_unit_s_target_rallies_while_he_sees_anothe
 	assert_true(SoldierPursuitStep.is_pursuing(p), "and the chase goes on")
 	other.state = Unit.State.IDLE   # that one rallies too: he sees no runner
 	await _ride_one_look(p, [pair[0], p, other])
-	assert_eq(p._sim_chase_dir[0], Vector2.ZERO, "seeing none, he stops")
+	assert_true(p._sim_chase_dir.is_empty(), "seeing none, he stops")
 	assert_false(SoldierPursuitStep.is_pursuing(p), "and the chase is over")
 
 
@@ -86,6 +62,7 @@ func _ride_one_look(p: Unit, units: Array) -> void:
 			(units[m] as Unit).state = held[m][1]
 		SoldierFlight.tick = k
 		SoldierFlight.prepare(Engine.get_physics_frames(), units, [], null)
+		SoldierTakeUp.look_round(p, 1)
 		SoldierPursuitStep.step(p, 1, {}, TICK)
 		p._sim_soldier_pos[0] = AT + Vector2(-300, 200)   # hold him where he stood
 
@@ -155,16 +132,3 @@ func test_a_rider_turns_onto_a_new_runner_at_his_pace_rather_than_pulling_up() -
 	var shoved: Vector2 = SoldierPursuitStep.ride(Vector2(-260, 0), Vector2(170, 0), 30.0, PI, TICK)
 	assert_almost_eq(shoved, Vector2(-259.5, 0), Vector2(0.0001, 0.0001),
 		"a shove is shed, not turned onto his line")
-
-
-func test_a_unit_whose_chase_has_ended_forms_up_where_its_riders_stand() -> void:
-	var pair: Array = _split_rout()
-	var p: Unit = pair[1]
-	SoldierFlight.prepare(Engine.get_physics_frames(), pair, [], null)   # this test's men in play
-	SoldierPursuitStep.step(p, 1, {}, TICK)
-	assert_eq(p._sim_chase_dir.size(), 1, "a rider in the chase remembers his line")
-	p._sim_chase_dir[0] = Vector2.ZERO   # he looked round and saw no runner: the chase is over
-	p.step_sim_soldiers(TICK)
-	assert_true(p._sim_chase_dir.is_empty(), "nothing is left to remember")
-	assert_eq(p._last_redeal_tick, Engine.get_physics_frames(),
-			"and the unit re-forms where he stands")

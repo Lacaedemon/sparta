@@ -85,3 +85,20 @@ func test_a_rider_with_no_routed_man_in_sight_keeps_the_heading() -> void:
 	u._sim_chase_dir.resize(u.soldiers)   # every rider's way ZERO: none rides at a routed man
 	u._face_for_action(r.position, DT, r)
 	assert_almost_eq(u.facing.y, 1.0, FACING_TOL, "a troop not riding the rout down holds")
+
+
+func test_a_following_block_faces_the_nearest_runner_outside_it_not_their_centre() -> void:
+	var u := _make_unit(60, 1, 0)
+	u.order_mode = Unit.ORDER_ATTACK_FLANK   # not HOLD: it commits to the router and follows
+	var r := _router(ROUTER_OFFSET)
+	u.target_enemy = r
+	var half: Vector2 = u.soldier_block_half_extents()
+	# Two runners among the block's ranks, their centre inside it too.
+	r._sim_soldier_pos = PackedVector2Array([Vector2(-10, 5), Vector2(15, -5)])
+	u._face_for_action(r.position, DT, r)
+	assert_almost_eq(u.facing.y, 1.0, FACING_TOL, "with every runner among its ranks it holds")
+	# A third runs clear of the front rank, off to one side: it turns onto him, not their centre.
+	var out := Vector2(20.0, half.y + 30.0)
+	r._sim_soldier_pos.push_back(out)
+	u._face_for_action(r.position, DT, r)
+	assert_almost_eq(u.facing.angle_to(out), 0.0, 0.001, "it turns onto the runner outside it")

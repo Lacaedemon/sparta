@@ -11,9 +11,7 @@ class_name SoldierBodies
 ## with no lag, easing onto a reformed slot instead of snapping. A body's fully-integrated
 ## speed is still hard-capped near its unit's own top pace (Unit.superphysical_speed_frac
 ## * move_speed) no matter how far its slot has receded (a routed unit's men run on their own,
-## SoldierFlightStep) --
-## see the final clamp at the end of
-## the per-soldier loop in step(). That clamp floors at whatever speed the body already
+## SoldierFlightStep) -- see the final clamp at the end of the per-soldier loop in step(). That clamp floors at whatever speed the body already
 ## carried in, so it never suppresses a deliberately faster external push (a knockback) --
 ## only the march/arrival stacking it exists to bound. Operates on a Unit's
 ## `_sim_soldier_pos` / `_sim_body_vel` / `_sim_steer` (the state stays on the unit, where
@@ -267,10 +265,12 @@ static func step(unit: Unit, delta: float) -> void:
 	var routing: bool = unit.state == Unit.State.ROUTING
 	# A rallied man still pulling up faces his run too (pull_up_rallied).
 	var pulling_up: bool = unit._rally_pending and unit.state == Unit.State.IDLE
-	# So does a man riding a router down (SoldierPursuitStep).
-	SoldierTakeUp.take_up(unit, n)
+	# So does a rider riding a router down (SoldierPursuitStep): he faces the way he rides, set as
+	# he is stepped below.
+	var chase_over: bool = SoldierTakeUp.look_round(unit, n)
 	var pursuing: bool = SoldierPursuitStep.is_pursuing(unit)
-	if not unit._per_soldier_facing and not routing and not pulling_up and not pursuing:
+	var all_chase: bool = SoldierPursuitStep.all_chasing(unit, n)
+	if not unit._per_soldier_facing and not routing and not pulling_up and not all_chase:
 		unit._sim_soldier_facing = unit.soldier_world_facings(n)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# follows the regiment's pace during the same pass (Unit.stamina_flow_per_s: regen at
@@ -310,22 +310,22 @@ static func step(unit: Unit, delta: float) -> void:
 			_keep_out_of_terrain(unit, n, _terrain_entry_guard(unit, n), delta)
 			return
 		unit._reform_where_men_stand()
-	# A unit riding a router down: each man chases the runner nearest him (SoldierPursuitStep).
+	# Each rider riding a router down chases the runner nearest him (SoldierPursuitStep); the
+	# rest keep to their order on their places below.
 	if pursuing:
 		var chase_t0: int = Time.get_ticks_usec()
 		var chase_guard: Dictionary = _terrain_entry_guard(unit, n)
 		SoldierPursuitStep.step(unit, n, chase_guard, delta)
 		_keep_out_of_terrain(unit, n, chase_guard, delta)
 		SoldierFlight.work_usec += Time.get_ticks_usec() - chase_t0
-		return
-	# A chase that has just ended (its quarry fell, rallied or got clear) leaves each rider where
-	# he rode, with nothing left to remember; the unit forms up where its men stand, as a rally
-	# does, rather than each man riding back through the others to his old place. A unit left
-	# standing (IDLE) first lets its riders pull up from the gallop, as a rally does
-	# (pull_up_rallied); one given somewhere to go forms up at once.
-	if not unit._sim_chase_dir.is_empty():
+		if all_chase:
+			return
+	# A chase that has just ended (no rider sees a runner) leaves each rider where he rode; the
+	# unit forms up where its men stand, as a rally does, rather than each man riding back through
+	# the others to a place the chase has left behind. A unit left standing (IDLE) first lets its
+	# riders pull up from the gallop (pull_up_rallied); one given somewhere to go forms up at once.
+	if chase_over:
 		if unit.state == Unit.State.IDLE:
-			unit._sim_chase_dir = PackedVector2Array()
 			unit._rally_pending = true
 		else:
 			unit._reform_where_men_stand()
@@ -465,6 +465,8 @@ static func step(unit: Unit, delta: float) -> void:
 	# a file does (SoldierFollowSteer.steer_point), not along the slot grid's corridors.
 	var follow_width: float = unit.follow_line_width()
 	for i in range(n):
+		if pursuing and SoldierPursuitStep.chasing(unit, i):
+			continue   # a rider riding a runner down was stepped above
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
 		# feed-forward is what the slot itself is doing: for the marching bulk that is the
 		# unit's march velocity (the rate its formation slots translate), so a body keeps up
@@ -644,8 +646,7 @@ static func step(unit: Unit, delta: float) -> void:
 		# Final physical ceiling, applied after every adjustment above and to every body
 		# alike (marching, engaged, idle/reforming): a man cannot exceed his own top pace (his
 		# sprint, `top_pace` above; a routed man is stepped by SoldierFlightStep) by more than a
-		# hard
-		# margin no matter how fast his slot is receding out from under him.
+		# hard margin no matter how fast his slot is receding out from under him.
 		# The arrival term above is already capped at jog pace, but the march feed-forward
 		# stacks on top of it with no cap of its own, so only this clamp on the FULLY
 		# INTEGRATED velocity bounds their sum -- see Unit.superphysical_speed_frac. Floored at
@@ -1365,13 +1366,13 @@ static func couple(unit: Unit, delta: float) -> void:
 			unit._body_follow_vel = (unit.explicatio_grid_position() - unit.position) / delta
 		unit.position = unit.explicatio_grid_position()
 		return
-	# A routed unit has no grid, nor a rallied one whose men are still pulling up, nor one riding a
-	# router down (SoldierPursuitStep): its `position`
-	# is where its men are (their centroid) and its heading the way they face, which is the way
-	# each runs (SoldierFlightStep, pull_up_rallied), both read off the men each tick and never
-	# fed back to them.
+	# A routed unit has no grid, nor a rallied one whose men are still pulling up, nor a horse unit
+	# every rider of which is riding a router down (SoldierPursuitStep): its `position` is where
+	# its men are (their centroid) and its heading the way they face, which is the way each runs
+	# (SoldierFlightStep, pull_up_rallied), both read off the men each tick and never fed back to
+	# them. While only some of its riders chase, the grid follows the others alone (below).
 	if unit.state == Unit.State.ROUTING or (unit._rally_pending and unit.state == Unit.State.IDLE) \
-			or SoldierPursuitStep.is_pursuing(unit):
+			or SoldierPursuitStep.all_chasing(unit, n):
 		_read_router_off_men(unit, n, delta)
 		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
@@ -1409,7 +1410,7 @@ static func couple(unit: Unit, delta: float) -> void:
 	# in-progress turn or reform keep the wider contact_soldier_indices selection this
 	# always used to be. Also anchors a merely-in-contact (not fighting) regiment on its real
 	# front-rank bodies, not the whole-block centroid -- see Unit._in_enemy_contact.
-	var indices: PackedInt32Array = unit.position_anchor_indices(n)
+	var indices: PackedInt32Array = _off_the_chase(unit, unit.position_anchor_indices(n))
 	# With no engaged front to anchor on, the drift is averaged over every body -- and while
 	# a reinforcement's newcomers are still walking in from behind, that average reads their
 	# approach as the whole regiment standing off its slots. Hold `position` for the arrival
@@ -1434,6 +1435,8 @@ static func couple(unit: Unit, delta: float) -> void:
 		var eps_sq: float = Unit.REFORM_SETTLE_EPS * Unit.REFORM_SETTLE_EPS
 		var walking: int = 0
 		for i in range(n):
+			if SoldierPursuitStep.chasing(unit, i):
+				continue   # a rider riding a runner down is off the grid by design
 			if transit and unit._couple_transit[i] != 0:
 				if unit._sim_soldier_pos[i].distance_squared_to(slots[i]) > eps_sq:
 					walking += 1
@@ -1452,6 +1455,17 @@ static func couple(unit: Unit, delta: float) -> void:
 	var follow_step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)
 	unit._body_follow_vel = follow_step / delta if delta > 0.0 else Vector2.ZERO
 	unit.position += follow_step
+
+
+## `indices` without the riders riding a runner down (SoldierPursuitStep.chasing).
+static func _off_the_chase(unit: Unit, indices: PackedInt32Array) -> PackedInt32Array:
+	if not SoldierPursuitStep.is_pursuing(unit):
+		return indices
+	var kept := PackedInt32Array()
+	for i in indices:
+		if not SoldierPursuitStep.chasing(unit, i):
+			kept.push_back(i)
+	return kept
 
 
 ## A routed unit's readout of its `n` men: `position` their centroid, `facing` the sum of their

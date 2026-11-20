@@ -1323,12 +1323,12 @@ func test_derived_men_facing_about_counts_the_men_turned_off_the_heading() -> vo
 	assert_eq(DemoDefects.derived_field(u, "men_facing_about"), 1, "against the other heading")
 
 
-func test_derived_men_x_span_reads_the_men_alone() -> void:
+func test_derived_men_x_extent_reads_the_men_alone() -> void:
 	var u: Dictionary = _derived_record([[-30.0, 5.0], [12.5, 0.0], [40.0, -8.0]], [])
-	assert_almost_eq(float(DemoDefects.derived_field(u, "men_x_span")), 70.0, 0.001,
-			"the farthest east less the farthest west, with no slots to read")
+	assert_eq(DemoDefects.derived_field(u, "men_x_extent"), [-30.0, 40.0],
+			"the farthest west and the farthest east, with no slots to read")
 	u["soldiers_full"]["pos"] = []
-	assert_null(DemoDefects.derived_field(u, "men_x_span"), "no men is uncheckable")
+	assert_null(DemoDefects.derived_field(u, "men_x_extent"), "no men is uncheckable")
 
 
 func test_derived_slot_excess_measures_an_outside_man_from_the_block_edge() -> void:

@@ -50,6 +50,7 @@ never into them and never standing still in front of them
 (@fig-router-runs-from-foes).
 He goes round on the side of his refuge where fewer of them stand,
 or the side not shut by rock,
+or else away from the men of his own unit he can see,
 and keeps to that side until he next looks round.
 He looks round about every fifth of a second, a man's reaction time,
 and runs the way he then chose in between.
@@ -58,6 +59,7 @@ by rock or by enemy soldiers,
 turns to the enemy soldier nearest him and fights,
 and runs again once a way opens.
 He also takes part of his line from the man of his file running ahead of him,
+while he can see him,
 so the rout streams away as a crowd rather than scattering at random.
 The unit's flag and marker stand at the centre of its fleeing men,
 and its facing is the way they run.
@@ -66,6 +68,17 @@ after Delium, Thucydides says, some made for Delium and the sea,
 some for Oropus, and others for Mount Parnes (4.96.7).
 The game builds the back edge of the field as one refuge,
 and the nearest friendly unit as another, as a variant.
+
+Horse ride a rout down rider by rider.
+A rider under an order to pursue
+(an attack on the broken unit, or the Chase or Sweep routers stance)
+rides at the nearest routed man he can see and strikes the runners he reaches,
+while he sees one;
+a rider who sees none keeps his place in the ranks and the unit's own order.
+At Cannae the Numidian horse cut most of the fleeing Roman cavalry down (Polybius 3.116).
+Whether horse rode a broken enemy down without an order the sources reached do not say,
+so the game builds both readings, the sim's inference either way:
+only under an order (the default), or whenever its riders see routed men, off Hold.
 
 ::: {#fig-router-runs-from-foes .demo}
 
@@ -81,8 +94,9 @@ and the nearest friendly unit as another, as a variant.
 A broken cavalry squadron (blue) with a block of infantry standing between it and its own
 back edge.
 Each rider sees the infantry ahead of him and runs away from them and round them,
-the riders on each side of the squadron's centre round their own side, rather than into the
-block or standing still in front of it.
+turning away from the riders he can see beside him,
+so the squadron parts round both ends of the block
+rather than running into it or standing still in front of it.
 :::
 
 A routing man runs faster than he marches.
@@ -144,7 +158,8 @@ breaks while still in contact and flees north.
 Each man runs on his own from the infantry he sees,
 the leading men first and the men still pressed against the infantry as they get free,
 and the infantry follows in its ranks.
-On this clip's seed the spearmen first get clear of the infantry about three seconds after they break.
+On this clip's seed the spearmen first get clear of the infantry
+about two seconds after they break.
 :::
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
@@ -214,7 +229,8 @@ On this clip's seed the spearmen first get clear of the infantry about three sec
 </video>
 ```
 
-A broken block of 80 Cavalry, nine ranks deep, flees south with its front rank only 40 wu (2 m) short of a hill.
+A broken block of 80 Cavalry, nine ranks deep, flees south
+with its front rank only 40 wu (2 m) short of a hill.
 Each rider sees the rock in his way and runs the open way nearest the one he wants,
 so the block bears off west round the hill's end
 and no rider is held on the face.
