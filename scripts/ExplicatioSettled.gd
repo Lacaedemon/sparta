@@ -1,18 +1,22 @@
 class_name ExplicatioSettled
-## Which men of an explicatio drill the men behind them see settled, so that a man waiting in his
-## unopened old file goes (ExplicatioOpening.hold_unopened). Read only from what each man's body
-## shows (Unit._explicatio_seen) and the deal, never from another man's drill state. Pure.
+## Which men of an explicatio drill have settled and passed the word back, so that a man waiting
+## in his unopened old file goes (ExplicatioOpening.hold_unopened). Read from what each man's body
+## shows (Unit._explicatio_seen), the deal, and the word from the man he dresses on. Pure.
 
 
-## Each of `n` men is settled when the men behind him see him:
-## - on his own place by the deal (`seen` "placed"), at rest or not, with the man he dresses on
-##   by the deal (`leaders`, a man with none dressing on a point) settled too; or
-## - at rest ("at_rest") and gone from where he stood when the drill began ("moved"), and either
-##   the leader of his file (`is_head`), held short of his place, or a man with rock or another
-##   man's body directly in his way ("blocked", body_in_way: a man of another old file).
-## Gone and at rest alone does not settle a man of the column: the men trailing a file as it opens
-## come to rest with it, and every man stands at rest before the drill moves. Settles nobody when
-## the readings do not line up.
+## Each of `n` men has settled, and passes the word back to the man behind him, when:
+## - he is at rest on his own place by the deal (`seen` "at_rest", "placed") and has had the word
+##   from the man he dresses on by the deal (`leaders`; "word", that man's word as passed on the
+##   last tick; a man who dresses on a point needs none); or
+## - he is at rest, gone from where he stood when the drill began ("moved"), and either the leader
+##   of his file (`is_head`), held short of his place, or a man with rock or a man of another old
+##   file directly in his way ("blocked", body_in_way).
+## Sight alone cannot tell a man settled on his place from one trailing at a rank pitch, which is
+## his place too, so the word passes back man by man, a tick each: the sim's inference. Aelian 35
+## (Tactiks, 1616) has directions given by voice, visible sign and trumpet, and says nothing of a
+## word passed along a file. Gone and at rest alone does not settle a man of the column: the men
+## trailing a file as it opens come to rest with it. Settles nobody when the readings do not line
+## up.
 static func men(leaders: PackedInt32Array, is_head: PackedByteArray, seen: Dictionary,
 		n: int) -> PackedByteArray:
 	var out := PackedByteArray()
@@ -24,19 +28,13 @@ static func men(leaders: PackedInt32Array, is_head: PackedByteArray, seen: Dicti
 	if leaders.size() != n or at_rest.size() != n or moved.size() != n or blocked.size() != n \
 			or placed.size() != n or is_head.size() != n:
 		return out
-	var changed: bool = true
-	while changed:
-		changed = false
-		for i in range(n):
-			if out[i] == 1:
-				continue
-			var j: int = leaders[i]
-			var led: bool = j < 0 or j >= n or out[j] == 1
-			var held: bool = at_rest[i] == 1 and moved[i] == 1 \
-					and (is_head[i] == 1 or blocked[i] == 1)
-			if held or (placed[i] == 1 and led):
-				out[i] = 1
-				changed = true
+	var word: PackedByteArray = seen.get("word", PackedByteArray())
+	for i in range(n):
+		var j: int = leaders[i]
+		var told: bool = j < 0 or j >= n or (word.size() == n and word[j] == 1)
+		var held: bool = moved[i] == 1 and (is_head[i] == 1 or blocked[i] == 1)
+		if at_rest[i] == 1 and ((placed[i] == 1 and told) or held):
+			out[i] = 1
 	return out
 
 

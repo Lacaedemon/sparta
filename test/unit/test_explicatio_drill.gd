@@ -24,8 +24,8 @@ const FRIEND_STANDS := 240
 ## centred and tick 737 held on a flank, the alternate-rank drill by ticks 389 and 476.
 const DRILL_TICKS := 800
 ## The x 1090 terrain drill after it ends, measured 2026-11-20 on this build (seed 1948): in the
-## 240 ticks after, the front walks back 26.4721 wu together and 25.6694 wu files first, and the
-## nearest two men come 1.0180 wu apart together and 1.0052 wu files first. Each bound is the
+## 240 ticks after, the front walks back 26.4721 wu together and 25.6637 wu files first, and the
+## nearest two men come 1.0180 wu apart together and 1.0042 wu files first. Each bound is the
 ## together measurement plus a deliberate tolerance, a quarter wu on the walk back and a twentieth
 ## of a wu on the spacing, which the files-first readings fall inside, so "no worse" allows run to
 ## run noise from a later change and no more. These are bounds the walk back may not exceed, not

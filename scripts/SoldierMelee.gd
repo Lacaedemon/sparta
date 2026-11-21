@@ -441,6 +441,8 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 				unit._explicatio_start.remove_at(i)   # and where he stood when the drill began
 			if i < unit._explicatio_seen_at.size():
 				unit._explicatio_seen_at.remove_at(i)   # and where he was seen last tick
+			if i < unit._explicatio_word_passed.size():
+				unit._explicatio_word_passed.remove_at(i)   # and whether he had passed the word back
 			if i < unit._duplicatio_returning.size():
 				unit._duplicatio_returning.remove_at(i)   # and whether he went up an interval
 			if unit._per_soldier_facing and i < unit._sim_soldier_facing.size():

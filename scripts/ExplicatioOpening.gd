@@ -21,13 +21,12 @@ const NAMES := {Reading.TOGETHER: "together", Reading.FILES_FIRST: "files first"
 ## whole. The leader, the front man of the file that stays (rank 0), keeps his own plan. From
 ## where the men stand (`bodies`), the man ahead of a man is the nearest of the leader and the men
 ## of his old file within a file pitch (`file_pitch`) of his line and ahead of him by both men's
-## facings (`facings`), so no two men wait on each other. A man waits until he sees that man
-## settle (ExplicatioSettled.men, from what each man's body shows, `seen`) or step out: be a man
-## the deal put in the interval file, standing over half a file pitch off his line. The motion
-## cannot tell a man stepping out from one trailing the file sideways (8061 step-out offsets, 0 to
-## 4.6 wu, lay within the 5.64 wu trailing men reached), so the step-out is read from the deal,
-## drill every man knows. A man gone and over half a file pitch off his leader's line has stepped
-## out (`released`) and never waits again. Adds "waiting" and "released" (with this tick's added).
+## facings (`facings`), so no two men wait on each other. A man waits until that man settles and
+## passes the word back (ExplicatioSettled.men, `seen`) or steps out: a man of the interval file
+## by the deal, over half a file pitch off his line (the motion cannot tell him from a man trailing
+## sideways: 8061 step-out offsets, 0 to 4.6 wu, within the 5.64 wu trailing men reached). A man
+## gone and over half a file pitch off his leader's line has stepped out (`released`) and never
+## waits again. Adds "waiting", "released" (with this tick's added) and "word_passed".
 static func hold_unopened(plan: Dictionary, file_ids: PackedInt32Array, ranks: PackedInt32Array,
 		bodies: PackedVector2Array, facings: PackedVector2Array, lane_split: int, inward: bool,
 		following: PackedByteArray, seen: Dictionary, released: PackedByteArray,
@@ -60,6 +59,7 @@ static func hold_unopened(plan: Dictionary, file_ids: PackedInt32Array, ranks: P
 		else:
 			files[k] = [i]
 	var settled: PackedByteArray = ExplicatioSettled.men(leaders, is_head, seen, n)
+	plan["word_passed"] = settled
 	var half: float = 0.5 * file_pitch
 	for k in files:
 		var head: int = int(heads.get(k, -1))

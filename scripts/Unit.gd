@@ -6572,6 +6572,7 @@ func _begin_explicatio(dealt: Dictionary, old_files: int, held_flank: int, drill
 	_explicatio_released = PackedByteArray()
 	_explicatio_start = _sim_soldier_pos.slice(0, soldiers)
 	_explicatio_seen_at = _explicatio_start.duplicate()
+	_explicatio_word_passed = PackedByteArray()
 	_explicatio_drill = drill
 	_explicatio_follow_frame = -1
 
@@ -6675,6 +6676,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		return false
 	if _explicatio_opening == ExplicatioOpening.Reading.FILES_FIRST:
 		var seen: Dictionary = _explicatio_seen(count)
+		seen["word"] = _explicatio_word_passed
 		_explicatio_seen_at = _sim_soldier_pos.slice(0, count)
 		plan = ExplicatioOpening.hold_unopened(plan, _sim_soldier_file, _sim_soldier_rank,
 				_sim_soldier_pos.slice(0, count), _sim_soldier_facing.slice(0, count),
@@ -6684,6 +6686,7 @@ func _refresh_explicatio_follow(count: int) -> bool:
 		leaders = plan["leaders"]
 		_explicatio_waiting = plan["waiting"]
 		_explicatio_released = plan["released"]
+		_explicatio_word_passed = plan.get("word_passed", PackedByteArray())
 	var points := PackedVector2Array()
 	points.resize(count)
 	points.fill(_explicatio_stand_point)
@@ -7006,10 +7009,10 @@ func _advance_explicatio_drill() -> void:
 ## whose leader has stopped following or stands, and who stands on his place, is pressed by a
 ## man of another regiment with room where he is, `held` (_explicatio_held_men), or waiting on a
 ## lane (`_explicatio_lanes`) every man of which has stopped following or stands. A man still in
-## his unopened old file (files first) never stands: he goes once he sees the man ahead of him
-## settle or step out (ExplicatioOpening.hold_unopened). Read down each follow chain
-## from the front, so a man stands only once the man he dresses on does. Each man's lane and press
-## are this tick's, read from where the men stand.
+## his unopened old file (files first) never stands: he goes once the man ahead of him has
+## settled and passed the word back, or steps out (ExplicatioOpening.hold_unopened). Read down
+## each follow chain from the front, so a man stands only once the man he dresses on does. Each
+## man's lane and press are this tick's, read from where the men stand.
 func _explicatio_standing_men(held: PackedByteArray) -> PackedByteArray:
 	var stand := PackedByteArray()
 	stand.resize(soldiers)
@@ -7099,6 +7102,7 @@ func _end_explicatio_drill() -> void:
 	_explicatio_released = PackedByteArray()
 	_explicatio_start = PackedVector2Array()
 	_explicatio_seen_at = PackedVector2Array()
+	_explicatio_word_passed = PackedByteArray()
 	_explicatio_leaders = PackedInt32Array()
 	_explicatio_following = PackedByteArray()
 	_explicatio_follow_frame = -1
@@ -7697,6 +7701,12 @@ var _explicatio_released: PackedByteArray = PackedByteArray()
 # a snapshot.
 var _explicatio_start: PackedVector2Array = PackedVector2Array()
 var _explicatio_seen_at: PackedVector2Array = PackedVector2Array()
+# 1 for each man who has settled and passed the word back to the man behind him
+# (ExplicatioSettled.men), files first: a man on his place settles once he has the word from the
+# man he dresses on, passed a tick before, so the word goes back man by man, the sim's inference.
+# A man reads only the word of the man directly ahead of him. Closes up with a casualty
+# (SoldierMelee.reap) and rides a snapshot.
+var _explicatio_word_passed: PackedByteArray = PackedByteArray()
 # When the files open, against when the men step in (ExplicatioOpening.Reading).
 var _explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
 # Where each man stood, and how fast he was going, when he last stepped for his place with nothing
@@ -13611,6 +13621,7 @@ func to_snapshot_dict() -> Dictionary:
 		"explicatio_stepped_vel": _explicatio_stepped_vel.duplicate(),
 		"explicatio_start": _explicatio_start.duplicate(),
 		"explicatio_seen_at": _explicatio_seen_at.duplicate(),
+		"explicatio_word_passed": _explicatio_word_passed.duplicate(),
 		"explicatio_released": _explicatio_released.duplicate(),
 		"explicatio_stand_file": _explicatio_stand_file,
 		"explicatio_stand_point": _explicatio_stand_point,
@@ -14033,6 +14044,8 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 			.duplicate()
 	_explicatio_seen_at = (d.get("explicatio_seen_at", PackedVector2Array()) \
 			as PackedVector2Array).duplicate()
+	_explicatio_word_passed = (d.get("explicatio_word_passed", PackedByteArray()) \
+			as PackedByteArray).duplicate()
 	_explicatio_released = (d.get("explicatio_released", PackedByteArray()) as PackedByteArray) \
 			.duplicate()
 	_explicatio_stand_file = int(d.get("explicatio_stand_file", -1))

@@ -191,11 +191,15 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
 - **`files_first`** (also the sim's inference).
   Each old file opens out to its distance as a whole, every man keeping his place in it behind the man ahead of him,
   and only once its file leader settles, on his place or held short of it, does the man behind him step out into the interval beside it and come up,
-  and each man behind him once he sees the man ahead of him in his line settle or step out.
-  He reads it from that man's body and the deal alone:
-  the man is settled on his own place with the man he dresses on settled too,
-  or at rest away from where he stood when the drill began,
+  and each man behind him once the man ahead of him in his line has settled and passed the word back, or has stepped out.
+  A man has settled when he stands at rest on his own place and has the word from the man he dresses on,
+  or stands at rest away from where he stood when the drill began,
   when he is the file's leader or has rock or a man of another file touching him on his way to his place.
+  A man trailing at a rank pitch already stands on his place by the deal, so sight alone cannot tell him from a man settled there;
+  the word passes back along the file a man at a time, each man hearing it from the man directly ahead of him.
+  That passed word is the sim's inference.
+  Aelian 35 (*The Tactiks of Aelian*, 1616) has directions given by voice, by visible signs and by trumpet,
+  and says nothing of a word passed along a file; Asclepiodotus was not checked for it.
   A man of the column merely at rest behind the man ahead is not settled, since the column comes to rest as a whole, and every man stands at rest before the drill moves.
   While he waits he trails the man ahead of him, a rank pitch behind.
   What he sees of that man's motion cannot tell a man stepping out from one trailing the file sideways as it opens
@@ -216,11 +220,11 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
   In the alternate-rank drill this keeps every file leader on the line he stood on.
   Together, each epistates steps out from right behind his file leader while the leader is still opening out and presses him ahead:
   1.07 wu for 140 Spearmen 9 files by 16 widened about the middle, and 1.24 wu held on the right.
-  Files first, the file leaders stay within 0.07 wu of it (0.06 wu held on the right, measured 2026-11-20).
+  Files first, the file leaders stay within 0.06 wu of it (0.08 wu held on the right, measured 2026-11-20).
   But files first does not keep the front as a whole on its line.
   The epistates coming up into line beside his file leader runs past it before he settles,
-  1.26 wu widened about the middle and 1.30 wu held on the right:
-  a little further than the file leaders run ahead together
+  1.38 wu widened about the middle, a little further than the file leaders run ahead together,
+  and 0.31 wu held on the right
   ([#1989](https://github.com/Lacaedemon/sparta/issues/1989)).
   These figures are measurements, not asserted values: the farthest the front stood ahead of the line it began on,
   taken 2026-11-19 by `test/unit/test_explicatio_opening.gd`'s `_walk` (seed 1967),
@@ -273,7 +277,7 @@ Nobody walks to a slot laid out from the unit's centre: each man follows a man h
   when he is held: the step he took toward his place brought him no nearer it and he is going toward it no faster,
   so something he cannot pass, a face of rock or a friend's body, holds him off his place,
   or when every man of the lane he waits on has stopped or stands.
-  In the files-first reading a man still waiting in his unopened old file never stands: he goes once he sees the man ahead of him in his line settle or step out.
+  In the files-first reading a man still waiting in his unopened old file never stands: he goes once the man ahead of him in his line has settled and passed the word back, or has stepped out.
   A man still shedding a way he carried off his place gains pace toward it each step, so he is not held.
   A man who stands goes on pressing for his place, and on the tick nothing holds him he is going again, and so are the men behind him.
   A friendly block that presses men and then marches off leaves them to go on to their places.

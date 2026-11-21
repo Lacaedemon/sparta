@@ -1419,13 +1419,15 @@ Choosing the explicatio from the keyboard: <kbd>Alt+B</kbd> steps the drill to t
 - **Together** (the default, the game's own reading): the files open out while the men step into the intervals.
 - **Files first** (also the game's own reading): each file opens out to its distance with all its men still in it,
   and only once its file leader settles, on his place or held short of it, do its men step into the interval beside it and come up,
-  each man once he sees the man ahead of him in his file settle, on his place or held short of it, or step out into the interval.
+  each man once the man ahead of him in his file has settled, on his place or held short of it, and passed the word back, or has stepped out into the interval.
+  The word passing back a man at a time is the game's inference.
   The sources do not say whether the files open before or as the men step in when a drill does both at once;
   Bingham's note on Aelian 29.3 (*The Tactiks of Aelian*, 1616, p. 134) has the files already standing apart, in open order, for the doubling on the same ground.
   With every second man stepping in, the file leaders then keep the line they stood on,
   where together each man stepping out from right behind his file leader presses him about 1 wu (5 cm) ahead of it.
-  But the men coming up into line beside them run about 1.25 wu (6 cm) past it before they settle,
-  a little further than the file leaders run ahead together, so the front as a whole still runs ahead.
+  But the men coming up into line beside them run past it before they settle,
+  about 1.4 wu (7 cm) when the block widens about its middle, a little further than the file leaders run ahead together,
+  so the front as a whole still runs ahead.
 
 ::: {#fig-explicatio-files-first .demo}
 
