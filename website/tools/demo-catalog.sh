@@ -37,6 +37,7 @@ DEMOS=(
   "cycle_charge|demos/inputs/cycle-charge.json|30|650|640|input"
   "cycle_charge_flee|demos/inputs/cycle-charge-flee.json|30|520|640|input"
   "router_outruns_pursuer|demos/inputs/close-tier-router-outruns-pursuer.json|30|176|640|input"
+  "router_runs_from_foes|demos/inputs/router-runs-from-foes-1949.json|30|150|640|input"
   "router_reentry_settle|demos/inputs/router-reentry-settle-1913.json|30|400|640|input"
   "router_anchor_flight_side|demos/inputs/router-anchor-flight-side-1825.json|30|440|640|input"
   "deep_router_close_start_hill|demos/inputs/deep-router-close-start-hill.json|30|176|640|input"

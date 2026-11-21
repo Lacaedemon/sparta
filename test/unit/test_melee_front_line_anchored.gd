@@ -1,6 +1,6 @@
 extends GutTest
 ## MeleeFrontLine with a flank-anchored frontage, whose men stand off the unit's position: the
-## router anchor test keeps the positions' base range, the engaged floor pushes along the
+## contact test keeps the positions' base range, the engaged floor pushes along the
 ## measured gap, the flank bearing and the contact facing read that gap, and the neighbourhood
 ## query covers the whole anchor shift.
 
@@ -26,9 +26,9 @@ func after_each() -> void:
 	SpatialHash.reset()
 
 
-## A routed block whose enemy's positions are within the base contact range keeps its anchor
-## contact even when the enemy's anchored men stand further off than that range.
-func test_a_router_keeps_anchor_contact_within_the_base_range() -> void:
+## A routed block whose enemy's positions are within the base contact range is in contact even
+## when the enemy's anchored men stand further off than that range.
+func test_a_router_is_in_contact_within_the_base_range() -> void:
 	var a: Unit = _make_unit(30, Vector2.ZERO, Vector2.DOWN)
 	var b: Unit = _make_unit(30, Vector2(0.0, 50.0), Vector2.UP, 1)
 	b.set_frontage(15, 60.0)
@@ -38,8 +38,7 @@ func test_a_router_keeps_anchor_contact_within_the_base_range() -> void:
 	var reach: float = c_dist + MeleeFrontLine.contact_extension(a, b)
 	assert_gt(MeleeFrontLine.toward(a, b).length(), reach, "setup: the men's gap is not")
 	a._refresh_enemy_contact()
-	assert_true(a._in_enemy_contact, "in contact")
-	assert_true(a._router_anchor_contact, "and anchored, as within_contact reads it")
+	assert_true(a._in_enemy_contact, "in contact, as within_contact reads it")
 
 
 ## Two engaged anchored blocks front to front, closer than their floor: _separate pushes along
@@ -101,47 +100,6 @@ func test_the_query_radius_covers_the_anchor_shift() -> void:
 	var slack: float = SpatialHash.CELL_SIZE - base   # what the cell leaves past the base range
 	assert_lt(sqrt(d_sq), MeleeFrontGeometry.query_radius(a, deepest) - slack,
 		"the radius covers the positions' gap with no help from the cell's slack")
-
-
-## A router re-entering contact counts its anchor only within router_contact_reentry_frac of
-## the range, on the positions' branch as on the gap's.
-func test_a_reentering_router_uses_the_shrunk_range() -> void:
-	var a: Unit = _make_unit(30, Vector2.ZERO, Vector2.DOWN)
-	var b: Unit = _make_unit(30, Vector2(0.0, 50.0), Vector2.UP, 1)
-	a.state = Unit.State.ROUTING
-	a._router_left_contact = true
-	a.router_contact_reentry_frac = 0.5
-	var c_dist: float = maxf(a.attack_range, b.attack_range) + 2.0 * Unit.RADIUS
-	assert_almost_eq(MeleeFrontLine.contact_extension(a, b), 0.0, 0.0001, "setup: shallow blocks")
-	assert_gt(50.0, 0.5 * c_dist, "setup: past the shrunk range")
-	a._refresh_enemy_contact()
-	assert_true(a._in_enemy_contact, "in contact at the full range")
-	assert_false(a._router_anchor_contact, "but not anchored past the shrunk range")
-	b.position = Vector2(0.0, 0.5 * c_dist - 1.0)
-	a._refresh_enemy_contact()
-	assert_true(a._router_anchor_contact, "anchored within it")
-
-
-## The same with deep blocks, whose extension the shrunk range scales too: past the shrunk
-## extended range on the gap, no anchor; within it, an anchor, though both are past the base.
-func test_a_reentering_router_shrinks_the_extended_range() -> void:
-	var a: Unit = _make_unit(160, Vector2.ZERO, Vector2.DOWN, 0, 10)
-	var b: Unit = _make_unit(160, Vector2(0.0, 250.0), Vector2.UP, 1, 10)
-	a.state = Unit.State.ROUTING
-	a._router_left_contact = true
-	a.router_contact_reentry_frac = 0.8
-	var c_dist: float = maxf(a.attack_range, b.attack_range) + 2.0 * Unit.RADIUS
-	var ext: float = MeleeFrontLine.contact_extension(a, b)
-	assert_gt(ext, 0.0, "setup: deep blocks")
-	var shrunk: float = (c_dist + ext) * 0.8
-	assert_gt(shrunk, c_dist, "setup: the shrunk range is past the base")
-	b.position = Vector2(0.0, shrunk + 5.0)
-	a._refresh_enemy_contact()
-	assert_true(a._in_enemy_contact, "in contact at the full extended range")
-	assert_false(a._router_anchor_contact, "not anchored past the shrunk extended range")
-	b.position = Vector2(0.0, shrunk - 5.0)
-	a._refresh_enemy_contact()
-	assert_true(a._router_anchor_contact, "anchored within it")
 
 
 ## within_contact's bound-rejected fast path agrees with the full test for an anchored pair.
@@ -282,26 +240,3 @@ func test_set_formation_notes_the_deeper_block() -> void:
 	assert_ne(MeleeFrontGeometry.query_extension(a), before, "setup: the bound moved")
 	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
 		0.001, "noted")
-
-
-## A rally's re-square that deepens the block runs after the tick's own front-line lookups; the
-## end of that tick reports it. The file-major assignment here holds every man in the first rank
-## (a deliberately shallow reading), and the about-face re-square reverses each file's ranks,
-## dealing the block its full depth.
-func test_the_end_of_a_tick_notes_a_rally_resquare() -> void:
-	var a: Unit = _make_unit(118, Vector2.ZERO, Vector2.DOWN)   # short files: a re-square runs
-	a.file_major_reform_mode = Unit.ReformMode.FILE_MAJOR
-	var files := PackedInt32Array()
-	var ranks := PackedInt32Array()
-	for i in a.soldiers:
-		files.append(i % 15)
-		ranks.append(0)
-	a.install_file_assignment(files, ranks, 15, 15)
-	a._formation_angle = PI   # an about-face folded into the grid
-	a._rally_resquare_pending = true
-	var before: float = _stale_grid(a)
-	a._physics_process(1.0 / 60.0)
-	assert_false(a._rally_resquare_pending, "setup: the re-square ran this tick")
-	assert_gt(MeleeFrontGeometry.query_extension(a), before, "setup: deeper")
-	assert_almost_eq(SpatialHash.max_query_extension(), MeleeFrontGeometry.query_extension(a),
-		0.001, "noted by the tick")

@@ -184,6 +184,25 @@ static func wheel_gait_rate(rate_cap: float, gait_speed: float, outer_radius: fl
 	return minf(rate_cap, gait_speed / outer_radius)
 
 
+## Where a moving wheel carries a body this tick: from `from` toward `to` (the rigid swing
+## about the hinge plus the hinge's advance), bounded so that the carry plus the body's own
+## velocity `own`, which the body step also moves him by, stays under the ceiling the body
+## step puts on every man: `ceiling` (his unit's top pace times its superphysical fraction),
+## floored at the speed he already carries. It binds only when his own speed plus the carry
+## would pass that ceiling: a formed block re-ordered through a sharp turn at a fast pace (its
+## men moving with the march while the hinge advances at the same pace, so the two add) or a
+## rider still coasting at a gallop when the wheel arms. Below it, `to` comes back unchanged.
+static func bounded_wheel_carry(from: Vector2, to: Vector2, own: Vector2, ceiling: float,
+		delta: float) -> Vector2:
+	if delta <= 0.0:
+		return to
+	var cap: float = maxf(ceiling, own.length())
+	var total: Vector2 = own + (to - from) / delta
+	if total.length() <= cap:
+		return to
+	return from + (total.limit_length(cap) - own) * delta
+
+
 ## The maximum angular rate (rad/s) at which a body travelling at `speed` can turn its
 ## OWN velocity DIRECTION under `body_accel` -- the same real constraint that bounds how
 ## sharply any accelerating body (a horse, a runner, a cart) can corner: redirecting a

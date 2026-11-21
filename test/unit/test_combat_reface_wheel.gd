@@ -198,6 +198,7 @@ func test_a_reface_onto_a_routing_enemy_still_snaps() -> void:
 	var u := _make_block()
 	var e := _make_enemy(_bearing_point(30.0))
 	e.state = Unit.State.ROUTING
+	u.target_enemy = e   # it follows the rout (_face_for_action turns only a follower onto one)
 	u._face_for_action(e.position, DT, e)
 	assert_almost_eq(u.facing.angle(), (e.position - u.position).angle(), FACING_TOL,
 		"a pursuer in contact keeps its front on a fleeing enemy")
@@ -437,20 +438,18 @@ func test_a_wheel_that_catches_up_again_holds_its_blows_as_it_comes_round() -> v
 
 
 func test_an_enemy_that_routs_mid_wheel_is_turned_onto_in_place_past_the_threshold() -> void:
-	# A router among the ranks streaming out through the block is held against instead
-	# (_router_streaming_through), as on main; this one leads the anchor along its line of
-	# flight, so it is not streaming through, and stands inside the footprint, so only the
-	# ROUTING clause of _combat_wheel_applies stops the wheel carrying on.
+	# This router stands inside the footprint, so only the ROUTING clause of
+	# _combat_wheel_applies stops the wheel carrying on.
 	var pair: Array = _running_wheel(60.0)
 	var u: Unit = pair[0]
 	var e: Unit = pair[1]
 	e.position = _off_heading(u, 80.0, 10.0)
 	assert_true(u._enemy_inside_own_footprint(e), "sanity: the router stands among the ranks")
 	e.state = Unit.State.ROUTING
-	e._flee_velocity = (e.position - u.position).normalized() * 50.0
-	assert_false(u._router_streaming_through(e), "sanity: it leads the anchor, so it is not streaming through")
+	u.target_enemy = e   # it follows the rout (_face_for_action turns only a follower onto one)
 	_wheel_tick(u, e, true)
-	assert_ne(u._engage_turn_target, Vector2.ZERO, "past the threshold a router is turned onto in place")
+	assert_eq(u._engage_turn_target, Vector2.ZERO,
+			"a router whose centre stands among the ranks is not turned onto (RoutedFront)")
 
 
 func test_a_block_that_drops_to_the_far_tier_mid_wheel_turns_in_place_past_the_threshold() -> void:

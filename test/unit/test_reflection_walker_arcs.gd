@@ -320,21 +320,6 @@ func test_a_later_quarter_turn_re_square_drops_the_walkers() -> void:
 	assert_eq(_arced(u, true), [], "nobody is arced")
 
 
-## A rally re-squares a squared block by composing the reflection and then dealing its cells
-## again file by file from the slots the men held, so nobody is left walking the depth. A square
-## has no dealt flag to skip the arcs with, so the reflection's walkers must go with the deal.
-func test_a_square_rally_re_square_drops_the_walkers() -> void:
-	var u := _make(60, true)
-	u.facing = Vector2.UP
-	u._formation_angle = PI
-	_stand_on_slots(u)
-	var before: PackedInt32Array = _pairing(u, true)
-	u._rally_resquare()
-	assert_ne(_pairing(u, true), before, "precondition: the rally re-dealt the square")
-	_hold(u)
-	assert_eq(_arced(u, true), [], "nobody is arced")
-
-
 ## A square that re-pairs from where its men stand (here the freshness key is dropped, as a
 ## formation change leaves it) hands every man a cell near him, so nobody walks the depth.
 func test_a_square_re_pair_from_the_bodies_drops_the_walkers() -> void:

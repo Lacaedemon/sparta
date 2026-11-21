@@ -369,10 +369,16 @@ static func unit_record(u: Node, order_mode_names: Dictionary, speed_scale: floa
 		"last_redeal_tick": u._last_redeal_tick,
 		# True while a hold_position_anchor window is in effect (e.g. during reinforcement arrival).
 		"anchor_held": u.position_anchor_held(),
-		# True while a rallied unit's anchor is still coasting to a stop on its flight
-		# (Unit.is_rally_halting): DemoDefects' speed ceiling then allows its men the flee pace
-		# they are still running at, as for a router.
-		"rally_halting": u.is_rally_halting(),
+		# True while a rallied unit's men still shed their flight's speed (Unit.shedding_flight):
+		# DemoDefects' speed ceiling then allows them the flee pace they are still running at,
+		# as for a router.
+		"rally_halting": u.shedding_flight(),
+		# True while every rider of the unit rides a router down (SoldierPursuitStep.all_chasing):
+		# each chases the runner nearest him, off any place, and the unit has no grid, so
+		# DemoDefects judges no formation shape on it then, as for a router, though it still judges
+		# two of its men on one spot. While only some ride, the rest keep their places and the
+		# shape is judged.
+		"pursuing": SoldierPursuitStep.all_chasing(u, u._sim_soldier_pos.size()),
 		"soldiers": u.soldiers,
 		"current_speed": round_to(u._current_speed, 1),
 		"current_speed_mps": mps(u._current_speed, WorldScaleRef.WU_PER_M, speed_scale),
@@ -504,6 +510,12 @@ static func soldier_arrays(u: Node) -> Dictionary:
 	var broken: Array = []
 	for b in u._sim_soldier_broken:
 		broken.append(int(b))
+	# 1 for a rider riding a runner down (SoldierPursuitStep.chasing): off his place by design, so
+	# DemoDefects leaves him out of the shape it judges (DemoChasers).
+	var chasing: Array = []
+	for i in range(u._sim_soldier_pos.size()):
+		chasing.append(1 if i < u._sim_chase_dir.size() and u._sim_chase_dir[i] != Vector2.ZERO
+				else 0)
 	return {
 		"pos": positions,
 		"facing": facings,
@@ -512,6 +524,7 @@ static func soldier_arrays(u: Node) -> Dictionary:
 		"prone": rounded_floats(u._sim_prone),
 		"stamina": rounded_floats(u._sim_soldier_stamina),
 		"broken": broken,
+		"chasing": chasing,
 		"relations": relations(u),
 	}
 

@@ -797,13 +797,31 @@ func test_same_unit_standoff_runs_during_reform_hold_of_a_block_in_good_order() 
 
 ## The standoff push _separate_same_unit gives body 0 of a pair standing `d` apart along x,
 ## with the two bodies' stored velocities set to `v0` and `v1`: in a REFORM hold when
-## `holding`, otherwise under an armed settle window.
+## `holding`, otherwise under an armed settle window. With `foe_state` set, one man of an
+## enemy unit in that state stands `foe_gap` from body 0: running when `foe_running`, and the
+## pair's block marching on his unit when `foe_aimed_at`.
 func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
-		holding: bool = true) -> Vector2:
+		holding: bool = true, foe_state: int = -1, foe_gap: float = 0.0,
+		foe_running: bool = false, foe_aimed_at: bool = false) -> Vector2:
 	var u := _make_unit(42, 2)
 	u.frontage_override = 1
 	u.position = Vector2(0.0, 50.0)
 	SoldierBodies.seed(u)
+	var foe: Unit = null
+	if foe_state >= 0:
+		foe = _make_unit(43, 1)
+		foe.team = u.team + 1
+		foe.position = Vector2(0.0, -foe_gap)
+		SoldierBodies.seed(foe)
+		foe._sim_soldier_pos[0] = foe.position
+		foe.state = foe_state
+		foe.engaged_soldier_indices(1)   # as its melee picks them, each tick it fights
+		if foe_gap <= u.soldier_body_radius() + foe.soldier_body_radius():
+			foe._sim_touching_foe = PackedByteArray([1])   # as the enemy body-contact pass marks him
+		if foe_running:
+			foe._sim_flight_dir = PackedVector2Array([Vector2.UP])
+		if foe_aimed_at:
+			u.target_enemy = foe
 	if holding:
 		u.current_order = Order.new_move(u.position)
 		u.current_order.reform_timer = 1.0
@@ -816,10 +834,51 @@ func _standoff_push_on_first_of_pair(d: float, v0: Vector2, v1: Vector2,
 	var target_slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	var is_engaged := PackedByteArray()
 	is_engaged.resize(2)
+	SoldierPress.reset()   # the field changed within this frame
 	var sep_vel: PackedVector2Array = SoldierBodies._separate_same_unit(
 		u, 2, target_slots, is_engaged, 1.0 / 60.0)
+	if foe != null:
+		remove_child(foe)   # out of the tree, so the next call in the same test does not see it
 	assert_eq(sep_vel.size(), 2, "sanity: the pass ran for the crowded pair")
 	return sep_vel[0] if sep_vel.size() == 2 else Vector2.ZERO
+
+
+## The standoff push on the first of a pair `d` apart, each man a few wu off a place of his own
+## (nearer than the out-of-good-order distance), in a REFORM hold or not.
+func _standoff_push_near_places(d: float, v0: Vector2, v1: Vector2, holding: bool) -> Vector2:
+	var u := _make_unit(42, 2)
+	u.frontage_override = 1
+	u.position = Vector2(0.0, 50.0)
+	SoldierBodies.seed(u)
+	u.state = Unit.State.MOVING
+	if holding:
+		u.current_order = Order.new_move(u.position)
+		u.current_order.reform_timer = 1.0
+	else:
+		u._standoff_settle_until_tick = Engine.get_physics_frames() + 60
+	u._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	u._sim_soldier_pos[1] = Vector2(d, 0.0)
+	u._sim_body_vel[0] = v0
+	u._sim_body_vel[1] = v1
+	var places := PackedVector2Array([Vector2(0.0, 3.0), Vector2(d, 3.0)])
+	var sep_vel: PackedVector2Array = SoldierBodies._separate_same_unit(
+		u, 2, places, PackedByteArray([0, 0]), 1.0 / 60.0)
+	return sep_vel[0] if sep_vel.size() == 2 else Vector2.ZERO
+
+
+func test_a_pair_near_its_places_takes_only_the_push_in_a_hold_as_outside_one() -> void:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
+	var still: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2.ZERO, true)
+	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
+	var closing: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-10.0, 0.0), true)
+	assert_almost_eq(closing.x, still.x, 0.001,
+			"in a hold a pair near its places takes only the push")
+	var out: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
+	var out_still: Vector2 = _standoff_push_near_places(d, Vector2.ZERO, Vector2.ZERO, false)
+	assert_almost_eq(out.x, out_still.x, 0.001,
+			"outside a hold a pair near its places takes only the push")
 
 
 ## A unit's standoff distance, as _separate_same_unit derives it.
@@ -846,18 +905,60 @@ func test_same_unit_standoff_cancels_closing_speed_inside_the_contact_band() -> 
 		"a pair already walking apart must take no closing cancel")
 
 
-func test_same_unit_standoff_leaves_closing_speed_outside_a_reform_hold() -> void:
+func test_same_unit_standoff_cancels_closing_speed_outside_a_reform_hold_too() -> void:
 	var probe := _make_unit(42, 2)
 	probe.frontage_override = 1
 	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
 	# The same closing pair inside the contact band, but in a settle window rather than a
-	# hold: a march or a fight keeps the overlap push alone.
+	# hold: the band is the pair's own rule, so the block's state does not switch it off.
 	var still: Vector2 = _standoff_push_on_first_of_pair(d, Vector2.ZERO, Vector2.ZERO, false)
 	var closing: Vector2 = _standoff_push_on_first_of_pair(
 		d, Vector2.ZERO, Vector2(-10.0, 0.0), false)
 	assert_lt(still.x, 0.0, "sanity: the pair is inside the standoff distance and is pushed")
-	assert_almost_eq(closing.x, still.x, 0.001,
-		"outside a REFORM hold a closing pair must take only the overlap push")
+	assert_almost_eq(closing.x - still.x, -5.0, 0.001,
+		"outside a REFORM hold a closing pair takes half its closing speed each as well")
+
+
+## How much more body 0 of a pair off its places is pushed back when body 1 closes at 10 wu/s
+## (-5 with the band, 0 with the push alone), with one man of an enemy unit in `state` standing
+## `gap` from body 0: running when `running`, and the block's target when `aimed_at`.
+func _band_cut(state: int, gap: float, running: bool = false, aimed_at: bool = false) -> float:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
+	var still: Vector2 = _standoff_push_on_first_of_pair(
+		d, Vector2.ZERO, Vector2.ZERO, true, state, gap, running, aimed_at)
+	var closing: Vector2 = _standoff_push_on_first_of_pair(
+		d, Vector2.ZERO, Vector2(-10.0, 0.0), true, state, gap, running, aimed_at)
+	return closing.x - still.x
+
+
+func test_a_man_near_a_fighting_foe_man_is_in_the_press() -> void:
+	var probe := _make_unit(42, 2)
+	var reach: float = probe.soldier_reach()
+	var touching: float = probe.soldier_body_radius()   # nearer than the two bodies' radii
+	assert_almost_eq(_band_cut(Unit.State.FIGHTING, 1.5 * reach), 0.0, 0.001,
+		"an engaged foe man within twice the reach holds the pair in the press")
+	assert_almost_eq(_band_cut(Unit.State.IDLE, touching), 0.0, 0.001,
+		"so does one standing body to body with a man of the block")
+	assert_almost_eq(_band_cut(Unit.State.ROUTING, touching), 0.0, 0.001,
+		"and a routed man standing to fight")
+
+
+func test_a_man_near_no_fighting_foe_man_is_walking_back() -> void:
+	var probe := _make_unit(42, 2)
+	probe.frontage_override = 1
+	var reach: float = probe.soldier_reach()
+	var d: float = _standoff_min_sep(probe) * SoldierBodies.STANDOFF_CONTACT_SEP_FRAC * 0.5
+	var idle := Unit.State.IDLE
+	assert_almost_eq(_band_cut(idle, 0.5 * reach), -5.0, 0.001,
+		"a foe man only within his reach of the block, and not engaged, fights no one of it")
+	assert_almost_eq(_band_cut(idle, 1.5 * reach, false, true), -5.0, 0.001,
+		"the block marching on him does not make him fight")
+	assert_almost_eq(_band_cut(Unit.State.ROUTING, probe.soldier_body_radius(), true), -5.0, 0.001,
+		"a routed man running fights no one, even body to body")
+	assert_almost_eq(_band_cut(Unit.State.FIGHTING, 2.0 * reach + d + 1.0), -5.0, 0.001,
+		"an engaged foe man past twice the reach presses no one")
 
 
 func test_same_unit_standoff_leaves_closing_speed_outside_the_contact_band() -> void:

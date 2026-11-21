@@ -151,10 +151,8 @@ func test_custom_field_sizes_the_routing_grid_camera_and_rout_margin() -> void:
 	assert_eq(battle.field_with_margin, small.grow(battle.ROUT_MARGIN),
 			"the rout margin tracks the live field, not the default const")
 	assert_not_null(PathField.active, "a routing grid was built")
-	assert_true(PathField.active.has_path(Vector2(50, 50), Vector2(600, 600)),
+	assert_false(PathField.active.find_path(Vector2(50, 50), Vector2(600, 600)).is_empty(),
 			"the routing grid spans the custom field (a route across it exists)")
-	assert_true(PathField.active.has_escape_route(Vector2(320, 320), Vector2(1, 0)),
-			"escape queries stay in-bounds on the custom grid")
 
 
 func test_custom_terrain_blocks_routing_on_the_custom_map() -> void:

@@ -2427,6 +2427,13 @@ func _on_soldier_tick() -> void:
 	# pairs, no friendly-contact-tier expansion) than SoldierSteering's own rebuild above, so
 	# it can't share that key without silently reusing the wrong grid.
 	SoldierEnemyContact.accumulate(units, -frame - 1)
+	SoldierTouch.mark(units)   # which men's bodies touch a foe, for SoldierPress
+	SoldierPress.prepare(units)   # the fighting men, filed once before the bodies step
+	SoldierFlight.tick = _tick + 1   # ticks run, this one included: a seek rewinds it
+	# A routed man runs from the foes he perceives (SoldierFlight), so perception is bound for
+	# this frame before the bodies step, and only while some unit routs: nobody else asks.
+	if not get_tree().get_nodes_in_group("routers").is_empty():
+		SoldierFlight.prepare(frame, units, terrain, _sight_path_field)
 	UnitRef.step_all_sim_soldiers(units, delta)
 	UnitRef.couple_all_sim_soldiers(units, delta)
 	# Advance in-flight volleys and land any that arrived this tick (resolved in launch order,
@@ -3799,10 +3806,14 @@ func unit_by_uid(uid: int) -> UnitRef:
 ## nearest enemy closes inside PROMOTE_RANGE reconstructs its per-soldier state
 ## (TierTransition.promote, seeded off uid/tick/battle seed); a close-tier unit whose
 ## nearest enemy recedes past DEMOTE_RANGE — and that holds no in-flight per-soldier
-## context (TierTransition.can_demote) — collapses to its aggregate fields. Routers are
-## ignored on both sides of the check: a routing unit is not a fight-relevant contact,
-## and it keeps its own tier until it rallies back into "units". Runs every tick over the
-## live units in tree order — a pure function of already-serialized positions, so both
+## context (TierTransition.can_demote) -- collapses to its aggregate fields. Routers are not
+## among the units judged here (a routing unit keeps its own tier until it rallies back into
+## "units"), and are not among the enemies measured, with one exception: a unit whose own
+## target routs counts the centre distance to that quarry as one more gap, so it promotes and
+## stays close as it closes on the runners, and still demotes once they are past DEMOTE_RANGE.
+## A horse unit riding the rout down man by man does not demote while it does
+## (TierTransition.can_demote): its riders are scattered after their runners. Runs every tick over
+## the live units in tree order -- a pure function of already-serialized positions, so both
 ## runs of a replay transition the same units on the same ticks.
 func _tick_tier_transitions() -> Array:
 	var all_units: Array = get_tree().get_nodes_in_group("units")
@@ -3848,6 +3859,11 @@ func _tick_tier_transitions() -> Array:
 						FormationTier.support_reach(halves[j], angles[j], -between))
 			if gap < nearest_gap:
 				nearest_gap = gap
+		# A unit whose target routs counts the centre distance to that quarry as one more gap:
+		# the one routing unit measured for its tier.
+		var quarry = u.target_enemy if is_instance_valid(u.target_enemy) else null
+		if quarry != null and quarry.state == UnitRef.State.ROUTING and quarry.team != u.team:
+			nearest_gap = minf(nearest_gap, u.position.distance_to(quarry.position))
 		if nearest_gap == INF:
 			# No enemy in play: hold the current tier (the victory check ends the battle).
 			# Still counted, since it keeps whatever tier it is already on.
