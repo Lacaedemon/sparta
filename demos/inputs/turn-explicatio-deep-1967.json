@@ -1,0 +1,25 @@
+{
+  "_comment": "Turn and unfold (Shift+Q) on a block deeper than it is wide: 140 Spearmen, 9 files of 16, facing south, quarter-turn left in place to face east, presenting 16 ranks as their front, 9 deep. The combo's widen then doubles those 16 files across the new facing to 32 files of 5, dealt from where the men stand, as the explicatio drill: each man follows a man he can see (explicatio_following 130 at tick 60, the men still following), the front the turn brought round keeps its line at x 556.0, and the block settles at [537.99, 380.0] when the drill ends by tick 600. On main the widen doubled 16 files against the 9 the block had before the turn, which is no doubling, so the files were dealt anew laterally about the centre: the front fell back from x 556.0 to 525.7 and the block settled at x 507.7. Measured 2026-11-14 on FULL dumps every 60 ticks to tick 720, seed run 0; the drill plays out identically on seed runs 0 to 4 (no enemy, no roll). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "19673",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 520, "y": 380, "count": 140, "facing": [0, 1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 520.0, "y": 380.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 12, "click": [520, 380]},
+    {"tick": 30, "key": "Q", "shift": true}
+  ],
+  "state": [8, 20, 32, 60, 90, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720],
+  "expect": [
+    {"tick": 20, "uid": 0, "field": "frontage", "value": 9},
+    {"tick": 60, "uid": 0, "field": "frontage", "value": 32},
+    {"tick": 60, "uid": 0, "field": "facing", "value": [1.0, 0.0]},
+    {"tick": 60, "uid": 0, "field": "explicatio_following", "value": 130},
+    {"tick": 600, "uid": 0, "field": "front_rank_line", "value": [556.0, 556.0], "tol": 2.25},
+    {"tick": 600, "uid": 0, "field": "position", "value": [537.99, 380.0], "tol": 2.25},
+    {"tick": 720, "uid": 0, "field": "explicatio_following", "value": null}
+  ]
+}

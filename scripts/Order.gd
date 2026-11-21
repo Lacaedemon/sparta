@@ -312,6 +312,8 @@ var explicatio_drill: int = UnitFormation.ExplicatioDrill.HALF_FILE
 ## (UnitFormation.ExplicatioGround), as Unit.set_frontage reads them.
 var explicatio_side: int = UnitFormation.ExplicatioSide.OUTWARD
 var explicatio_ground: int = UnitFormation.ExplicatioGround.LENGTHEN
+## Whether that drill's files open before its men step in (ExplicatioOpening.Reading).
+var explicatio_opening: int = ExplicatioOpening.Reading.TOGETHER
 ## The order_mode (Battle.OrderMode) the issuing command carried, for MOVE/ATTACK/SUPPORT.
 var order_mode: int = 0
 ## The gait (Battle.Gait: WALK/JOG/RUN/SPRINT) for MOVE orders. When >= 0, overrides
@@ -519,6 +521,7 @@ func to_dict() -> Dictionary:
 		"explicatio_drill": explicatio_drill,
 		"explicatio_side": explicatio_side,
 		"explicatio_ground": explicatio_ground,
+		"explicatio_opening": explicatio_opening,
 		"order_mode": order_mode,
 		"gait": gait,
 		"haste": haste,
@@ -572,6 +575,8 @@ static func from_dict(d: Dictionary) -> Order:
 	o.explicatio_side = int(d.get("explicatio_side", UnitFormation.ExplicatioSide.OUTWARD))
 	o.explicatio_ground = int(d.get("explicatio_ground",
 			UnitFormation.ExplicatioGround.LENGTHEN))
+	# Absent in an order saved before the files-first reading: together.
+	o.explicatio_opening = int(d.get("explicatio_opening", ExplicatioOpening.Reading.TOGETHER))
 	o.order_mode = int(d.get("order_mode", 0))
 	o.gait = int(d.get("gait", -1))
 	o.haste = bool(d.get("haste", false))
@@ -745,7 +750,8 @@ static func new_frontage(files: int, anchor_offset: float = 0.0) -> Order:
 static func new_file_double(direction: int,
 		drill: int = UnitFormation.ExplicatioDrill.HALF_FILE,
 		side: int = UnitFormation.ExplicatioSide.OUTWARD,
-		ground: int = UnitFormation.ExplicatioGround.LENGTHEN) -> Order:
+		ground: int = UnitFormation.ExplicatioGround.LENGTHEN,
+		opening: int = ExplicatioOpening.Reading.TOGETHER) -> Order:
 	if direction == 0:
 		push_error("Order.new_file_double: direction must be nonzero (0 has no relative " +
 				"widen/narrow meaning); defaulting to an explicatio. Use new_frontage for " +
@@ -757,6 +763,7 @@ static func new_file_double(direction: int,
 	o.explicatio_drill = drill
 	o.explicatio_side = side
 	o.explicatio_ground = ground
+	o.explicatio_opening = opening
 	return o
 
 

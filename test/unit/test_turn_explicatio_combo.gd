@@ -153,10 +153,16 @@ func test_combo_turns_then_doubles_the_frontage_across_the_new_facing() -> void:
 		"the reshape re-squared the grid to the new heading (no quarter fold left behind)")
 	assert_true(u._last_reshape_widened, "the reshape registered as a widen")
 
-	# Let the bodies ease onto the reshaped slots, then check the footprint is a LINE across
+	# Let the men do the explicatio drill (each follows a man he can see, read afresh each
+	# physics frame, so the frames have to pass), then check the footprint is a LINE across
 	# the new facing: 10 files x 4 ranks reads as wide-across / shallow-deep in the new frame.
-	for _i in range(240):
-		_tick(u)
+	assert_true(u.explicatio_drill_active(), "the widen is the drill")
+	for _i in range(900):
+		if not u.explicatio_drill_active():
+			break
+		await get_tree().physics_frame   # the tree runs the unit's own _physics_process
+		u.step_sim_soldiers(TICK)   # the drill's advance, then the bodies, as Battle steps them
+	assert_false(u.explicatio_drill_active(), "the drill ended")
 	var lateral: Vector2 = u.facing.rotated(PI * 0.5)
 	assert_gt(_extent_along(u, lateral), 2.0 * _extent_along(u, u.facing),
 		"the settled block is much wider across the new facing than it is deep")
