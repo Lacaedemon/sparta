@@ -199,7 +199,8 @@ When the files open, against when the men step into the intervals (`ExplicatioOp
   the word passes back along the file a man at a time, each man hearing it from the man directly ahead of him.
   That passed word is the sim's inference.
   Aelian 35 (*The Tactiks of Aelian*, 1616) has directions given by voice, by visible signs and by trumpet,
-  and says nothing of a word passed along a file; Asclepiodotus was not checked for it.
+  and says nothing of a word passed along a file.
+  Asclepiodotus was not checked for it.
   A man of the column merely at rest behind the man ahead is not settled, since the column comes to rest as a whole, and every man stands at rest before the drill moves.
   While he waits he trails the man ahead of him, a rank pitch behind.
   What he sees of that man's motion cannot tell a man stepping out from one trailing the file sideways as it opens
