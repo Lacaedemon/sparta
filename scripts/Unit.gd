@@ -4522,7 +4522,7 @@ func _face_for_action(point: Vector2, delta: float, enemy_unit: Unit = null) -> 
 	# where a bearing to it names no front. Only a unit following the rout turns onto it: horse
 	# riding it down (SoldierPursuitStep.is_pursuing) or a block whose target it is
 	# (SoldierFootPursuit), and only while their centre stands clear of its own block
-	# (RoutedFront; a facing read off what its men see is #1955). With that centre among its ranks
+	# (RoutedFront, which says what would replace it). With that centre among its ranks
 	# it keeps its heading too. Any other unit keeps its heading, and its men strike the routed
 	# men in their reach.
 	if enemy_unit != null and enemy_unit.state == State.ROUTING:

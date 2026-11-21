@@ -2,9 +2,9 @@ class_name RoutedFront
 extends RefCounted
 ## Where a unit following a rout brings its front to bear (Unit._face_for_action): on the routed
 ## unit's centre while that stands clear of its own block, and nowhere while it stands among its
-## ranks, where a bearing from the anchor names no front, so the unit keeps its heading. A facing
-## read off what the block's own men see is #1955 (facing from the men); until then the bearing
+## ranks, where a bearing from the anchor names no front, so the unit keeps its heading. The bearing
 ## stays the unit's, and the runners among the ranks are struck by the men they stand by.
+## TODO(#1955): face by what the block's own men see, not by the routed unit's centre.
 
 
 ## `enemy`'s position when it lies outside `unit`'s slot footprint (Unit.soldier_block_half_extents,
